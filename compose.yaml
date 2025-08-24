@@ -1,0 +1,62 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: dnd_postgres
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dnd_helper}
+      POSTGRES_USER: ${POSTGRES_USER:-dnd_helper}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: dnd_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  api:
+    build:
+      context: ./api
+      dockerfile: dockerfile
+    container_name: dnd_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app/src
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "${API_PORT:-8000}:8000"
+    command: uvicorn dnd_helper_api.main:app --host 0.0.0.0 --port 8000
+
+  bot:
+    build:
+      context: ./bot
+      dockerfile: dockerfile
+    container_name: dnd_bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app/src
+    depends_on:
+      - redis
+      - postgres
+    command: python -m dnd_helper_bot.main
+
+volumes:
+  postgres_data:
+  redis_data:
+
+

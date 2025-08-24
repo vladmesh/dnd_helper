@@ -1,0 +1,13 @@
+services:
+  bot-tests:
+    build:
+      context: .
+      dockerfile: dockerfile
+    command: pytest -q
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./src:/app/src:ro
+      - ./tests:/app/tests:ro
+
+
