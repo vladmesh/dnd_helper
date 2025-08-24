@@ -26,7 +26,7 @@ services:
   api:
     build:
       context: ./api
-      dockerfile: dockerfile
+      dockerfile: Dockerfile
     container_name: dnd_api
     restart: unless-stopped
     env_file:
@@ -43,7 +43,7 @@ services:
   bot:
     build:
       context: ./bot
-      dockerfile: dockerfile
+      dockerfile: Dockerfile
     container_name: dnd_bot
     restart: unless-stopped
     env_file:

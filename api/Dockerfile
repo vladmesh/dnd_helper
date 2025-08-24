@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.11-slim as base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -12,5 +12,7 @@ COPY pyproject.toml /app/pyproject.toml
 RUN poetry install --no-interaction --no-ansi --no-root
 
 COPY src /app/src
+
+EXPOSE 8000
 
 
