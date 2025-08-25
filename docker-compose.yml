@@ -35,6 +35,8 @@ services:
     ports:
       - "${API_PORT:-8000}:8000"
     command: python -m dnd_helper_api.main
+    volumes:
+      - ./api/alembic/versions:/app/alembic/versions
 
 
   bot:

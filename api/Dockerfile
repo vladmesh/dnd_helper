@@ -16,6 +16,10 @@ COPY api/src /app/src
 # Copy shared models into API source path for imports
 COPY shared_models/src/shared_models /app/src/shared_models
 
+# Copy Alembic configuration and scripts
+COPY api/alembic /app/alembic
+COPY api/alembic.ini /app/alembic.ini
+
 EXPOSE 8000
 
 

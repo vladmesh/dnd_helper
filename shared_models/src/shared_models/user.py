@@ -11,5 +11,6 @@ class User(BaseModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     telegram_id: int = Field(index=True)
     name: str
+    is_admin: bool = Field(default=False)
 
 

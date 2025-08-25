@@ -25,6 +25,23 @@ def cmd_restart(_: argparse.Namespace) -> None:
     run_command(["docker", "compose", "up", "-d"]) 
 
 
+def cmd_makemigration(args: argparse.Namespace) -> None:
+    """Create a new Alembic migration with autogenerate inside the API container and sync files to host."""
+    # Run alembic revision inside running API container
+    run_command([
+        "docker", "compose", "exec", "-T", "api",
+        "alembic", "revision", "--autogenerate", "-m", args.message,
+    ])
+
+
+def cmd_upgrade(_: argparse.Namespace) -> None:
+    """Apply Alembic migrations up to head inside the API container."""
+    run_command([
+        "docker", "compose", "exec", "-T", "api",
+        "alembic", "upgrade", "head",
+    ])
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Project management utility")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -34,6 +51,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="Stop, rebuild and start docker compose services",
     )
     restart.set_defaults(func=cmd_restart)
+
+    makemigration = subparsers.add_parser(
+        "makemigration",
+        help="Create a new Alembic migration with autogenerate (API service)",
+    )
+    makemigration.add_argument("-m", "--message", required=True, help="Migration message")
+    makemigration.set_defaults(func=cmd_makemigration)
+
+    upgrade = subparsers.add_parser(
+        "upgrade",
+        help="Apply Alembic migrations up to head (API service)",
+    )
+    upgrade.set_defaults(func=cmd_upgrade)
 
     return parser
 

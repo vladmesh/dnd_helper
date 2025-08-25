@@ -15,6 +15,7 @@ uvicorn = { version = ">=0.23", extras = ["standard"] }
 psycopg = { version = ">=3.1", extras = ["binary"] }
 redis = ">=5"
 sqlmodel = ">=0.0.16"
+alembic = ">=1.13"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=8"
