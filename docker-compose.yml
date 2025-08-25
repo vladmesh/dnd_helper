@@ -21,8 +21,8 @@ services:
 
   api:
     build:
-      context: ./api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: api/Dockerfile
     container_name: dnd_api
     restart: unless-stopped
     env_file:
