@@ -5,10 +5,6 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-dnd_helper}
-      POSTGRES_USER: ${POSTGRES_USER:-dnd_helper}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -38,7 +34,8 @@ services:
       - redis
     ports:
       - "${API_PORT:-8000}:8000"
-    command: uvicorn dnd_helper_api.main:app --host 0.0.0.0 --port 8000
+    command: python -m dnd_helper_api.main
+
 
   bot:
     build:
