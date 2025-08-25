@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR=$(git rev-parse --show-toplevel)
+
+echo "Running smoke tests before commit..."
+
+pushd "$ROOT_DIR" >/dev/null
+./run_test.sh
+popd >/dev/null
+
+echo "Tests passed. Proceeding with commit."
+
+
