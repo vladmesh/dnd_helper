@@ -1,13 +1,28 @@
 services:
+  postgres-test:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=test
+      - POSTGRES_PASSWORD=test
+      - POSTGRES_DB=testdb
+
   api-tests:
     build:
-      context: .
-      dockerfile: dockerfile
-    command: pytest -q
+      context: ..
+      dockerfile: api/Dockerfile
+    depends_on:
+      - postgres-test
     environment:
       - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app/src
+      - POSTGRES_USER=test
+      - POSTGRES_PASSWORD=test
+      - POSTGRES_DB=testdb
+      - POSTGRES_HOST=postgres-test
+      - POSTGRES_PORT=5432
+    # Install pytest and httpx at runtime to avoid changing the base Dockerfile
+    command: sh -lc "pip install -q pytest httpx && pytest -q"
     volumes:
-      - ./src:/app/src:ro
       - ./tests:/app/tests:ro
 
 

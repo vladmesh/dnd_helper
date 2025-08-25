@@ -2,12 +2,12 @@ services:
   bot-tests:
     build:
       context: .
-      dockerfile: dockerfile
-    command: pytest -q
+      dockerfile: Dockerfile
     environment:
       - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app/src
+    command: sh -lc "pip install -q pytest && pytest -q"
     volumes:
-      - ./src:/app/src:ro
       - ./tests:/app/tests:ro
 
 
