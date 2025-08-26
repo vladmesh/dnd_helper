@@ -25,6 +25,21 @@ def cmd_restart(_: argparse.Namespace) -> None:
     run_command(["docker", "compose", "up", "-d"]) 
 
 
+def cmd_ultimate_restart(_: argparse.Namespace) -> None:
+    """Full reset: down -v, build --no-cache, up -d, apply migrations."""
+    # Stop and remove containers, networks, and volumes
+    run_command(["docker", "compose", "down", "-v"]) 
+    # Rebuild all services without cache
+    run_command(["docker", "compose", "build"]) 
+    # Start services
+    run_command(["docker", "compose", "up", "-d"]) 
+    # Apply migrations inside API container
+    run_command([
+        "docker", "compose", "exec", "-T", "api",
+        "alembic", "upgrade", "head",
+    ])
+
+
 def cmd_makemigration(args: argparse.Namespace) -> None:
     """Create a new Alembic migration with autogenerate inside the API container and sync files to host."""
     # Run alembic revision inside running API container
@@ -51,6 +66,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Stop, rebuild and start docker compose services",
     )
     restart.set_defaults(func=cmd_restart)
+
+    ultimate_restart = subparsers.add_parser(
+        "ultimate_restart",
+        help="Full reset: down -v, build --no-cache, up -d, apply migrations",
+    )
+    ultimate_restart.set_defaults(func=cmd_ultimate_restart)
 
     makemigration = subparsers.add_parser(
         "makemigration",

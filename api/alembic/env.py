@@ -6,10 +6,13 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
+import sqlmodel  # noqa: F401
 
 # Import models to ensure they are registered on SQLModel.metadata
 # Keep imports minimal to avoid side effects
 import shared_models.user  # noqa: F401
+import shared_models.monster  # noqa: F401
+import shared_models.spell  # noqa: F401
 
 
 # this is the Alembic Config object, which provides access to the values
