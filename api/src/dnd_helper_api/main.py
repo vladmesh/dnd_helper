@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from sqlmodel import SQLModel
 from dnd_helper_api.db import engine
 from dnd_helper_api.routers.users import router as users_router
+from dnd_helper_api.routers.monsters import router as monsters_router
+from dnd_helper_api.routers.spells import router as spells_router
 
 
 app = FastAPI(title="DnD Helper API")
@@ -22,6 +24,8 @@ def on_startup() -> None:
     pass
 
 app.include_router(users_router)
+app.include_router(monsters_router)
+app.include_router(spells_router)
 
 if __name__ == "__main__":
     import uvicorn
