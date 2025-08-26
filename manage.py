@@ -7,6 +7,7 @@ Commands:
 """
 
 import argparse
+import os
 import subprocess
 import sys
 
@@ -38,6 +39,10 @@ def cmd_ultimate_restart(_: argparse.Namespace) -> None:
         "docker", "compose", "exec", "-T", "api",
         "alembic", "upgrade", "head",
     ])
+    # Seed data via REST (host script calling localhost:8000)
+    project_root = os.path.dirname(os.path.abspath(__file__))
+    seed_path = os.path.join(project_root, "seed.py")
+    run_command(["python3", seed_path])
 
 
 def cmd_makemigration(args: argparse.Namespace) -> None:
