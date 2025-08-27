@@ -4,6 +4,7 @@ import random
 from typing import Any, Dict, List
 
 import httpx
+import urllib.parse
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -70,6 +71,7 @@ def build_monsters_root_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("Список монстров", callback_data="monster:list:page:1")],
         [InlineKeyboardButton("Случайный монстр", callback_data="monster:random")],
+        [InlineKeyboardButton("Поиск монстра", callback_data="monster:search")],
     ])
 
 
@@ -134,6 +136,42 @@ async def monsters_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     markup = InlineKeyboardMarkup(rows)
     await query.edit_message_text(f"Список монстров (стр. {page})", reply_markup=markup)
 
+
+async def monster_search_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    # Set flag in user_data to treat next text as search query
+    context.user_data["awaiting_monster_query"] = True
+    await query.edit_message_text("Введите подстроку для поиска по названию монстра:")
+
+
+async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # If not awaiting search, delegate to menu handler
+    if not context.user_data.get("awaiting_monster_query"):
+        await handle_menu_text(update, context)
+        return
+    context.user_data.pop("awaiting_monster_query", None)
+    query_text = (update.message.text or "").strip()
+    if not query_text:
+        await update.message.reply_text("Пустой запрос. Повторите.", reply_markup=build_main_menu())
+        return
+    q = urllib.parse.quote(query_text)
+    try:
+        items = await api_get(f"/monsters/search?q={q}")
+    except Exception:
+        await update.message.reply_text("Ошибка при запросе к API.")
+        return
+    if not items:
+        await update.message.reply_text("Ничего не найдено.", reply_markup=build_main_menu())
+        return
+    # Build result list as inline buttons to details
+    rows: List[List[InlineKeyboardButton]] = []
+    for m in items[:10]:
+        title = m.get("title") or m.get("description", "<no title>")
+        rows.append([InlineKeyboardButton(title, callback_data=f"monster:detail:{m['id']}")])
+    rows.append([InlineKeyboardButton("К бестиарию", callback_data="monster:list:page:1")])
+    markup = InlineKeyboardMarkup(rows)
+    await update.message.reply_text("Результаты поиска:", reply_markup=markup)
 
 async def monster_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
@@ -230,8 +268,8 @@ def main() -> None:
     # Commands
     application.add_handler(CommandHandler("start", start))
 
-    # Text menu
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu_text))
+    # Text menu and search input
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_search_text))
 
     # Dice callbacks
     application.add_handler(CallbackQueryHandler(dice_roll, pattern=r"^dice:(d20|d6|2d6)$"))
@@ -240,6 +278,7 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(monsters_list, pattern=r"^monster:list:page:\d+$"))
     application.add_handler(CallbackQueryHandler(monster_detail, pattern=r"^monster:detail:\d+$"))
     application.add_handler(CallbackQueryHandler(monster_random, pattern=r"^monster:random$"))
+    application.add_handler(CallbackQueryHandler(monster_search_prompt, pattern=r"^monster:search$"))
 
     # Spells callbacks
     application.add_handler(CallbackQueryHandler(spells_list, pattern=r"^spell:list:page:\d+$"))
