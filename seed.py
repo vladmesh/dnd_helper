@@ -70,28 +70,32 @@ def seed_monsters() -> None:
 
     monsters: List[Dict[str, Any]] = [
         {
-            "description": "Goblin — small, sneaky humanoid.",
+            "title": "Goblin",
+            "description": "Small, sneaky humanoid.",
             "dangerous_lvl": "low",
             "hp": 7,
             "ac": 15,
             "speed": 30,
         },
         {
-            "description": "Orc — brutal warrior.",
+            "title": "Orc",
+            "description": "Brutal warrior.",
             "dangerous_lvl": "moderate",
             "hp": 15,
             "ac": 13,
             "speed": 30,
         },
         {
-            "description": "Troll — regenerating giant.",
+            "title": "Troll",
+            "description": "Regenerating giant.",
             "dangerous_lvl": "high",
             "hp": 84,
             "ac": 15,
             "speed": 30,
         },
         {
-            "description": "Young Red Dragon — fearsome dragon wyrmling.",
+            "title": "Young Red Dragon",
+            "description": "Fearsome dragon wyrmling.",
             "dangerous_lvl": "deadly",
             "hp": 178,
             "ac": 18,
