@@ -79,6 +79,7 @@ def build_spells_root_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("Список заклинаний", callback_data="spell:list:page:1")],
         [InlineKeyboardButton("Случайное заклинание", callback_data="spell:random")],
+        [InlineKeyboardButton("Поиск заклинания", callback_data="spell:search")],
     ])
 
 
@@ -145,19 +146,34 @@ async def monster_search_prompt(update: Update, context: ContextTypes.DEFAULT_TY
     await query.edit_message_text("Введите подстроку для поиска по названию монстра:")
 
 
+async def spell_search_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    context.user_data["awaiting_spell_query"] = True
+    await query.edit_message_text("Введите подстроку для поиска по названию заклинания:")
+
+
 async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    # If not awaiting search, delegate to menu handler
-    if not context.user_data.get("awaiting_monster_query"):
+    # If not awaiting any search, delegate to menu handler
+    awaiting_monster = bool(context.user_data.get("awaiting_monster_query"))
+    awaiting_spell = bool(context.user_data.get("awaiting_spell_query"))
+    if not (awaiting_monster or awaiting_spell):
         await handle_menu_text(update, context)
         return
-    context.user_data.pop("awaiting_monster_query", None)
+    if awaiting_monster:
+        context.user_data.pop("awaiting_monster_query", None)
+    if awaiting_spell:
+        context.user_data.pop("awaiting_spell_query", None)
     query_text = (update.message.text or "").strip()
     if not query_text:
         await update.message.reply_text("Пустой запрос. Повторите.", reply_markup=build_main_menu())
         return
     q = urllib.parse.quote(query_text)
     try:
-        items = await api_get(f"/monsters/search?q={q}")
+        if awaiting_monster:
+            items = await api_get(f"/monsters/search?q={q}")
+        else:
+            items = await api_get(f"/spells/search?q={q}")
     except Exception:
         await update.message.reply_text("Ошибка при запросе к API.")
         return
@@ -166,10 +182,16 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
     # Build result list as inline buttons to details
     rows: List[List[InlineKeyboardButton]] = []
-    for m in items[:10]:
-        title = m.get("title") or m.get("description", "<no title>")
-        rows.append([InlineKeyboardButton(title, callback_data=f"monster:detail:{m['id']}")])
-    rows.append([InlineKeyboardButton("К бестиарию", callback_data="monster:list:page:1")])
+    if awaiting_monster:
+        for m in items[:10]:
+            title = m.get("title") or m.get("description", "<no title>")
+            rows.append([InlineKeyboardButton(title, callback_data=f"monster:detail:{m['id']}")])
+        rows.append([InlineKeyboardButton("К бестиарию", callback_data="monster:list:page:1")])
+    else:
+        for s in items[:10]:
+            title = s.get("title") or s.get("description", "<no title>")
+            rows.append([InlineKeyboardButton(title, callback_data=f"spell:detail:{s['id']}")])
+        rows.append([InlineKeyboardButton("К заклинаниям", callback_data="spell:list:page:1")])
     markup = InlineKeyboardMarkup(rows)
     await update.message.reply_text("Результаты поиска:", reply_markup=markup)
 
@@ -284,6 +306,7 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(spells_list, pattern=r"^spell:list:page:\d+$"))
     application.add_handler(CallbackQueryHandler(spell_detail, pattern=r"^spell:detail:\d+$"))
     application.add_handler(CallbackQueryHandler(spell_random, pattern=r"^spell:random$"))
+    application.add_handler(CallbackQueryHandler(spell_search_prompt, pattern=r"^spell:search$"))
 
     application.run_polling()
 

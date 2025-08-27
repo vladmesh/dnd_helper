@@ -10,6 +10,16 @@ from dnd_helper_api.db import get_session
 router = APIRouter(prefix="/spells", tags=["spells"])
 
 
+@router.get("/search", response_model=List[Spell])
+def search_spells(q: str, session: Session = Depends(get_session)) -> List[Spell]:
+    if not q:
+        return []
+    spells = session.exec(
+        select(Spell).where(Spell.title.ilike(f"%{q}%"))
+    ).all()
+    return spells
+
+
 @router.post("", response_model=Spell, status_code=status.HTTP_201_CREATED)
 def create_spell(spell: Spell, session: Session = Depends(get_session)) -> Spell:
     spell.id = None

@@ -49,6 +49,7 @@ def update_monster(monster_id: int, payload: Monster, session: Session = Depends
     monster = session.get(Monster, monster_id)
     if monster is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Monster not found")
+    monster.title = payload.title
     monster.description = payload.description
     monster.dangerous_lvl = payload.dangerous_lvl
     monster.hp = payload.hp

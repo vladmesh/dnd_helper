@@ -16,6 +16,7 @@ def seed_monsters(session: Session) -> None:
 
     monsters: list[Monster] = [
         Monster(
+            title="Goblin",
             description="Goblin — small, sneaky humanoid.",
             dangerous_lvl=DangerLevel.LOW,
             hp=7,
@@ -23,6 +24,7 @@ def seed_monsters(session: Session) -> None:
             speed=30,
         ),
         Monster(
+            title="Orc",
             description="Orc — brutal warrior.",
             dangerous_lvl=DangerLevel.MODERATE,
             hp=15,
@@ -30,6 +32,7 @@ def seed_monsters(session: Session) -> None:
             speed=30,
         ),
         Monster(
+            title="Troll",
             description="Troll — regenerating giant.",
             dangerous_lvl=DangerLevel.HIGH,
             hp=84,
@@ -37,6 +40,7 @@ def seed_monsters(session: Session) -> None:
             speed=30,
         ),
         Monster(
+            title="Young Red Dragon",
             description="Young Red Dragon — fearsome dragon wyrmling.",
             dangerous_lvl=DangerLevel.DEADLY,
             hp=178,
