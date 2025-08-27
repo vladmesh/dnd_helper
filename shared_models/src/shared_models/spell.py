@@ -10,6 +10,7 @@ class Spell(BaseModel, table=True):
     """Spell shared model."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
+    title: str | None = Field(default=None, index=True)
     description: str
     caster_class: CasterClass = Field(index=True)
     distance: int

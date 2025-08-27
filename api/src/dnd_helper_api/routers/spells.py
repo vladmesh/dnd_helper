@@ -38,6 +38,7 @@ def update_spell(spell_id: int, payload: Spell, session: Session = Depends(get_s
     spell = session.get(Spell, spell_id)
     if spell is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Spell not found")
+    spell.title = payload.title
     spell.description = payload.description
     spell.caster_class = payload.caster_class
     spell.distance = payload.distance

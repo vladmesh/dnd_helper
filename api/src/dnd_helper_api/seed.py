@@ -56,24 +56,28 @@ def seed_spells(session: Session) -> None:
 
     spells: list[Spell] = [
         Spell(
+            title="Fire Bolt",
             description="Fire Bolt — a mote of fire that deals damage.",
             caster_class=CasterClass.WIZARD,
             distance=120,
             school=SpellSchool.EVOCATION,
         ),
         Spell(
+            title="Cure Wounds",
             description="Cure Wounds — touch to restore hit points.",
             caster_class=CasterClass.CLERIC,
             distance=5,
             school=SpellSchool.EVOCATION,
         ),
         Spell(
+            title="Mage Hand",
             description="Mage Hand — spectral hand to manipulate objects.",
             caster_class=CasterClass.SORCERER,
             distance=30,
             school=SpellSchool.CONJURATION,
         ),
         Spell(
+            title="Fireball",
             description="Fireball — explosive fire dealing area damage.",
             caster_class=CasterClass.WIZARD,
             distance=150,

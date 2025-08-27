@@ -116,24 +116,28 @@ def seed_spells() -> None:
 
     spells: List[Dict[str, Any]] = [
         {
+            "title": "Fire Bolt",
             "description": "Fire Bolt — a mote of fire that deals damage.",
             "caster_class": "wizard",
             "distance": 120,
             "school": "evocation",
         },
         {
+            "title": "Cure Wounds",
             "description": "Cure Wounds — touch to restore hit points.",
             "caster_class": "cleric",
             "distance": 5,
             "school": "evocation",
         },
         {
+            "title": "Mage Hand",
             "description": "Mage Hand — spectral hand to manipulate objects.",
             "caster_class": "sorcerer",
             "distance": 30,
             "school": "conjuration",
         },
         {
+            "title": "Fireball",
             "description": "Fireball — explosive fire dealing area damage.",
             "caster_class": "wizard",
             "distance": 150,
