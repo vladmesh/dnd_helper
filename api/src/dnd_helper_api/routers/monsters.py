@@ -10,6 +10,16 @@ from dnd_helper_api.db import get_session
 router = APIRouter(prefix="/monsters", tags=["monsters"])
 
 
+@router.get("/search", response_model=List[Monster])
+def search_monsters(q: str, session: Session = Depends(get_session)) -> List[Monster]:
+    if not q:
+        return []
+    monsters = session.exec(
+        select(Monster).where(Monster.title.ilike(f"%{q}%"))
+    ).all()
+    return monsters
+
+
 @router.post("", response_model=Monster, status_code=status.HTTP_201_CREATED)
 def create_monster(monster: Monster, session: Session = Depends(get_session)) -> Monster:
     # Ignore client-provided id
