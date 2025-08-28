@@ -3,6 +3,7 @@ import asyncio
 
 from telegram.ext import ApplicationBuilder, CallbackQueryHandler, CommandHandler, MessageHandler, filters
 
+from dnd_helper_bot.logging_config import configure_logging
 from dnd_helper_bot.handlers.menu import start, show_main_menu_from_callback
 from dnd_helper_bot.handlers.search import handle_search_text
 from dnd_helper_bot.handlers.dice import dice_roll
@@ -24,6 +25,8 @@ def main() -> None:
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
         raise RuntimeError("TELEGRAM_BOT_TOKEN is not set")
+
+    configure_logging(service_name=os.getenv("LOG_SERVICE_NAME", "bot"))
 
     application = ApplicationBuilder().token(token).build()
 

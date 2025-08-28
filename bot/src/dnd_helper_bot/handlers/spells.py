@@ -1,4 +1,5 @@
 import random
+import logging
 from typing import Any, Dict, List
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -7,14 +8,18 @@ from telegram.ext import ContextTypes
 from dnd_helper_bot.repositories.api_client import api_get, api_get_one
 from dnd_helper_bot.utils.pagination import paginate
 
+logger = logging.getLogger(__name__)
+
 
 async def spells_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
     page = int(query.data.split(":")[-1])
+    logger.info("Spells list requested", extra={"correlation_id": query.message.chat_id if query and query.message else None, "page": page})
     all_spells: List[Dict[str, Any]] = await api_get("/spells")
     total = len(all_spells)
     if total == 0:
+        logger.warning("No spells available", extra={"correlation_id": query.message.chat_id if query and query.message else None})
         await query.edit_message_text("Заклинаний нет.")
         return
     page_items = paginate(all_spells, page)
@@ -37,6 +42,7 @@ async def spell_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     query = update.callback_query
     await query.answer()
     spell_id = int(query.data.split(":")[-1])
+    logger.info("Spell detail requested", extra={"correlation_id": query.message.chat_id if query and query.message else None, "spell_id": spell_id})
     s = await api_get_one(f"/spells/{spell_id}")
     text = (
         f"{s.get('description','')}\n"
@@ -50,8 +56,10 @@ async def spell_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 async def spell_random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
+    logger.info("Spell random requested", extra={"correlation_id": query.message.chat_id if query and query.message else None})
     all_spells = await api_get("/spells")
     if not all_spells:
+        logger.warning("No spells available for random", extra={"correlation_id": query.message.chat_id if query and query.message else None})
         await query.edit_message_text("Заклинаний нет.")
         return
     s = random.choice(all_spells)
@@ -67,6 +75,7 @@ async def spell_search_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE
     query = update.callback_query
     await query.answer()
     context.user_data["awaiting_spell_query"] = True
+    logger.info("Spell search prompt shown", extra={"correlation_id": query.message.chat_id if query and query.message else None})
     await query.edit_message_text("Введите подстроку для поиска по названию заклинания:")
 
 

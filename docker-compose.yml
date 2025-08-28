@@ -29,6 +29,9 @@ services:
       - .env
     environment:
       - PYTHONPATH=/app/src
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_JSON=${LOG_JSON:-true}
+      - LOG_SERVICE_NAME=api
     depends_on:
       - postgres
       - redis
@@ -49,6 +52,9 @@ services:
       - .env
     environment:
       - PYTHONPATH=/app/src
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_JSON=${LOG_JSON:-true}
+      - LOG_SERVICE_NAME=bot
     depends_on:
       - redis
       - postgres

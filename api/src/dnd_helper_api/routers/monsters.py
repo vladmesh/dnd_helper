@@ -1,4 +1,5 @@
 from typing import List
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
@@ -8,15 +9,18 @@ from dnd_helper_api.db import get_session
 
 
 router = APIRouter(prefix="/monsters", tags=["monsters"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/search", response_model=List[Monster])
 def search_monsters(q: str, session: Session = Depends(get_session)) -> List[Monster]:
     if not q:
+        logger.warning("Empty monster search query")
         return []
     monsters = session.exec(
         select(Monster).where(Monster.title.ilike(f"%{q}%"))
     ).all()
+    logger.info("Monster search completed", extra={"query": q, "count": len(monsters)})
     return monsters
 
 
@@ -27,12 +31,14 @@ def create_monster(monster: Monster, session: Session = Depends(get_session)) ->
     session.add(monster)
     session.commit()
     session.refresh(monster)
+    logger.info("Monster created", extra={"monster_id": monster.id, "title": monster.title})
     return monster
 
 
 @router.get("", response_model=List[Monster])
 def list_monsters(session: Session = Depends(get_session)) -> List[Monster]:
     monsters = session.exec(select(Monster)).all()
+    logger.info("Monsters listed", extra={"count": len(monsters)})
     return monsters
 
 
@@ -40,7 +46,9 @@ def list_monsters(session: Session = Depends(get_session)) -> List[Monster]:
 def get_monster(monster_id: int, session: Session = Depends(get_session)) -> Monster:
     monster = session.get(Monster, monster_id)
     if monster is None:
+        logger.warning("Monster not found", extra={"monster_id": monster_id})
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Monster not found")
+    logger.info("Monster fetched", extra={"monster_id": monster_id})
     return monster
 
 
@@ -48,6 +56,7 @@ def get_monster(monster_id: int, session: Session = Depends(get_session)) -> Mon
 def update_monster(monster_id: int, payload: Monster, session: Session = Depends(get_session)) -> Monster:
     monster = session.get(Monster, monster_id)
     if monster is None:
+        logger.warning("Monster not found for update", extra={"monster_id": monster_id})
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Monster not found")
     monster.title = payload.title
     monster.description = payload.description
@@ -58,6 +67,7 @@ def update_monster(monster_id: int, payload: Monster, session: Session = Depends
     session.add(monster)
     session.commit()
     session.refresh(monster)
+    logger.info("Monster updated", extra={"monster_id": monster.id})
     return monster
 
 
@@ -65,9 +75,11 @@ def update_monster(monster_id: int, payload: Monster, session: Session = Depends
 def delete_monster(monster_id: int, session: Session = Depends(get_session)) -> None:
     monster = session.get(Monster, monster_id)
     if monster is None:
+        logger.warning("Monster not found for delete", extra={"monster_id": monster_id})
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Monster not found")
     session.delete(monster)
     session.commit()
+    logger.info("Monster deleted", extra={"monster_id": monster_id})
     return None
 
 

@@ -14,7 +14,7 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
 
 ## Backlog
 
-### 1) Search flow should return to main menu (not Bestiary/Spells)
+### 1) Search flow should return to main menu (not Bestiary/Spells) [DONE]
 - Scope: Bot UX primarily. Backend is already returning search results.
 - Goal: After showing search results for monsters/spells, the navigation button should bring user back to Main Menu instead of feature roots.
 - Acceptance:

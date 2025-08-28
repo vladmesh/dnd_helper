@@ -1,4 +1,5 @@
 import random
+import logging
 from typing import Any, Dict, List
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -7,14 +8,18 @@ from telegram.ext import ContextTypes
 from dnd_helper_bot.repositories.api_client import api_get, api_get_one
 from dnd_helper_bot.utils.pagination import paginate
 
+logger = logging.getLogger(__name__)
+
 
 async def monsters_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
     page = int(query.data.split(":")[-1])
+    logger.info("Monsters list requested", extra={"correlation_id": query.message.chat_id if query and query.message else None, "page": page})
     all_monsters: List[Dict[str, Any]] = await api_get("/monsters")
     total = len(all_monsters)
     if total == 0:
+        logger.warning("No monsters available", extra={"correlation_id": query.message.chat_id if query and query.message else None})
         await query.edit_message_text("Монстров нет.")
         return
     page_items = paginate(all_monsters, page)
@@ -37,6 +42,7 @@ async def monster_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     query = update.callback_query
     await query.answer()
     monster_id = int(query.data.split(":")[-1])
+    logger.info("Monster detail requested", extra={"correlation_id": query.message.chat_id if query and query.message else None, "monster_id": monster_id})
     m = await api_get_one(f"/monsters/{monster_id}")
     text = (
         f"{m.get('description','')}\n"
@@ -50,8 +56,10 @@ async def monster_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def monster_random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
+    logger.info("Monster random requested", extra={"correlation_id": query.message.chat_id if query and query.message else None})
     all_monsters = await api_get("/monsters")
     if not all_monsters:
+        logger.warning("No monsters available for random", extra={"correlation_id": query.message.chat_id if query and query.message else None})
         await query.edit_message_text("Монстров нет.")
         return
     m = random.choice(all_monsters)
@@ -67,6 +75,7 @@ async def monster_search_prompt(update: Update, context: ContextTypes.DEFAULT_TY
     query = update.callback_query
     await query.answer()
     context.user_data["awaiting_monster_query"] = True
+    logger.info("Monster search prompt shown", extra={"correlation_id": query.message.chat_id if query and query.message else None})
     await query.edit_message_text("Введите подстроку для поиска по названию монстра:")
 
 

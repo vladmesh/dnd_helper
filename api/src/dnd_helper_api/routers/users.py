@@ -1,4 +1,5 @@
 from typing import List
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
@@ -8,6 +9,7 @@ from dnd_helper_api.db import get_session
 
 
 router = APIRouter(prefix="/users", tags=["users"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("", response_model=User, status_code=status.HTTP_201_CREATED)
@@ -17,12 +19,14 @@ def create_user(user: User, session: Session = Depends(get_session)) -> User:
     session.add(user)
     session.commit()
     session.refresh(user)
+    logger.info("User created", extra={"user_id": user.id})
     return user
 
 
 @router.get("", response_model=List[User])
 def list_users(session: Session = Depends(get_session)) -> List[User]:
     users = session.exec(select(User)).all()
+    logger.info("Users listed", extra={"count": len(users)})
     return users
 
 
@@ -30,7 +34,9 @@ def list_users(session: Session = Depends(get_session)) -> List[User]:
 def get_user(user_id: int, session: Session = Depends(get_session)) -> User:
     user = session.get(User, user_id)
     if user is None:
+        logger.warning("User not found", extra={"user_id": user_id})
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    logger.info("User fetched", extra={"user_id": user_id})
     return user
 
 
@@ -38,12 +44,14 @@ def get_user(user_id: int, session: Session = Depends(get_session)) -> User:
 def update_user(user_id: int, payload: User, session: Session = Depends(get_session)) -> User:
     user = session.get(User, user_id)
     if user is None:
+        logger.warning("User not found for update", extra={"user_id": user_id})
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     user.telegram_id = payload.telegram_id
     user.name = payload.name
     session.add(user)
     session.commit()
     session.refresh(user)
+    logger.info("User updated", extra={"user_id": user.id})
     return user
 
 
@@ -51,9 +59,11 @@ def update_user(user_id: int, payload: User, session: Session = Depends(get_sess
 def delete_user(user_id: int, session: Session = Depends(get_session)) -> None:
     user = session.get(User, user_id)
     if user is None:
+        logger.warning("User not found for delete", extra={"user_id": user_id})
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     session.delete(user)
     session.commit()
+    logger.info("User deleted", extra={"user_id": user_id})
     return None
 
 

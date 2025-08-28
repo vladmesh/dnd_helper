@@ -1,4 +1,5 @@
 import urllib.parse
+import logging
 from typing import Any, Dict, List
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -6,6 +7,8 @@ from telegram.ext import ContextTypes
 
 from dnd_helper_bot.keyboards.main import build_main_menu
 from dnd_helper_bot.repositories.api_client import api_get
+
+logger = logging.getLogger(__name__)
 
 
 async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -25,6 +28,7 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     query_text = (update.message.text or "").strip()
     if not query_text:
+        logger.warning("Empty search query", extra={"correlation_id": update.effective_chat.id if update.effective_chat else None})
         await update.message.reply_text("Пустой запрос. Повторите.", reply_markup=build_main_menu())
         return
 
@@ -34,11 +38,13 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
             items: List[Dict[str, Any]] = await api_get(f"/monsters/search?q={q}")
         else:
             items = await api_get(f"/spells/search?q={q}")
-    except Exception:
+    except Exception as exc:
+        logger.error("API search request failed", extra={"correlation_id": update.effective_chat.id if update.effective_chat else None, "error": str(exc)})
         await update.message.reply_text("Ошибка при запросе к API.")
         return
 
     if not items:
+        logger.info("Search no results", extra={"correlation_id": update.effective_chat.id if update.effective_chat else None, "query": query_text})
         await update.message.reply_text("Ничего не найдено.", reply_markup=build_main_menu())
         return
 
@@ -53,6 +59,7 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
             rows.append([InlineKeyboardButton(title, callback_data=f"spell:detail:{s['id']}")])
 
     rows.append([InlineKeyboardButton("К главному меню", callback_data="menu:main")])
+    logger.info("Search results shown", extra={"correlation_id": update.effective_chat.id if update.effective_chat else None, "count": len(rows) - 1})
 
     markup = InlineKeyboardMarkup(rows)
     await update.message.reply_text("Результаты поиска:", reply_markup=markup)
