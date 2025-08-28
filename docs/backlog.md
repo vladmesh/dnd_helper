@@ -34,7 +34,7 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
   - Service name is present; timestamps are ISO-8601 UTC.
   - Log level and JSON toggle controllable via environment variables.
 
-### 3) Arbitrary dice roll generation
+### 3) Arbitrary dice roll generation [DONE]
 - Goal: Allow generating arbitrary dice expressions (e.g. `2d6+1`, `d20-2`, `3d8+2d4+5`).
 - Proposal (backend): Add endpoint `GET /dice?expr=<expression>` that
   - validates safe expressions in a limited grammar: `(<term> ("+"|"-") <term>)*`, where `<term>` is either `NdM` or integer constant
@@ -43,6 +43,7 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
 - Acceptance:
   - Given `expr=2d6+1` → returns two d6 rolls, modifier 1, correct total
   - Invalid expr returns `422` with error details
+  - Implemented as a simple bot-only flow (no API endpoint)
 
 ### 4) Test coverage (endpoints at minimum)
 - Goal: Solid tests for API routers (smoke + behavior).

@@ -20,8 +20,8 @@ services:
       - POSTGRES_DB=testdb
       - POSTGRES_HOST=postgres-test
       - POSTGRES_PORT=5432
-    # Install pytest and httpx at runtime to avoid changing the base Dockerfile
-    command: sh -lc "pip install -q pytest httpx && pytest -q"
+    # Install pytest and httpx at runtime, apply real migrations, then run tests
+    command: sh -lc "pip install -q pytest httpx && alembic upgrade head && pytest -q"
     volumes:
       - ./tests:/app/tests:ro
 
