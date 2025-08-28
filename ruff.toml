@@ -1,0 +1,18 @@
+# Ruff configuration for the whole repository
+
+line-length = 100
+target-version = "py311"
+
+[lint]
+# Start minimally: core errors (E, F) and import sorting (I)
+select = ["E", "F", "I"]
+ignore = []
+
+exclude = [
+  "api/alembic/versions/**",
+  "**/__pycache__/**",
+  "**/.venv/**",
+  "**/.ruff_cache/**",
+]
+
+

@@ -62,6 +62,16 @@ def cmd_upgrade(_: argparse.Namespace) -> None:
     ])
 
 
+def cmd_lint(_: argparse.Namespace) -> None:
+    """Run Ruff linter inside dedicated container (ruff service)."""
+    run_command([
+        "docker", "run", "--rm",
+        "-v", f"{os.getcwd()}:/io",
+        "-w", "/io",
+        "ghcr.io/astral-sh/ruff:latest", "check", ".",
+    ])
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Project management utility")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -90,6 +100,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Apply Alembic migrations up to head (API service)",
     )
     upgrade.set_defaults(func=cmd_upgrade)
+
+    lint = subparsers.add_parser(
+        "lint",
+        help="Run Ruff linter (containerized)",
+    )
+    lint.set_defaults(func=cmd_lint)
 
     return parser
 

@@ -45,7 +45,7 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
   - Invalid expr returns `422` with error details
   - Implemented as a simple bot-only flow (no API endpoint)
 
-### 4) Test coverage (endpoints at minimum)
+### 4) Test coverage (endpoints at minimum) [DONE]
 - Goal: Solid tests for API routers (smoke + behavior).
 - Scope: `api` service.
 - Minimum test matrix:
@@ -63,6 +63,20 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
 - Acceptance:
   - Commands succeed locally and in CI
   - No outstanding linter violations in `api` (and preferably `bot`)
+
+### 6) Bot test coverage
+- Goal: Automated tests for the Telegram bot covering key handlers and flows.
+- Scope: `bot` service.
+- Areas:
+  - Smoke: app wiring and basic startup invariants
+  - Handlers: dice flow, search flow (monsters/spells), main menu callbacks
+  - Keyboards: callback data formats and pagination helpers
+  - API client repository: basic success/error handling with mocked API
+- Tooling: `pytest`, PTB test utilities/mocks, `httpx` mocking
+- Acceptance:
+  - Tests validate handler behavior (callbacks, messages sent, state changes)
+  - No external network calls; API interactions mocked
+  - Tests run green via `bot/docker_compose_tests.yml`
 
 ## Notes
 - Keep endpoints minimal and predictable; avoid coupling bot UX to API responses unless necessary.
