@@ -50,3 +50,70 @@ def test_search_monsters_hit_and_miss(client) -> None:
     assert data[0]["title"] == "Goblin Scout"
 
 
+def test_monster_crud_lifecycle(client) -> None:
+    # Create
+    create_payload = {
+        "title": "Troll",
+        "description": "Regenerating giant",
+        "dangerous_lvl": "high",
+        "hp": 84,
+        "ac": 15,
+        "speed": 30,
+    }
+    created = client.post("/monsters", json=create_payload)
+    assert created.status_code == HTTPStatus.CREATED
+    created_body = created.json()
+    monster_id = created_body["id"]
+    assert isinstance(monster_id, int) and monster_id > 0
+
+    # Detail
+    got = client.get(f"/monsters/{monster_id}")
+    assert got.status_code == HTTPStatus.OK
+    assert got.json()["title"] == "Troll"
+
+    # Update
+    update_payload = {
+        "id": monster_id,
+        "title": "Young Troll",
+        "description": "Regenerating giant (young)",
+        "dangerous_lvl": "moderate",
+        "hp": 68,
+        "ac": 14,
+        "speed": 30,
+    }
+    updated = client.put(f"/monsters/{monster_id}", json=update_payload)
+    assert updated.status_code == HTTPStatus.OK
+    assert updated.json()["title"] == "Young Troll"
+    assert updated.json()["dangerous_lvl"] == "moderate"
+
+    # List should include exactly one
+    listed = client.get("/monsters")
+    assert listed.status_code == HTTPStatus.OK
+    assert any(m["id"] == monster_id for m in listed.json())
+
+    # Delete
+    deleted = client.delete(f"/monsters/{monster_id}")
+    assert deleted.status_code == HTTPStatus.NO_CONTENT
+
+    # Detail now 404
+    missing = client.get(f"/monsters/{monster_id}")
+    assert missing.status_code == HTTPStatus.NOT_FOUND
+
+
+def test_monster_create_ignores_client_id(client) -> None:
+    # Client provides an explicit id, but API should ignore it
+    payload = {
+        "id": 999,
+        "title": "Orc",
+        "description": "Brutal warrior",
+        "dangerous_lvl": "moderate",
+        "hp": 15,
+        "ac": 13,
+        "speed": 30,
+    }
+    response = client.post("/monsters", json=payload)
+    assert response.status_code == HTTPStatus.CREATED
+    body = response.json()
+    assert body["id"] != 999
+
+
