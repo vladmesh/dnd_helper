@@ -23,12 +23,6 @@ def healthcheck() -> dict:
  
 
 
-@app.on_event("startup")
-def on_startup() -> None:
-    # Ensure all SQLModel tables are created
-    # SQLModel.metadata.create_all(engine)
-    pass
-
 app.include_router(users_router)
 app.include_router(monsters_router)
 app.include_router(spells_router)
