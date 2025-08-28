@@ -1,7 +1,5 @@
 from http import HTTPStatus
 
-from shared_models import User
-
 
 def test_list_users_empty(client) -> None:
     response = client.get("/users")
