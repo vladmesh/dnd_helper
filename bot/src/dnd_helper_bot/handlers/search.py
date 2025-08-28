@@ -47,12 +47,12 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
         for m in items[:10]:
             title = m.get("title") or m.get("description", "<no title>")
             rows.append([InlineKeyboardButton(title, callback_data=f"monster:detail:{m['id']}")])
-        rows.append([InlineKeyboardButton("К бестиарию", callback_data="monster:list:page:1")])
     else:
         for s in items[:10]:
             title = s.get("title") or s.get("description", "<no title>")
             rows.append([InlineKeyboardButton(title, callback_data=f"spell:detail:{s['id']}")])
-        rows.append([InlineKeyboardButton("К заклинаниям", callback_data="spell:list:page:1")])
+
+    rows.append([InlineKeyboardButton("К главному меню", callback_data="menu:main")])
 
     markup = InlineKeyboardMarkup(rows)
     await update.message.reply_text("Результаты поиска:", reply_markup=markup)

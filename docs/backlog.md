@@ -14,7 +14,27 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
 
 ## Backlog
 
-### 1) Arbitrary dice roll generation
+### 1) Search flow should return to main menu (not Bestiary/Spells)
+- Scope: Bot UX primarily. Backend is already returning search results.
+- Goal: After showing search results for monsters/spells, the navigation button should bring user back to Main Menu instead of feature roots.
+- Acceptance:
+  - Search results keyboard contains a "To main menu" button; pressing it shows the main reply keyboard
+  - No backend changes required unless additional metadata is needed (N/A for now)
+
+### 2) Unified logging configuration
+- Goal: Consistent, structured logs across all services.
+- Scope: `api`, `bot`.
+- Proposal:
+  - Define a shared logging format and fields (service, level, timestamp, message, request_id/correlation_id).
+  - Choose output: JSON lines by default; human-readable format for local dev optional.
+  - Store a reusable template (e.g., `logging_config.py` or `logging.yaml`) in a shared location and import/use it in each service.
+  - Ensure configuration via env vars (level, JSON toggle).
+- Acceptance:
+  - Both services emit logs with identical structure and fields.
+  - Service name is present; timestamps are ISO-8601 UTC.
+  - Log level and JSON toggle controllable via environment variables.
+
+### 3) Arbitrary dice roll generation
 - Goal: Allow generating arbitrary dice expressions (e.g. `2d6+1`, `d20-2`, `3d8+2d4+5`).
 - Proposal (backend): Add endpoint `GET /dice?expr=<expression>` that
   - validates safe expressions in a limited grammar: `(<term> ("+"|"-") <term>)*`, where `<term>` is either `NdM` or integer constant
@@ -24,14 +44,7 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
   - Given `expr=2d6+1` → returns two d6 rolls, modifier 1, correct total
   - Invalid expr returns `422` with error details
 
-### 2) Search flow should return to main menu (not Bestiary/Spells)
-- Scope: Bot UX primarily. Backend is already returning search results.
-- Goal: After showing search results for monsters/spells, the navigation button should bring user back to Main Menu instead of feature roots.
-- Acceptance:
-  - Search results keyboard contains a "To main menu" button; pressing it shows the main reply keyboard
-  - No backend changes required unless additional metadata is needed (N/A for now)
-
-### 3) Test coverage (endpoints at minimum)
+### 4) Test coverage (endpoints at minimum)
 - Goal: Solid tests for API routers (smoke + behavior).
 - Scope: `api` service.
 - Minimum test matrix:
@@ -41,7 +54,7 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
 - Tooling: `pytest`, `httpx.AsyncClient`, seed fixtures as needed
 - Acceptance: CI runs tests green; meaningful assertions beyond 200 OK
 
-### 4) Linters/formatters
+### 5) Linters/formatters
 - Goal: Consistent style and static checks across services.
 - Proposal:
   - Ruff for linting (pyproject-managed), Black for formatting, isort for imports

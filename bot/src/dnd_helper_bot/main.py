@@ -3,7 +3,7 @@ import asyncio
 
 from telegram.ext import ApplicationBuilder, CallbackQueryHandler, CommandHandler, MessageHandler, filters
 
-from dnd_helper_bot.handlers.menu import start
+from dnd_helper_bot.handlers.menu import start, show_main_menu_from_callback
 from dnd_helper_bot.handlers.search import handle_search_text
 from dnd_helper_bot.handlers.dice import dice_roll
 from dnd_helper_bot.handlers.monsters import (
@@ -41,6 +41,8 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(spell_detail, pattern=r"^spell:detail:\d+$"))
     application.add_handler(CallbackQueryHandler(spell_random, pattern=r"^spell:random$"))
     application.add_handler(CallbackQueryHandler(spell_search_prompt, pattern=r"^spell:search$"))
+
+    application.add_handler(CallbackQueryHandler(show_main_menu_from_callback, pattern=r"^menu:main$"))
 
     application.run_polling()
 

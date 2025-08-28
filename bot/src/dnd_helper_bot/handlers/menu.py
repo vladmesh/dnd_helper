@@ -18,3 +18,9 @@ async def show_spells_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     await update.message.reply_text("Заклинания:", reply_markup=build_spells_root_keyboard())
 
 
+async def show_main_menu_from_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    await query.message.reply_text("Главное меню:", reply_markup=build_main_menu())
+
+
