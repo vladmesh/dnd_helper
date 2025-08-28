@@ -21,7 +21,7 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
   - Search results keyboard contains a "To main menu" button; pressing it shows the main reply keyboard
   - No backend changes required unless additional metadata is needed (N/A for now)
 
-### 2) Unified logging configuration
+### 2) Unified logging configuration [DONE]
 - Goal: Consistent, structured logs across all services.
 - Scope: `api`, `bot`.
 - Proposal:

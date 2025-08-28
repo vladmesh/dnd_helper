@@ -12,6 +12,12 @@ logger = logging.getLogger(__name__)
 
 
 async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # Dice flow takes precedence if active
+    if context.user_data.get("awaiting_dice_count") or context.user_data.get("awaiting_dice_faces"):
+        from dnd_helper_bot.handlers.dice import handle_dice_text_input  # local import to avoid cycle
+        await handle_dice_text_input(update, context)
+        return
+
     awaiting_monster = bool(context.user_data.get("awaiting_monster_query"))
     awaiting_spell = bool(context.user_data.get("awaiting_spell_query"))
     if not (awaiting_monster or awaiting_spell):

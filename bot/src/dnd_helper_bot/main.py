@@ -33,7 +33,7 @@ def main() -> None:
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_search_text))
 
-    application.add_handler(CallbackQueryHandler(dice_roll, pattern=r"^dice:(d20|d6|2d6)$"))
+    application.add_handler(CallbackQueryHandler(dice_roll, pattern=r"^dice:(d20|d6|2d6|custom)$"))
 
     application.add_handler(CallbackQueryHandler(monsters_list, pattern=r"^monster:list:page:\d+$"))
     application.add_handler(CallbackQueryHandler(monster_detail, pattern=r"^monster:detail:\d+$"))
