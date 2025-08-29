@@ -3,8 +3,8 @@
 
 def test_health_endpoint_returns_ok() -> None:
     # Import inside the test to ensure environment variables are already set
-    from fastapi.testclient import TestClient
     from dnd_helper_api.main import app
+    from fastapi.testclient import TestClient
 
     with TestClient(app) as client:
         response = client.get("/health")

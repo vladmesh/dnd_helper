@@ -1,12 +1,11 @@
-from typing import List
 import logging
+from typing import List
 
+from dnd_helper_api.db import get_session
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
 from shared_models import Monster
-from dnd_helper_api.db import get_session
-
 
 router = APIRouter(prefix="/monsters", tags=["monsters"])
 logger = logging.getLogger(__name__)

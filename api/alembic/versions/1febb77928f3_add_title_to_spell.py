@@ -5,10 +5,9 @@ Revises: e9a6ff02d664
 Create Date: 2025-08-27 19:10:10.194474
 
 """
-from alembic import op  # noqa: F401
 import sqlalchemy as sa  # noqa: F401
-import sqlmodel # noqa: F401
-
+import sqlmodel  # noqa: F401
+from alembic import op  # noqa: F401
 
 # revision identifiers, used by Alembic.
 revision = '1febb77928f3'

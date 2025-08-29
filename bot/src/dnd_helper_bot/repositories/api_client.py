@@ -1,9 +1,8 @@
-import os
 import logging
+import os
 from typing import Any, Dict, List
 
 import httpx
-
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://api:8000")
 logger = logging.getLogger(__name__)

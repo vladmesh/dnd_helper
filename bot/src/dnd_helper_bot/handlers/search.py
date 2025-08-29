@@ -1,12 +1,11 @@
-import urllib.parse
 import logging
+import urllib.parse
 from typing import Any, Dict, List
-
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import ContextTypes
 
 from dnd_helper_bot.keyboards.main import build_main_menu
 from dnd_helper_bot.repositories.api_client import api_get
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import ContextTypes
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +13,8 @@ logger = logging.getLogger(__name__)
 async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Dice flow takes precedence if active
     if context.user_data.get("awaiting_dice_count") or context.user_data.get("awaiting_dice_faces"):
-        from dnd_helper_bot.handlers.dice import handle_dice_text_input  # local import to avoid cycle
+        from dnd_helper_bot.handlers.dice import \
+            handle_dice_text_input  # local import to avoid cycle
         await handle_dice_text_input(update, context)
         return
 
@@ -22,7 +22,8 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
     awaiting_spell = bool(context.user_data.get("awaiting_spell_query"))
     if not (awaiting_monster or awaiting_spell):
         # Delegate to main menu handler when not in search mode
-        from dnd_helper_bot.handlers.text_menu import handle_menu_text  # local import to avoid cycle
+        from dnd_helper_bot.handlers.text_menu import \
+            handle_menu_text  # local import to avoid cycle
 
         await handle_menu_text(update, context)
         return

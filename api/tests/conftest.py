@@ -7,12 +7,12 @@ Alembic migrations are applied in the test container entrypoint before tests run
 from collections.abc import Iterator
 
 import pytest
+from dnd_helper_api.db import engine
+from dnd_helper_api.main import app
 from fastapi.testclient import TestClient
 from sqlalchemy import delete
 from sqlmodel import Session
 
-from dnd_helper_api.db import engine
-from dnd_helper_api.main import app
 from shared_models import Monster, Spell, User
 
 

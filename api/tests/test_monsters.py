@@ -1,8 +1,8 @@
 from http import HTTPStatus
 
+from dnd_helper_api.db import engine
 from sqlmodel import Session
 
-from dnd_helper_api.db import engine
 from shared_models import DangerLevel, Monster
 
 

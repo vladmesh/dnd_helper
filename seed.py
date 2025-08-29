@@ -17,7 +17,6 @@ import subprocess
 import sys
 from typing import Any, Dict, List
 
-
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000").rstrip("/")
 
 

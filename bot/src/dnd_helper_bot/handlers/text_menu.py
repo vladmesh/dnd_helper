@@ -1,11 +1,10 @@
 import logging
-from telegram import Update
-from telegram.ext import ContextTypes
 
 from dnd_helper_bot.handlers.dice import show_dice_menu
 from dnd_helper_bot.handlers.menu import show_bestiarie_menu, show_spells_menu
 from dnd_helper_bot.keyboards.main import build_main_menu
-
+from telegram import Update
+from telegram.ext import ContextTypes
 
 logger = logging.getLogger(__name__)
 

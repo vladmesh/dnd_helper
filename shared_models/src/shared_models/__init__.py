@@ -4,10 +4,10 @@ Place SQLModel ORM and validation models here to be reused across services.
 """
 
 from .base import BaseModel
-from .user import User
-from .enums import DangerLevel, CasterClass, SpellSchool
+from .enums import CasterClass, DangerLevel, SpellSchool
 from .monster import Monster
 from .spell import Spell
+from .user import User
 
 __all__ = [
     "BaseModel",
