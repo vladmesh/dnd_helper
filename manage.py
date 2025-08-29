@@ -65,14 +65,23 @@ def cmd_upgrade(_: argparse.Namespace) -> None:
     ])
 
 
-def cmd_lint(_: argparse.Namespace) -> None:
+def cmd_lint(args: argparse.Namespace) -> None:
     """Run Ruff linter inside dedicated container (ruff service)."""
-    run_command([
-        "docker", "run", "--rm",
-        "-v", f"{os.getcwd()}:/io",
-        "-w", "/io",
-        "ghcr.io/astral-sh/ruff:latest", "check", ".",
-    ])
+    command = [
+        "docker",
+        "run",
+        "--rm",
+        "-v",
+        f"{os.getcwd()}:/io",
+        "-w",
+        "/io",
+        "ghcr.io/astral-sh/ruff:latest",
+        "check",
+    ]
+    if getattr(args, "fix", False):
+        command.append("--fix")
+    command.append(".")
+    run_command(command)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -107,6 +116,11 @@ def build_parser() -> argparse.ArgumentParser:
     lint = subparsers.add_parser(
         "lint",
         help="Run Ruff linter (containerized)",
+    )
+    lint.add_argument(
+        "--fix",
+        action="store_true",
+        help="Apply automatic fixes where possible",
     )
     lint.set_defaults(func=cmd_lint)
 
