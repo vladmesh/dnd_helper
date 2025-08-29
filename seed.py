@@ -34,7 +34,7 @@ def curl_get_json(path: str) -> Any:
         return json.loads(result.stdout or "null")
     except json.JSONDecodeError as exc:
         print(f"GET {url} invalid JSON: {exc}\nBody: {result.stdout}", file=sys.stderr)
-        raise SystemExit(1)
+        raise SystemExit(1) from exc
 
 
 def curl_post_json(path: str, payload: Dict[str, Any]) -> Any:
@@ -58,7 +58,7 @@ def curl_post_json(path: str, payload: Dict[str, Any]) -> Any:
         return json.loads(result.stdout or "null")
     except json.JSONDecodeError as exc:
         print(f"POST {url} invalid JSON: {exc}\nBody: {result.stdout}", file=sys.stderr)
-        raise SystemExit(1)
+        raise SystemExit(1) from exc
 
 
 def seed_monsters() -> None:

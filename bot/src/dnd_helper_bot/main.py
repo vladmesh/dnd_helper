@@ -44,14 +44,18 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(monsters_list, pattern=r"^monster:list:page:\d+$"))
     application.add_handler(CallbackQueryHandler(monster_detail, pattern=r"^monster:detail:\d+$"))
     application.add_handler(CallbackQueryHandler(monster_random, pattern=r"^monster:random$"))
-    application.add_handler(CallbackQueryHandler(monster_search_prompt, pattern=r"^monster:search$"))
+    application.add_handler(
+        CallbackQueryHandler(monster_search_prompt, pattern=r"^monster:search$")
+    )
 
     application.add_handler(CallbackQueryHandler(spells_list, pattern=r"^spell:list:page:\d+$"))
     application.add_handler(CallbackQueryHandler(spell_detail, pattern=r"^spell:detail:\d+$"))
     application.add_handler(CallbackQueryHandler(spell_random, pattern=r"^spell:random$"))
     application.add_handler(CallbackQueryHandler(spell_search_prompt, pattern=r"^spell:search$"))
 
-    application.add_handler(CallbackQueryHandler(show_main_menu_from_callback, pattern=r"^menu:main$"))
+    application.add_handler(
+        CallbackQueryHandler(show_main_menu_from_callback, pattern=r"^menu:main$")
+    )
 
     application.run_polling()
 
