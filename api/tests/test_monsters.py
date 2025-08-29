@@ -3,7 +3,7 @@ from http import HTTPStatus
 from sqlmodel import Session
 
 from dnd_helper_api.db import engine
-from shared_models import Monster, DangerLevel
+from shared_models import DangerLevel, Monster
 
 
 def test_list_monsters_empty(client) -> None:

@@ -3,7 +3,7 @@ from http import HTTPStatus
 from sqlmodel import Session
 
 from dnd_helper_api.db import engine
-from shared_models import Spell, CasterClass, SpellSchool
+from shared_models import CasterClass, Spell, SpellSchool
 
 
 def test_list_spells_empty(client) -> None:

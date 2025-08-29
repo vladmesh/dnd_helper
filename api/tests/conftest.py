@@ -11,8 +11,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import delete
 from sqlmodel import Session
 
-from dnd_helper_api.main import app
 from dnd_helper_api.db import engine
+from dnd_helper_api.main import app
 from shared_models import Monster, Spell, User
 
 
