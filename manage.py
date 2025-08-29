@@ -46,7 +46,10 @@ def cmd_ultimate_restart(_: argparse.Namespace) -> None:
 
 
 def cmd_makemigration(args: argparse.Namespace) -> None:
-    """Create a new Alembic migration with autogenerate inside the API container and sync files to host."""
+    """Create a new Alembic migration with autogenerate inside the API container.
+
+    Files are synced to host via bind mounts.
+    """
     # Run alembic revision inside running API container
     run_command([
         "docker", "compose", "exec", "-T", "api",

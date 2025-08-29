@@ -1,6 +1,6 @@
 import os
 
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, create_engine
 
 
 def _build_database_url() -> str:
