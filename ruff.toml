@@ -5,7 +5,7 @@ target-version = "py311"
 
 [lint]
 # Start minimally: core errors (E, F) and import sorting (I)
-select = ["E", "F", "I"]
+select = ["E", "F", "I", "B"]
 ignore = []
 
 exclude = [
