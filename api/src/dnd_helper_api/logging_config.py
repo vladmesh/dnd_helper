@@ -26,7 +26,10 @@ class HumanFormatter(logging.Formatter):
         ts = datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat()
         service = getattr(record, "service", "-")
         corr = getattr(record, "correlation_id", "-")
-        return f"{ts} | {record.levelname:<8} | {service} | {record.name} | {record.getMessage()} | corr={corr}"
+        return (
+            f"{ts} | {record.levelname:<8} | {service} | {record.name} | "
+            f"{record.getMessage()} | corr={corr}"
+        )
 
 
 class ServiceFilter(logging.Filter):
