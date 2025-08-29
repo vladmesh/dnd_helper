@@ -36,7 +36,8 @@ def cmd_ultimate_restart(_: argparse.Namespace) -> None:
     run_command(["docker", "compose", "up", "-d"]) 
     # Apply migrations inside API container
     run_command([
-        "docker", "compose", "exec", "-T", "api",
+        "docker", "compose", "exec", "--user",
+        f"{os.getuid()}:{os.getgid()}", "-T", "api",
         "alembic", "upgrade", "head",
     ])
     # Seed data via REST (host script calling localhost:8000)
@@ -52,7 +53,8 @@ def cmd_makemigration(args: argparse.Namespace) -> None:
     """
     # Run alembic revision inside running API container
     run_command([
-        "docker", "compose", "exec", "-T", "api",
+        "docker", "compose", "exec", "--user",
+        f"{os.getuid()}:{os.getgid()}", "-T", "api",
         "alembic", "revision", "--autogenerate", "-m", args.message,
     ])
 
@@ -60,7 +62,8 @@ def cmd_makemigration(args: argparse.Namespace) -> None:
 def cmd_upgrade(_: argparse.Namespace) -> None:
     """Apply Alembic migrations up to head inside the API container."""
     run_command([
-        "docker", "compose", "exec", "-T", "api",
+        "docker", "compose", "exec", "--user",
+        f"{os.getuid()}:{os.getgid()}", "-T", "api",
         "alembic", "upgrade", "head",
     ])
 
@@ -71,6 +74,8 @@ def cmd_lint(args: argparse.Namespace) -> None:
         "docker",
         "run",
         "--rm",
+        "-u",
+        f"{os.getuid()}:{os.getgid()}",
         "-v",
         f"{os.getcwd()}:/io",
         "-w",
