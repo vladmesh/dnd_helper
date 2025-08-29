@@ -4,6 +4,7 @@ from typing import List
 from dnd_helper_api.db import get_session
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
+from sqlalchemy import or_
 
 from shared_models import Spell
 
@@ -17,7 +18,7 @@ def search_spells(q: str, session: Session = Depends(get_session)) -> List[Spell
         logger.warning("Empty spell search query")
         return []
     spells = session.exec(
-        select(Spell).where(Spell.title.ilike(f"%{q}%"))
+        select(Spell).where(Spell.name.ilike(f"%{q}%"))
     ).all()
     logger.info("Spell search completed", extra={"query": q, "count": len(spells)})
     return spells
@@ -29,7 +30,7 @@ def create_spell(spell: Spell, session: Session = Depends(get_session)) -> Spell
     session.add(spell)
     session.commit()
     session.refresh(spell)
-    logger.info("Spell created", extra={"spell_id": spell.id, "title": spell.title})
+    logger.info("Spell created", extra={"spell_id": spell.id, "spell_name": spell.name})
     return spell
 
 
@@ -56,11 +57,37 @@ def update_spell(spell_id: int, payload: Spell, session: Session = Depends(get_s
     if spell is None:
         logger.warning("Spell not found for update", extra={"spell_id": spell_id})
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Spell not found")
-    spell.title = payload.title
+    spell.name = payload.name
     spell.description = payload.description
     spell.caster_class = payload.caster_class
     spell.distance = payload.distance
     spell.school = payload.school
+    if payload.level is not None:
+        spell.level = payload.level
+    if payload.ritual is not None:
+        spell.ritual = payload.ritual
+    if payload.casting_time is not None:
+        spell.casting_time = payload.casting_time
+    if payload.range is not None:
+        spell.range = payload.range
+    if payload.duration is not None:
+        spell.duration = payload.duration
+    if payload.concentration is not None:
+        spell.concentration = payload.concentration
+    if payload.components is not None:
+        spell.components = payload.components
+    if payload.classes is not None:
+        spell.classes = payload.classes
+    if payload.damage is not None:
+        spell.damage = payload.damage
+    if payload.saving_throw is not None:
+        spell.saving_throw = payload.saving_throw
+    if payload.area is not None:
+        spell.area = payload.area
+    if payload.conditions is not None:
+        spell.conditions = payload.conditions
+    if payload.tags is not None:
+        spell.tags = payload.tags
     session.add(spell)
     session.commit()
     session.refresh(spell)

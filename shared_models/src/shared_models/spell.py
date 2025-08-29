@@ -12,14 +12,13 @@ class Spell(BaseModel, table=True):
     """Spell shared model."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    title: str = Field(index=True)
+    name: str = Field(index=True)
     description: str
     caster_class: CasterClass = Field(index=True)
     distance: int
     school: SpellSchool = Field(index=True)
 
     # Iteration 1: additive fields to align with docs/fields.md (all optional)
-    name: Optional[str] = Field(default=None, index=True)
     level: Optional[int] = Field(default=None, index=True)
     ritual: Optional[bool] = Field(default=None)
     casting_time: Optional[str] = Field(default=None)

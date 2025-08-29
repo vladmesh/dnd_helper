@@ -15,7 +15,7 @@ def test_list_spells_empty(client) -> None:
 def test_spells_crud_lifecycle(client) -> None:
     # Create
     create_payload = {
-        "title": "Fire Bolt",
+        "name": "Fire Bolt",
         "description": "A mote of fire",
         "caster_class": "wizard",
         "distance": 120,
@@ -28,12 +28,12 @@ def test_spells_crud_lifecycle(client) -> None:
     # Detail
     got = client.get(f"/spells/{spell_id}")
     assert got.status_code == HTTPStatus.OK
-    assert got.json()["title"] == "Fire Bolt"
+    assert got.json()["name"] == "Fire Bolt"
 
     # Update
     update_payload = {
         "id": spell_id,
-        "title": "Cinder Bolt",
+        "name": "Cinder Bolt",
         "description": "A small ember",
         "caster_class": "sorcerer",
         "distance": 60,
@@ -42,7 +42,7 @@ def test_spells_crud_lifecycle(client) -> None:
     updated = client.put(f"/spells/{spell_id}", json=update_payload)
     assert updated.status_code == HTTPStatus.OK
     body = updated.json()
-    assert body["title"] == "Cinder Bolt"
+    assert body["name"] == "Cinder Bolt"
     assert body["caster_class"] == "sorcerer"
 
     # Delete
@@ -59,7 +59,7 @@ def test_spells_search_hit_and_miss(client) -> None:
     with Session(engine) as session:
         session.add(
             Spell(
-                title="Mage Hand",
+                name="Mage Hand",
                 description="",
                 caster_class=CasterClass.WIZARD,
                 distance=30,
@@ -68,7 +68,7 @@ def test_spells_search_hit_and_miss(client) -> None:
         )
         session.add(
             Spell(
-                title="Cure Wounds",
+                name="Cure Wounds",
                 description="",
                 caster_class=CasterClass.CLERIC,
                 distance=5,
@@ -85,6 +85,45 @@ def test_spells_search_hit_and_miss(client) -> None:
     assert hit.status_code == HTTPStatus.OK
     data = hit.json()
     assert len(data) == 1
-    assert data[0]["title"] == "Mage Hand"
+    assert data[0]["name"] == "Mage Hand"
+
+
+def test_spells_accept_and_return_extended_fields(client) -> None:
+    # Create with extended fields
+    create_payload = {
+        "name": "Cinder Bolt",
+        "description": "A mote of fire",
+        "caster_class": "wizard",
+        "distance": 120,
+        "school": "evocation",
+        "level": 1,
+        "ritual": False,
+        "casting_time": "1 action",
+        "range": "120 feet",
+        "duration": "Instantaneous",
+        "concentration": False,
+        "components": {"v": True, "s": True, "m": False, "material_desc": ""},
+        "classes": ["wizard", "sorcerer"],
+        "damage": {"dice": "1d10", "type": "fire"},
+        "saving_throw": {"ability": "dexterity", "effect": "half on success"},
+        "area": {"shape": "ray", "size": 0},
+        "conditions": ["ignites objects"],
+        "tags": ["damage", "cantrip-like"],
+    }
+    created = client.post("/spells", json=create_payload)
+    assert created.status_code == HTTPStatus.CREATED
+    body = created.json()
+    spell_id = body["id"]
+    # Round-trip checks
+    assert body["name"] == "Cinder Bolt"
+    assert body["level"] == 1
+    assert body["components"]["v"] is True
+    assert set(body["classes"]) == {"wizard", "sorcerer"}
+    assert body["damage"]["dice"] == "1d10"
+    assert body["area"]["shape"] == "ray"
+    # Search by name
+    found = client.get("/spells/search", params={"q": "cinder"})
+    assert found.status_code == HTTPStatus.OK
+    assert any(s["id"] == spell_id for s in found.json())
 
 

@@ -17,7 +17,7 @@ def test_search_monsters_hit_and_miss(client) -> None:
     with Session(engine) as session:
         session.add(
             Monster(
-                title="Goblin Scout",
+                name="Goblin Scout",
                 description="",
                 dangerous_lvl=DangerLevel.LOW,
                 hp=7,
@@ -27,7 +27,7 @@ def test_search_monsters_hit_and_miss(client) -> None:
         )
         session.add(
             Monster(
-                title="Orc Warrior",
+                name="Orc Warrior",
                 description="",
                 dangerous_lvl=DangerLevel.MODERATE,
                 hp=15,
@@ -47,13 +47,59 @@ def test_search_monsters_hit_and_miss(client) -> None:
     assert hit.status_code == HTTPStatus.OK
     data = hit.json()
     assert len(data) == 1
-    assert data[0]["title"] == "Goblin Scout"
+    assert data[0]["name"] == "Goblin Scout"
+
+
+def test_monsters_accept_and_return_extended_fields(client) -> None:
+    create_payload = {
+        "name": "Gobbo",
+        "description": "",
+        "dangerous_lvl": "low",
+        "hp": 7,
+        "ac": 15,
+        "speed": 30,
+        "type": "humanoid",
+        "size": "Small",
+        "alignment": "neutral evil",
+        "speeds": {"walk": 30},
+        "cr": 0.25,
+        "xp": 50,
+        "proficiency_bonus": 2,
+        "abilities": {"str": 8, "dex": 14, "con": 10, "int": 10, "wis": 8, "cha": 8},
+        "saving_throws": {"dex": 2},
+        "skills": {"Stealth": 6},
+        "senses": {"passive_perception": 9, "darkvision": 60},
+        "languages": ["Common", "Goblin"],
+        "traits": [{"name": "Nimble Escape", "desc": "bonus action disengage/hide"}],
+        "actions": [{"name": "Scimitar", "desc": "+4 to hit"}],
+        "reactions": [],
+        "legendary_actions": [],
+        "spellcasting": None,
+        "tags": ["low-cr", "skirmisher"],
+        "damage_immunities": [],
+        "damage_resistances": [],
+        "damage_vulnerabilities": [],
+        "condition_immunities": [],
+    }
+    created = client.post("/monsters", json=create_payload)
+    assert created.status_code == HTTPStatus.CREATED
+    body = created.json()
+    monster_id = body["id"]
+    assert body["name"] == "Gobbo"
+    assert body["type"] == "humanoid"
+    assert body["cr"] == 0.25
+    assert body["senses"]["darkvision"] == 60
+
+    # Search by name
+    found = client.get("/monsters/search", params={"q": "gobb"})
+    assert found.status_code == HTTPStatus.OK
+    assert any(m["id"] == monster_id for m in found.json())
 
 
 def test_monster_crud_lifecycle(client) -> None:
     # Create
     create_payload = {
-        "title": "Troll",
+        "name": "Troll",
         "description": "Regenerating giant",
         "dangerous_lvl": "high",
         "hp": 84,
@@ -69,12 +115,12 @@ def test_monster_crud_lifecycle(client) -> None:
     # Detail
     got = client.get(f"/monsters/{monster_id}")
     assert got.status_code == HTTPStatus.OK
-    assert got.json()["title"] == "Troll"
+    assert got.json()["name"] == "Troll"
 
     # Update
     update_payload = {
         "id": monster_id,
-        "title": "Young Troll",
+        "name": "Young Troll",
         "description": "Regenerating giant (young)",
         "dangerous_lvl": "moderate",
         "hp": 68,
@@ -83,7 +129,7 @@ def test_monster_crud_lifecycle(client) -> None:
     }
     updated = client.put(f"/monsters/{monster_id}", json=update_payload)
     assert updated.status_code == HTTPStatus.OK
-    assert updated.json()["title"] == "Young Troll"
+    assert updated.json()["name"] == "Young Troll"
     assert updated.json()["dangerous_lvl"] == "moderate"
 
     # List should include exactly one
@@ -104,7 +150,7 @@ def test_monster_create_ignores_client_id(client) -> None:
     # Client provides an explicit id, but API should ignore it
     payload = {
         "id": 999,
-        "title": "Orc",
+        "name": "Orc",
         "description": "Brutal warrior",
         "dangerous_lvl": "moderate",
         "hp": 15,

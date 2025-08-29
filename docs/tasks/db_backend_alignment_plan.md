@@ -15,6 +15,7 @@
 ---
 
 ## Iteration 1 — Schema groundwork (additive DB changes only)
+**Status**: Completed
 Goal: Add core fields needed by docs/fields.md without removing/renaming existing ones. Prefer JSONB for structured/nested data at this stage. Keep defaults to avoid impacting existing rows.
 
 ### Monsters: add columns
