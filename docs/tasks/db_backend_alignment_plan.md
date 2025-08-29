@@ -43,9 +43,6 @@ Goal: Add core fields needed by docs/fields.md without removing/renaming existin
 - `spellcasting` JSONB NULL (object per spec: ability, dc, attack_bonus, lists of spells).
 - `tags` TEXT[] NULL.
 
-Indexes (safe to add now):
-- BTree: `name`, `type`, `size`, `cr`.
-- Optional later: GIN on JSONB (`speeds`, `abilities`, etc.) after usage confirms necessity.
 
 ### Spells: add columns
 - `name` TEXT NULL, indexed (mirror of `title`).
@@ -62,9 +59,6 @@ Indexes (safe to add now):
 - `area` JSONB NULL (keys: shape, size).
 - `conditions` TEXT[] NULL.
 - `tags` TEXT[] NULL.
-
-Indexes (safe):
-- BTree: `name`, `school`, `level`.
 
 ### Execution (DB-only)
 1) Update models in `shared_models` (add fields; keep existing fields intact).
