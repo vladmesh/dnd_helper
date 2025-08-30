@@ -61,12 +61,12 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
     rows: List[List[InlineKeyboardButton]] = []
     if awaiting_monster:
         for m in items[:10]:
-            title = m.get("title") or m.get("description", "<no title>")
-            rows.append([InlineKeyboardButton(title, callback_data=f"monster:detail:{m['id']}")])
+            label = m.get("name") or m.get("description", "<no name>")
+            rows.append([InlineKeyboardButton(label, callback_data=f"monster:detail:{m['id']}")])
     else:
         for s in items[:10]:
-            title = s.get("title") or s.get("description", "<no title>")
-            rows.append([InlineKeyboardButton(title, callback_data=f"spell:detail:{s['id']}")])
+            label = s.get("name") or s.get("description", "<no name>")
+            rows.append([InlineKeyboardButton(label, callback_data=f"spell:detail:{s['id']}")])
 
     rows.append([InlineKeyboardButton("К главному меню", callback_data="menu:main")])
     logger.info("Search results shown", extra={"correlation_id": update.effective_chat.id if update.effective_chat else None, "count": len(rows) - 1})
