@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Optional
 
 from dnd_helper_api.db import get_session
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -12,14 +12,59 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/search", response_model=List[Monster])
-def search_monsters(q: str, session: Session = Depends(get_session)) -> List[Monster]:
+def search_monsters(
+    q: str,
+    type: Optional[str] = None,
+    size: Optional[str] = None,
+    cr_min: Optional[float] = None,
+    cr_max: Optional[float] = None,
+    is_flying: Optional[bool] = None,
+    is_legendary: Optional[bool] = None,
+    roles: Optional[List[str]] = None,
+    environments: Optional[List[str]] = None,
+    session: Session = Depends(get_session),
+) -> List[Monster]:
     if not q:
         logger.warning("Empty monster search query")
         return []
-    monsters = session.exec(
-        select(Monster).where(Monster.name.ilike(f"%{q}%"))
-    ).all()
-    logger.info("Monster search completed", extra={"query": q, "count": len(monsters)})
+
+    conditions = [Monster.name.ilike(f"%{q}%")]
+
+    if type is not None:
+        conditions.append(Monster.type == type)
+    if size is not None:
+        conditions.append(Monster.size == size)
+    if cr_min is not None:
+        conditions.append(Monster.cr >= cr_min)
+    if cr_max is not None:
+        conditions.append(Monster.cr <= cr_max)
+    if is_flying is not None:
+        conditions.append(Monster.is_flying == is_flying)
+    if is_legendary is not None:
+        conditions.append(Monster.is_legendary == is_legendary)
+    if roles:
+        conditions.append(Monster.roles.contains(roles))
+    if environments:
+        conditions.append(Monster.environments.contains(environments))
+
+    monsters = session.exec(select(Monster).where(*conditions)).all()
+    logger.info(
+        "Monster search completed",
+        extra={
+            "query": q,
+            "filters": {
+                "type": type,
+                "size": size,
+                "cr_min": cr_min,
+                "cr_max": cr_max,
+                "is_flying": is_flying,
+                "is_legendary": is_legendary,
+                "roles": roles,
+                "environments": environments,
+            },
+            "count": len(monsters),
+        },
+    )
     return monsters
 
 

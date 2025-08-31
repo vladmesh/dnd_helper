@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Optional
 
 from dnd_helper_api.db import get_session
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -13,14 +13,67 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/search", response_model=List[Spell])
-def search_spells(q: str, session: Session = Depends(get_session)) -> List[Spell]:
+def search_spells(
+    q: str,
+    level: Optional[int] = None,
+    school: Optional[str] = None,
+    klass: Optional[str] = None,
+    damage_type: Optional[str] = None,
+    save_ability: Optional[str] = None,
+    attack_roll: Optional[bool] = None,
+    ritual: Optional[bool] = None,
+    is_concentration: Optional[bool] = None,
+    targeting: Optional[str] = None,
+    tags: Optional[List[str]] = None,
+    session: Session = Depends(get_session),
+) -> List[Spell]:
     if not q:
         logger.warning("Empty spell search query")
         return []
-    spells = session.exec(
-        select(Spell).where(Spell.name.ilike(f"%{q}%"))
-    ).all()
-    logger.info("Spell search completed", extra={"query": q, "count": len(spells)})
+
+    conditions = [Spell.name.ilike(f"%{q}%")]
+
+    if level is not None:
+        conditions.append(Spell.level == level)
+    if school is not None:
+        conditions.append(Spell.school == school)
+    if klass is not None:
+        conditions.append(Spell.classes.contains([klass]))
+    if damage_type is not None:
+        conditions.append(Spell.damage_type == damage_type)
+    if save_ability is not None:
+        conditions.append(Spell.save_ability == save_ability)
+    if attack_roll is not None:
+        conditions.append(Spell.attack_roll == attack_roll)
+    if ritual is not None:
+        conditions.append(Spell.ritual == ritual)
+    if is_concentration is not None:
+        conditions.append(Spell.is_concentration == is_concentration)
+    if targeting is not None:
+        conditions.append(Spell.targeting == targeting)
+    if tags:
+        conditions.append(Spell.tags.contains(tags))
+
+    spells = session.exec(select(Spell).where(*conditions)).all()
+    logger.info(
+        "Spell search completed",
+        extra={
+            "query": q,
+            "filters": {
+                "level": level,
+                "school": school,
+                "class": klass,
+                "damage_type": damage_type,
+                "save_ability": save_ability,
+                "attack_roll": attack_roll,
+                "ritual": ritual,
+                "is_concentration": is_concentration,
+                "targeting": targeting,
+                "tags": tags,
+            },
+            "count": len(spells),
+        },
+    )
     return spells
 
 
