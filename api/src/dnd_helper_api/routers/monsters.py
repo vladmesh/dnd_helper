@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from dnd_helper_api.db import get_session
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -9,6 +9,53 @@ from shared_models import Monster
 
 router = APIRouter(prefix="/monsters", tags=["monsters"])
 logger = logging.getLogger(__name__)
+
+
+def _compute_monster_derived_fields(monster: Monster) -> None:
+    """Populate derived fields on the Monster instance based on JSON fields.
+
+    This is intentionally lightweight and defensive. Only sets fields when source
+    data is present to avoid overwriting with incorrect defaults.
+    """
+    speeds: Dict[str, Any] = monster.speeds or {}
+    senses: Dict[str, Any] = monster.senses or {}
+
+    # Speeds
+    def _as_int(value: Any) -> Optional[int]:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    monster.speed_walk = _as_int(speeds.get("walk")) if "walk" in speeds else None
+    monster.speed_fly = _as_int(speeds.get("fly")) if "fly" in speeds else None
+    monster.speed_swim = _as_int(speeds.get("swim")) if "swim" in speeds else None
+    monster.speed_climb = _as_int(speeds.get("climb")) if "climb" in speeds else None
+    monster.speed_burrow = _as_int(speeds.get("burrow")) if "burrow" in speeds else None
+
+    if "fly" in speeds:
+        fly_val = _as_int(speeds.get("fly"))
+        monster.is_flying = (fly_val is not None and fly_val > 0)
+
+    # Senses
+    def _sense_pair(key: str) -> tuple[Optional[bool], Optional[int]]:
+        rng = _as_int(senses.get(key)) if key in senses else None
+        flag = (rng is not None and rng > 0) if key in senses else None
+        return flag, rng
+
+    has_darkvision, darkvision_range = _sense_pair("darkvision")
+    has_blindsight, blindsight_range = _sense_pair("blindsight")
+    has_truesight, truesight_range = _sense_pair("truesight")
+    # tremorsense has only range column
+    tremorsense_range = _as_int(senses.get("tremorsense")) if "tremorsense" in senses else None
+
+    monster.has_darkvision = has_darkvision
+    monster.darkvision_range = darkvision_range
+    monster.has_blindsight = has_blindsight
+    monster.blindsight_range = blindsight_range
+    monster.has_truesight = has_truesight
+    monster.truesight_range = truesight_range
+    monster.tremorsense_range = tremorsense_range
 
 
 @router.get("/search", response_model=List[Monster])
@@ -72,6 +119,7 @@ def search_monsters(
 def create_monster(monster: Monster, session: Session = Depends(get_session)) -> Monster:
     # Ignore client-provided id
     monster.id = None
+    _compute_monster_derived_fields(monster)
     session.add(monster)
     session.commit()
     session.refresh(monster)
@@ -154,6 +202,7 @@ def update_monster(monster_id: int, payload: Monster, session: Session = Depends
         monster.spellcasting = payload.spellcasting
     if payload.tags is not None:
         monster.tags = payload.tags
+    _compute_monster_derived_fields(monster)
     session.add(monster)
     session.commit()
     session.refresh(monster)

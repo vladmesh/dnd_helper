@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from dnd_helper_api.db import get_session
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -11,6 +11,38 @@ from shared_models import Spell
 router = APIRouter(prefix="/spells", tags=["spells"])
 logger = logging.getLogger(__name__)
 
+
+def _compute_spell_derived_fields(spell: Spell) -> None:
+    """Populate derived fast-filter fields for Spell based on simple heuristics.
+
+    Keep logic minimal and defensive: only set flags when source data is present.
+    """
+    # is_concentration from duration string
+    if spell.duration is not None:
+        dur = str(spell.duration).lower()
+        spell.is_concentration = ("concentration" in dur)
+
+    # damage_type from damage JSON
+    damage: Dict[str, Any] = spell.damage or {}
+    if isinstance(damage, dict) and damage.get("type") is not None:
+        spell.damage_type = str(damage.get("type"))
+
+    # save_ability from saving_throw JSON
+    saving_throw: Dict[str, Any] = spell.saving_throw or {}
+    if isinstance(saving_throw, dict) and saving_throw.get("ability") is not None:
+        spell.save_ability = str(saving_throw.get("ability"))
+
+    # attack_roll heuristic: explicit flag if present in damage/area, else None
+    # If damage exists and no saving_throw ability, many spells require an attack roll
+    if spell.attack_roll is None:
+        if damage and not saving_throw.get("ability"):
+            spell.attack_roll = True
+
+    # targeting heuristic: if area present, infer POINT else CREATURE(S) when tags suggest
+    if spell.targeting is None:
+        area = spell.area or {}
+        if area:
+            spell.targeting = "POINT"
 
 @router.get("/search", response_model=List[Spell])
 def search_spells(
@@ -80,6 +112,7 @@ def search_spells(
 @router.post("", response_model=Spell, status_code=status.HTTP_201_CREATED)
 def create_spell(spell: Spell, session: Session = Depends(get_session)) -> Spell:
     spell.id = None
+    _compute_spell_derived_fields(spell)
     session.add(spell)
     session.commit()
     session.refresh(spell)
@@ -141,6 +174,7 @@ def update_spell(spell_id: int, payload: Spell, session: Session = Depends(get_s
         spell.conditions = payload.conditions
     if payload.tags is not None:
         spell.tags = payload.tags
+    _compute_spell_derived_fields(spell)
     session.add(spell)
     session.commit()
     session.refresh(spell)
