@@ -17,25 +17,18 @@ def _compute_monster_derived_fields(monster: Monster) -> None:
     This is intentionally lightweight and defensive. Only sets fields when source
     data is present to avoid overwriting with incorrect defaults.
     """
-    speeds: Dict[str, Any] = monster.speeds or {}
     senses: Dict[str, Any] = monster.senses or {}
 
-    # Speeds
+    # Helper
     def _as_int(value: Any) -> Optional[int]:
         try:
             return int(value)
         except (TypeError, ValueError):
             return None
 
-    monster.speed_walk = _as_int(speeds.get("walk")) if "walk" in speeds else None
-    monster.speed_fly = _as_int(speeds.get("fly")) if "fly" in speeds else None
-    monster.speed_swim = _as_int(speeds.get("swim")) if "swim" in speeds else None
-    monster.speed_climb = _as_int(speeds.get("climb")) if "climb" in speeds else None
-    monster.speed_burrow = _as_int(speeds.get("burrow")) if "burrow" in speeds else None
-
-    if "fly" in speeds:
-        fly_val = _as_int(speeds.get("fly"))
-        monster.is_flying = (fly_val is not None and fly_val > 0)
+    # If scalar speed columns are provided directly, infer is_flying from speed_fly
+    if monster.speed_fly is not None:
+        monster.is_flying = monster.speed_fly > 0
 
     # Senses
     def _sense_pair(key: str) -> tuple[Optional[bool], Optional[int]]:
@@ -167,7 +160,7 @@ def update_monster(monster_id: int, payload: Monster, session: Session = Depends
     monster.dangerous_lvl = payload.dangerous_lvl
     monster.hp = payload.hp
     monster.ac = payload.ac
-    monster.speed = payload.speed
+    # legacy speed removed
     if payload.type is not None:
         monster.type = payload.type
     if payload.size is not None:
@@ -176,8 +169,6 @@ def update_monster(monster_id: int, payload: Monster, session: Session = Depends
         monster.alignment = payload.alignment
     if payload.hit_dice is not None:
         monster.hit_dice = payload.hit_dice
-    if payload.speeds is not None:
-        monster.speeds = payload.speeds
     if payload.cr is not None:
         monster.cr = payload.cr
     if payload.xp is not None:

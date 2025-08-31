@@ -17,13 +17,12 @@ class Monster(BaseModel, table=True):
     dangerous_lvl: DangerLevel = Field(index=True)
     hp: int
     ac: int
-    speed: int
+    
     # Iteration 2: expose optional fields for API acceptance/return (DB columns already exist)
     type: Optional[str] = Field(default=None, index=True)
     size: Optional[str] = Field(default=None, index=True)
     alignment: Optional[str] = Field(default=None)
     hit_dice: Optional[str] = Field(default=None)
-    speeds: Optional[Dict[str, int]] = Field(default=None, sa_type=JSONB)
     cr: Optional[float] = Field(default=None, index=True)
     xp: Optional[int] = Field(default=None)
     proficiency_bonus: Optional[int] = Field(default=None)

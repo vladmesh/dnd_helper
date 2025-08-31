@@ -22,7 +22,6 @@ def test_search_monsters_hit_and_miss(client) -> None:
                 dangerous_lvl=DangerLevel.LOW,
                 hp=7,
                 ac=15,
-                speed=30,
             )
         )
         session.add(
@@ -32,7 +31,6 @@ def test_search_monsters_hit_and_miss(client) -> None:
                 dangerous_lvl=DangerLevel.MODERATE,
                 hp=15,
                 ac=13,
-                speed=30,
             )
         )
         session.commit()
@@ -57,7 +55,7 @@ def test_monsters_accept_and_return_extended_fields(client) -> None:
         "dangerous_lvl": "low",
         "hp": 7,
         "ac": 15,
-        "speed": 30,
+        
         "type": "humanoid",
         "size": "Small",
         "alignment": "neutral evil",
@@ -104,7 +102,7 @@ def test_monster_crud_lifecycle(client) -> None:
         "dangerous_lvl": "high",
         "hp": 84,
         "ac": 15,
-        "speed": 30,
+        
     }
     created = client.post("/monsters", json=create_payload)
     assert created.status_code == HTTPStatus.CREATED

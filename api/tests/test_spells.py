@@ -18,7 +18,7 @@ def test_spells_crud_lifecycle(client) -> None:
         "name": "Fire Bolt",
         "description": "A mote of fire",
         "caster_class": "wizard",
-        "distance": 120,
+        
         "school": "evocation",
     }
     created = client.post("/spells", json=create_payload)
@@ -36,7 +36,7 @@ def test_spells_crud_lifecycle(client) -> None:
         "name": "Cinder Bolt",
         "description": "A small ember",
         "caster_class": "sorcerer",
-        "distance": 60,
+        
         "school": "conjuration",
     }
     updated = client.put(f"/spells/{spell_id}", json=update_payload)
@@ -62,7 +62,7 @@ def test_spells_search_hit_and_miss(client) -> None:
                 name="Mage Hand",
                 description="",
                 caster_class=CasterClass.WIZARD,
-                distance=30,
+                
                 school=SpellSchool.CONJURATION,
             )
         )
@@ -71,7 +71,7 @@ def test_spells_search_hit_and_miss(client) -> None:
                 name="Cure Wounds",
                 description="",
                 caster_class=CasterClass.CLERIC,
-                distance=5,
+                
                 school=SpellSchool.EVOCATION,
             )
         )

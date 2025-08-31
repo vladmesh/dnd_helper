@@ -15,7 +15,6 @@ class Spell(BaseModel, table=True):
     name: str = Field(index=True)
     description: str
     caster_class: CasterClass = Field(index=True)
-    distance: int
     school: SpellSchool = Field(index=True)
 
     # Iteration 1: additive fields to align with docs/fields.md (all optional)

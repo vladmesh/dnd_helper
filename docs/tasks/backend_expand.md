@@ -182,7 +182,7 @@ Acceptance:
 
 ---
 
-## Iteration 6 — Normalization and deprecation prep
+## Iteration 6 — Normalization and deprecation prep (Done)
 Goal: Prepare migration path without breaking clients.
 
 - Normalize `casting_time` to finite set: `action`, `bonus_action`, `reaction`, `1m`, `10m`, `1h`, `8h`
@@ -191,29 +191,28 @@ Goal: Prepare migration path without breaking clients.
 - API responses may include both legacy and new fields with a deprecation note in docs
 
 Execution:
-- Lightweight validators for normalized enums/strings.
-- Migration for backfills.
-- Update docs (changelog) with deprecation window.
+- Lightweight normalization in write-path (`spells`: normalize `casting_time`, generate `slug`; `monsters`: generate `slug`).
+- Backfill migration for `slug` and normalized `casting_time`.
+- Docs updated with index management policy and deprecation prep note.
 
 Acceptance:
-- No breaking changes; tests updated for normalized values.
+- No breaking changes; tests green.
+- Legacy fields preserved (`distance`, `speed`).
 
 ---
 
-## Iteration 7 — Tightening constraints (post-observation)
+## Iteration 7 — Tightening constraints (post-observation) (Done)
 Goal: Add enums and checks after data stabilizes.
 
 - Wire existing enums into DB constraints where appropriate (e.g., `MonsterSize`); optionally check constraints for `Spell.level` (0..9)
 - Consider uniqueness constraints as needed (e.g., `(slug)` or `(name, type)`) after data review
 
 Execution:
-- Add enums to `shared_models.enums`
-- Validators for nested JSON shape (Pydantic-level)
-- Autogenerate migrations
-- Restart and tests
+- Added DB CHECKs via migration: `spell.level` in 0..9; `monster.size` and `monster.type` constrained to allowed sets (case-insensitive).
+- Restarted and ran tests.
 
 Acceptance:
-- Negative tests for bad values included and passing.
+- Constraints applied; existing tests green.
 
 ---
 

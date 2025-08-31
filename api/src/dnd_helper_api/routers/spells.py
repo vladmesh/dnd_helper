@@ -186,7 +186,7 @@ def update_spell(spell_id: int, payload: Spell, session: Session = Depends(get_s
     spell.name = payload.name
     spell.description = payload.description
     spell.caster_class = payload.caster_class
-    spell.distance = payload.distance
+    # legacy distance removed
     spell.school = payload.school
     if payload.level is not None:
         spell.level = payload.level
