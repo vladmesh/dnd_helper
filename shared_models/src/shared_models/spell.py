@@ -14,7 +14,8 @@ class Spell(BaseModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     description: str
-    caster_class: CasterClass = Field(index=True)
+    # Deprecated: single caster_class removed in favor of multi-class `classes`
+    # caster_class: CasterClass = Field(index=True)
     school: SpellSchool = Field(index=True)
 
     # Iteration 1: additive fields to align with docs/fields.md (all optional)
@@ -23,7 +24,8 @@ class Spell(BaseModel, table=True):
     casting_time: Optional[str] = Field(default=None)
     range: Optional[str] = Field(default=None)
     duration: Optional[str] = Field(default=None)
-    concentration: Optional[bool] = Field(default=None)
+    # Deprecated: use `is_concentration` derived from `duration`
+    # concentration: Optional[bool] = Field(default=None)
     components: Optional[Dict[str, Any]] = Field(default=None, sa_type=JSONB)
     classes: Optional[List[CasterClass]] = Field(
         default=None,
@@ -41,7 +43,7 @@ class Spell(BaseModel, table=True):
     damage_type: Optional[str] = Field(default=None, index=True)
     save_ability: Optional[str] = Field(default=None, index=True)
     targeting: Optional[str] = Field(default=None, index=True)
-    # ritual already exists; make it indexable for faster filtering
+    # ritual (single definition with index)
     ritual: Optional[bool] = Field(default=None, index=True)
 
     # Metadata and localization

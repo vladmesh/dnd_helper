@@ -185,7 +185,7 @@ def update_spell(spell_id: int, payload: Spell, session: Session = Depends(get_s
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Spell not found")
     spell.name = payload.name
     spell.description = payload.description
-    spell.caster_class = payload.caster_class
+    # caster_class deprecated; rely on `classes`
     # legacy distance removed
     spell.school = payload.school
     if payload.level is not None:
@@ -198,8 +198,7 @@ def update_spell(spell_id: int, payload: Spell, session: Session = Depends(get_s
         spell.range = payload.range
     if payload.duration is not None:
         spell.duration = payload.duration
-    if payload.concentration is not None:
-        spell.concentration = payload.concentration
+    # concentration deprecated; `is_concentration` is derived from `duration`
     if payload.components is not None:
         spell.components = payload.components
     if payload.classes is not None:

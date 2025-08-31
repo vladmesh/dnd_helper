@@ -17,9 +17,8 @@ def test_spells_crud_lifecycle(client) -> None:
     create_payload = {
         "name": "Fire Bolt",
         "description": "A mote of fire",
-        "caster_class": "wizard",
-        
         "school": "evocation",
+        "classes": ["wizard"],
     }
     created = client.post("/spells", json=create_payload)
     assert created.status_code == HTTPStatus.CREATED
@@ -35,15 +34,14 @@ def test_spells_crud_lifecycle(client) -> None:
         "id": spell_id,
         "name": "Cinder Bolt",
         "description": "A small ember",
-        "caster_class": "sorcerer",
-        
         "school": "conjuration",
+        "classes": ["sorcerer"],
     }
     updated = client.put(f"/spells/{spell_id}", json=update_payload)
     assert updated.status_code == HTTPStatus.OK
     body = updated.json()
     assert body["name"] == "Cinder Bolt"
-    assert body["caster_class"] == "sorcerer"
+    assert body.get("classes") == ["sorcerer"]
 
     # Delete
     deleted = client.delete(f"/spells/{spell_id}")
@@ -61,18 +59,16 @@ def test_spells_search_hit_and_miss(client) -> None:
             Spell(
                 name="Mage Hand",
                 description="",
-                caster_class=CasterClass.WIZARD,
-                
                 school=SpellSchool.CONJURATION,
+                classes=[CasterClass.WIZARD],
             )
         )
         session.add(
             Spell(
                 name="Cure Wounds",
                 description="",
-                caster_class=CasterClass.CLERIC,
-                
                 school=SpellSchool.EVOCATION,
+                classes=[CasterClass.CLERIC],
             )
         )
         session.commit()
@@ -93,15 +89,12 @@ def test_spells_accept_and_return_extended_fields(client) -> None:
     create_payload = {
         "name": "Cinder Bolt",
         "description": "A mote of fire",
-        "caster_class": "wizard",
-        "distance": 120,
         "school": "evocation",
         "level": 1,
         "ritual": False,
         "casting_time": "1 action",
         "range": "120 feet",
         "duration": "Instantaneous",
-        "concentration": False,
         "components": {"v": True, "s": True, "m": False, "material_desc": ""},
         "classes": ["wizard", "sorcerer"],
         "damage": {"dice": "1d10", "type": "fire"},

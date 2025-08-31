@@ -62,30 +62,26 @@ def seed_spells(session: Session) -> None:
         Spell(
             title="Fire Bolt",
             description="Fire Bolt — a mote of fire that deals damage.",
-            caster_class=CasterClass.WIZARD,
-            distance=120,
             school=SpellSchool.EVOCATION,
+            classes=[CasterClass.WIZARD],
         ),
         Spell(
             title="Cure Wounds",
             description="Cure Wounds — touch to restore hit points.",
-            caster_class=CasterClass.CLERIC,
-            distance=5,
             school=SpellSchool.EVOCATION,
+            classes=[CasterClass.CLERIC],
         ),
         Spell(
             title="Mage Hand",
             description="Mage Hand — spectral hand to manipulate objects.",
-            caster_class=CasterClass.SORCERER,
-            distance=30,
             school=SpellSchool.CONJURATION,
+            classes=[CasterClass.SORCERER],
         ),
         Spell(
             title="Fireball",
             description="Fireball — explosive fire dealing area damage.",
-            caster_class=CasterClass.WIZARD,
-            distance=150,
             school=SpellSchool.EVOCATION,
+            classes=[CasterClass.WIZARD],
         ),
     ]
 

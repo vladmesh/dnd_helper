@@ -599,14 +599,15 @@ def build_spell_payloads(spells_json: Dict[str, Any], limit: Optional[int] = Non
         ru = entry.get("ru", {})
         row = SpellSourceRow(en=en, ru=ru)
 
-        # Technical default: dataset lacks caster_class, use 'wizard' for now
+        # Dataset may lack explicit caster list; default single class wizard
         caster_class: str = "wizard"
         school = row.school
 
         payload: Dict[str, Any] = {
             "name": row.name_ru or row.name_en,
             "description": row.description_ru or row.name_en,
-            "caster_class": caster_class,
+            # Prefer multi-class list
+            "classes": [caster_class],
             "school": school,
             "level": row.level,
             "casting_time": row.casting_time,

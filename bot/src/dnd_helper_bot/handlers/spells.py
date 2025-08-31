@@ -44,10 +44,12 @@ async def spell_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     spell_id = int(query.data.split(":")[-1])
     logger.info("Spell detail requested", extra={"correlation_id": query.message.chat_id if query and query.message else None, "spell_id": spell_id})
     s = await api_get_one(f"/spells/{spell_id}")
+    classes = s.get("classes") or []
+    classes_str = ", ".join(classes) if isinstance(classes, list) else str(classes or "-")
     text = (
         f"{s.get('description','')}\n"
-        f"Class: {s.get('caster_class','-')}\n"
-        f"Distance: {s.get('distance','-')}, School: {s.get('school','-')}"
+        f"Classes: {classes_str}\n"
+        f"School: {s.get('school','-')}"
     )
     markup = InlineKeyboardMarkup([[InlineKeyboardButton("К списку", callback_data="spell:list:page:1")]])
     await query.edit_message_text(text, reply_markup=markup)
@@ -63,10 +65,12 @@ async def spell_random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await query.edit_message_text("Заклинаний нет.")
         return
     s = random.choice(all_spells)
+    classes = s.get("classes") or []
+    classes_str = ", ".join(classes) if isinstance(classes, list) else str(classes or "-")
     text = (
         f"{s.get('description','')}" + " (random)\n"
-        f"Class: {s.get('caster_class','-')}\n"
-        f"Distance: {s.get('distance','-')}, School: {s.get('school','-')}"
+        f"Classes: {classes_str}\n"
+        f"School: {s.get('school','-')}"
     )
     await query.edit_message_text(text)
 
