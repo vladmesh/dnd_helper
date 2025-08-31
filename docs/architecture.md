@@ -61,6 +61,11 @@ bot/
 - HTTP client: httpx
 - Testing: pytest
 
+## Schema and Index Management Policy
+- Application schema (tables/columns) is defined via SQLModel models and evolved using Alembic migrations.
+- Performance indexes that depend on database-specific features (e.g., PostgreSQL GIN/trgm) are managed exclusively in Alembic migrations and are intentionally not declared in ORM metadata.
+- Alembic autogenerate is configured to ignore indexes with names ending in `_gin` to avoid accidental drops during migrations.
+
 ## Expected Service Directory Structure (template)
 Use this template for any new service to keep structure uniform.
 ```

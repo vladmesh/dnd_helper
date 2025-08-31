@@ -17,6 +17,10 @@ def _compute_spell_derived_fields(spell: Spell) -> None:
 
     Keep logic minimal and defensive: only set flags when source data is present.
     """
+    # slug generation from name if not provided
+    if not getattr(spell, "slug", None) and getattr(spell, "name", None):
+        spell.slug = _slugify(spell.name)
+
     # is_concentration from duration string
     if spell.duration is not None:
         dur = str(spell.duration).lower()
@@ -43,6 +47,42 @@ def _compute_spell_derived_fields(spell: Spell) -> None:
         area = spell.area or {}
         if area:
             spell.targeting = "POINT"
+
+    # normalize casting_time to a finite set
+    if spell.casting_time is not None:
+        spell.casting_time = _normalize_casting_time(str(spell.casting_time))
+
+
+def _slugify(value: str) -> str:
+    text = value.strip().lower()
+    # Replace non-alphanumeric with hyphens
+    import re
+    text = re.sub(r"[^a-z0-9]+", "-", text)
+    text = re.sub(r"-+", "-", text)
+    return text.strip("-")
+
+
+def _normalize_casting_time(value: str) -> str:
+    v = value.strip().lower()
+    # Priority: bonus action / reaction
+    if "bonus action" in v:
+        return "bonus_action"
+    if "reaction" in v:
+        return "reaction"
+    # 1 action
+    if v == "action" or "1 action" in v:
+        return "action"
+    # minutes
+    if "10 minute" in v or "10 min" in v or v.startswith("10m"):
+        return "10m"
+    if "1 minute" in v or "1 min" in v or v.startswith("1m"):
+        return "1m"
+    # hours
+    if "8 hour" in v or v.startswith("8h"):
+        return "8h"
+    if "1 hour" in v or v.startswith("1h"):
+        return "1h"
+    return v
 
 @router.get("/search", response_model=List[Spell])
 def search_spells(

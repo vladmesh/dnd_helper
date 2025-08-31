@@ -57,6 +57,18 @@ def _compute_monster_derived_fields(monster: Monster) -> None:
     monster.truesight_range = truesight_range
     monster.tremorsense_range = tremorsense_range
 
+    # slug generation from name if not provided
+    if not getattr(monster, "slug", None) and getattr(monster, "name", None):
+        monster.slug = _slugify(monster.name)
+
+
+def _slugify(value: str) -> str:
+    text = value.strip().lower()
+    import re
+    text = re.sub(r"[^a-z0-9]+", "-", text)
+    text = re.sub(r"-+", "-", text)
+    return text.strip("-")
+
 
 @router.get("/search", response_model=List[Monster])
 def search_monsters(

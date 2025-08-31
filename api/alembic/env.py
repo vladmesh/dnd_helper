@@ -65,10 +65,17 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        def include_object(obj, name, type_, reflected, compare_to):
+            # Skip GIN indexes managed exclusively via migrations
+            if type_ == "index":
+                return False
+            return True
+
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
             compare_type=True,
+            include_object=include_object,
         )
 
         with context.begin_transaction():

@@ -160,7 +160,7 @@ Acceptance:
 
 ---
 
-## Iteration 5 — Indexing pass
+## Iteration 5 — Indexing pass (Done)
 Goal: Add indexes aligned with recommendations and observed filters.
 
 - Note: Many B-Tree indexes for monster and spell fields were already created in Iteration 1/2 via model `index=True`. This pass focuses on additional indices (e.g., GIN/trgm) where needed.
@@ -176,6 +176,9 @@ Execution:
 
 Acceptance:
 - Migrations apply cleanly; query plans improved where relevant.
+  - Added GIN indexes for ARRAY fields on `monster` and `spell`
+  - Migration applied successfully; tests passed
+  - Note: Indexes (GIN/trgm) are managed in migrations only; ORM metadata does not declare them. Alembic autogenerate is configured to ignore `_gin` indexes.
 
 ---
 
