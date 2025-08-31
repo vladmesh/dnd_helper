@@ -66,6 +66,10 @@ bot/
 - Performance indexes that depend on database-specific features (e.g., PostgreSQL GIN/trgm) are managed exclusively in Alembic migrations and are intentionally not declared in ORM metadata.
 - Alembic autogenerate is configured to ignore indexes with names ending in `_gin` to avoid accidental drops during migrations.
 
+## Domain Conventions (current)
+- Monsters: no `speed` or `speeds` fields; only derived scalar `speed_*` columns (walk/fly/swim/climb/burrow) and `is_flying` flag.
+- Spells: no `distance`; use `range` (string). If numeric filters are needed, introduce derived `range_feet` via migration later.
+
 ## Expected Service Directory Structure (template)
 Use this template for any new service to keep structure uniform.
 ```

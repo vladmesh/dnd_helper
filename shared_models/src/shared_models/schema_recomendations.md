@@ -17,8 +17,7 @@ ac (int; index)
 
 hp (int; index)
 
-speeds (JSONB: {walk, fly, swim, climb, burrow}) — хранение;
-добавить derived: speed_walk, speed_fly, … (int; index) для быстрых фильтров.
+Удалить speeds (JSONB). Хранить только derived: speed_walk, speed_fly, … (int; index) для быстрых фильтров.
 
 Сильно рекомендуемые для фильтрации
 
@@ -182,7 +181,7 @@ tremorsense_range: Optional[int] = Field(default=None, index=True)
 
 Spell
 
-У тебя уже есть range — удали distance (дублирование и менее универсально).
+Удали distance (дублирование и менее универсально); использовать range (строка). При необходимости добавить derived range_feet (int) для числовых фильтров.
 
 Нормализуй и добавь поля под фильтры:
 

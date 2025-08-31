@@ -10,6 +10,7 @@ import argparse
 import os
 import subprocess
 import sys
+import time
 
 
 def run_command(command: list[str]) -> None:
@@ -40,10 +41,12 @@ def cmd_ultimate_restart(_: argparse.Namespace) -> None:
         f"{os.getuid()}:{os.getgid()}", "-T", "api",
         "alembic", "upgrade", "head",
     ])
-    # Seed data via REST (host script calling localhost:8000)
+    # Wait a bit for API to be fully ready before seeding via REST
+    time.sleep(5)
+    # Seed data via REST (host script calling localhost:8000) for monsters and spells
     project_root = os.path.dirname(os.path.abspath(__file__))
-    seed_path = os.path.join(project_root, "seed.py")
-    run_command(["python3", seed_path])
+    seed_path = os.path.join(project_root, "seed_from_dtn.py")
+    run_command(["python3", seed_path, "--monsters", "--spells"])
 
 
 def cmd_makemigration(args: argparse.Namespace) -> None:

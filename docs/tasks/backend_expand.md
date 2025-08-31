@@ -13,8 +13,8 @@ This roadmap aligns the current models and API with the recommendations in `shar
 
 ## Current Snapshot (baseline)
 - Models:
-  - `shared_models.Monster`: base fields OK; many spec fields already exist (JSONB/ARRAY), but missing several recommended flags/derived fields and localization/source metadata. Has legacy `speed: int`.
-  - `shared_models.Spell`: base fields OK; many additive fields exist; `distance` remains (legacy); many fast-filter duplicates not added yet (e.g., `damage_type`, `save_ability`, `attack_roll`, `targeting`).
+  - `shared_models.Monster`: legacy `speed` and JSONB `speeds` removed; keep only derived `speed_*` columns and flags (e.g., `is_flying`).
+  - `shared_models.Spell`: legacy `distance` removed; use normalized `range` (string) for display and consider derived `range_feet` later if needed.
 - API:
   - CRUD and very basic search (`name ilike`) for both `monsters` and `spells`.
 - Tooling:
@@ -187,7 +187,7 @@ Goal: Prepare migration path without breaking clients.
 
 - Normalize `casting_time` to finite set: `action`, `bonus_action`, `reaction`, `1m`, `10m`, `1h`, `8h`
 - Backfill `name` fields if required; generate `slug` (stable, lowercased, hyphenated)
-- Keep legacy: `distance`, legacy `speed` on Monster; do not remove yet
+- Legacy fields removal executed in subsequent step: `Monster.speed`, `Monster.speeds`, `Spell.distance` dropped.
 - API responses may include both legacy and new fields with a deprecation note in docs
 
 Execution:
@@ -205,7 +205,7 @@ Acceptance:
 Goal: Add enums and checks after data stabilizes.
 
 - Wire existing enums into DB constraints where appropriate (e.g., `MonsterSize`); optionally check constraints for `Spell.level` (0..9)
-- Consider uniqueness constraints as needed (e.g., `(slug)` or `(name, type)`) after data review
+- Consider uniqueness constraints as needed (e.g., `(slug)` or `(name, type)`) after data review — pending.
 
 Execution:
 - Added DB CHECKs via migration: `spell.level` in 0..9; `monster.size` and `monster.type` constrained to allowed sets (case-insensitive).
@@ -229,3 +229,11 @@ Acceptance:
 ## Out of Scope (for now)
 - Bot adjustments; will follow once API stabilizes and filters are finalized.
 - Advanced full-text search/ranking.
+
+---
+
+## Post-Iteration Cleanup (Done)
+- Removed legacy fields:
+  - Monster: `speed` (INT), `speeds` (JSONB)
+  - Spell: `distance` (INT)
+- API and tests updated accordingly. Migrations applied.
