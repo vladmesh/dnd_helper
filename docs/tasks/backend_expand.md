@@ -23,7 +23,7 @@ This roadmap aligns the current models and API with the recommendations in `shar
 
 ---
 
-## Iteration 0 — Enums and groundwork
+## Iteration 0 — Enums and groundwork (Done)
 Goal: Define core enumerations required for filtering/validation; wire them into models for typing/validation without altering storage. No DB migrations.
 
 Scope (enums to add in `shared_models.enums`):
@@ -51,7 +51,7 @@ Acceptance:
 
 ---
 
-## Iteration 1 — Monsters: additive fields (no removals)
+## Iteration 1 — Monsters: additive fields (no removals) (Done)
 Goal: Add recommended monster fields and derived columns as nullable. Keep `speed` intact. No population logic yet.
 
 DB/model changes (add columns; all nullable, indexed where useful):
@@ -155,6 +155,8 @@ Acceptance:
 ## Iteration 5 — Indexing pass
 Goal: Add indexes aligned with recommendations and observed filters.
 
+- Note: Many B-Tree indexes for monster fields were already created in Iteration 1 via model `index=True`. This pass focuses on additional indices (e.g., GIN/trgm) where needed.
+
 - B-Tree: `cr`, `ac`, `hp`, `size`, `type`, `is_flying`, `is_legendary`, `is_spellcaster`, `threat_tier`, `level`, `school`, `is_concentration`, `ritual`, `damage_type`, `save_ability`
 - GIN (ARRAY): `languages`, `damage_immunities`, `damage_resistances`, `damage_vulnerabilities`, `condition_immunities`, `environments`, `roles`, `classes`, `tags`
 - Optional: GIN on JSONB (`speeds`, `senses`, `components`, `damage`, `area`, `saving_throw`) if needed
@@ -190,7 +192,7 @@ Acceptance:
 ## Iteration 7 — Tightening constraints (post-observation)
 Goal: Add enums and checks after data stabilizes.
 
-- Introduce `MonsterSize` enum; optionally check constraints for `Spell.level` (0..9)
+- Wire existing enums into DB constraints where appropriate (e.g., `MonsterSize`); optionally check constraints for `Spell.level` (0..9)
 - Consider uniqueness constraints as needed (e.g., `(slug)` or `(name, type)`) after data review
 
 Execution:

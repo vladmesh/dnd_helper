@@ -36,4 +36,20 @@ class Spell(BaseModel, table=True):
     conditions: Optional[List[str]] = Field(default=None, sa_type=ARRAY(String()))
     tags: Optional[List[str]] = Field(default=None, sa_type=ARRAY(String()))
 
+    # Iteration 2 — fast-filter duplicates and metadata (nullable; indexed where useful)
+    is_concentration: Optional[bool] = Field(default=None, index=True)
+    attack_roll: Optional[bool] = Field(default=None, index=True)
+    damage_type: Optional[str] = Field(default=None, index=True)
+    save_ability: Optional[str] = Field(default=None, index=True)
+    targeting: Optional[str] = Field(default=None, index=True)
+    # ritual already exists; make it indexable for faster filtering
+    ritual: Optional[bool] = Field(default=None, index=True)
+
+    # Metadata and localization
+    source: Optional[str] = Field(default=None, index=True)
+    page: Optional[int] = Field(default=None)
+    name_ru: Optional[str] = Field(default=None, index=True)
+    name_en: Optional[str] = Field(default=None, index=True)
+    slug: Optional[str] = Field(default=None, index=True)
+
 
