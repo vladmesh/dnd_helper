@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Optional
 
 from sqlmodel import Field
-from sqlalchemy import String
+from sqlalchemy import SmallInteger, String
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 
 from .base import BaseModel
@@ -42,5 +42,45 @@ class Monster(BaseModel, table=True):
     legendary_actions: Optional[List[Dict[str, str]]] = Field(default=None, sa_type=JSONB)
     spellcasting: Optional[Dict[str, Any]] = Field(default=None, sa_type=JSONB)
     tags: Optional[List[str]] = Field(default=None, sa_type=ARRAY(String()))
+
+    # Iteration 1 — additive fields (nullable; keep legacy speed intact)
+    # Localization
+    name_ru: Optional[str] = Field(default=None, index=True)
+    name_en: Optional[str] = Field(default=None, index=True)
+    slug: Optional[str] = Field(default=None, index=True)
+
+    # Taxonomy and context
+    subtypes: Optional[List[str]] = Field(default=None, sa_type=ARRAY(String()), index=True)
+    environments: Optional[List[str]] = Field(default=None, sa_type=ARRAY(String()), index=True)
+    roles: Optional[List[str]] = Field(default=None, sa_type=ARRAY(String()), index=True)
+
+    # Flags and meta
+    is_legendary: Optional[bool] = Field(default=None, index=True)
+    has_lair_actions: Optional[bool] = Field(default=None, index=True)
+    is_spellcaster: Optional[bool] = Field(default=None, index=True)
+    source: Optional[str] = Field(default=None, index=True)
+    page: Optional[int] = Field(default=None)
+
+    # Derived fast flags
+    is_flying: Optional[bool] = Field(default=None, index=True)
+    has_ranged: Optional[bool] = Field(default=None, index=True)
+    has_aoe: Optional[bool] = Field(default=None, index=True)
+    threat_tier: Optional[int] = Field(default=None, sa_type=SmallInteger(), index=True)
+
+    # Speeds derived
+    speed_walk: Optional[int] = Field(default=None, index=True)
+    speed_fly: Optional[int] = Field(default=None, index=True)
+    speed_swim: Optional[int] = Field(default=None, index=True)
+    speed_climb: Optional[int] = Field(default=None, index=True)
+    speed_burrow: Optional[int] = Field(default=None, index=True)
+
+    # Senses derived
+    has_darkvision: Optional[bool] = Field(default=None, index=True)
+    darkvision_range: Optional[int] = Field(default=None)
+    has_blindsight: Optional[bool] = Field(default=None, index=True)
+    blindsight_range: Optional[int] = Field(default=None)
+    has_truesight: Optional[bool] = Field(default=None, index=True)
+    truesight_range: Optional[int] = Field(default=None)
+    tremorsense_range: Optional[int] = Field(default=None, index=True)
 
 
