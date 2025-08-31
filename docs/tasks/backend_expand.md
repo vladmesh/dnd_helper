@@ -134,7 +134,7 @@ Note:
 
 ---
 
-## Iteration 4 — Derived values population (write-path + backfill)
+## Iteration 4 — Derived values population (write-path + backfill) (Done)
 Goal: Populate derived columns on create/update and backfill existing rows.
 
 Monsters:
@@ -155,6 +155,8 @@ Execution:
 
 Acceptance:
 - Derived fields reflect sources; idempotent updates; tests green.
+  - Implemented in API write-path for Monsters/Spells
+  - Backfill migration applied successfully; all tests passed
 
 ---
 
