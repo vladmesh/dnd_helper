@@ -601,18 +601,53 @@ def build_spell_payloads(spells_json: Dict[str, Any], limit: Optional[int] = Non
 
         # Dataset may lack explicit caster list; default single class wizard
         caster_class: str = "wizard"
+
+        # Use enriched DTN fields when available
+        classes_en = en.get("classes")
+        classes_ru = ru.get("classes")
+        classes_list: Optional[List[str]] = None
+        if isinstance(classes_en, list) and classes_en:
+            classes_list = [str(x).strip().lower() for x in classes_en if str(x).strip()]
+        elif isinstance(classes_ru, list) and classes_ru:
+            classes_list = [str(x).strip().lower() for x in classes_ru if str(x).strip()]
+        else:
+            classes_list = [caster_class]
+
+        ritual_val: Optional[bool] = None
+        if isinstance(en.get("ritual"), bool):
+            ritual_val = bool(en.get("ritual"))
+        elif isinstance(ru.get("ritual"), bool):
+            ritual_val = bool(ru.get("ritual"))
+
+        # Derive concentration → is_concentration
+        conc_flag: Optional[bool] = None
+        if isinstance(en.get("concentration"), bool):
+            conc_flag = bool(en.get("concentration"))
+        elif isinstance(ru.get("concentration"), bool):
+            conc_flag = bool(ru.get("concentration"))
+        else:
+            # Fallback from duration text
+            dur_en = (en.get("duration") or "")
+            dur_ru = (ru.get("duration") or "")
+            if isinstance(dur_en, str) and re.search(r"\bConcentration\b", dur_en, flags=re.IGNORECASE):
+                conc_flag = True
+            elif isinstance(dur_ru, str) and re.search(r"конц", dur_ru, flags=re.IGNORECASE):
+                conc_flag = True
+
         school = row.school
 
         payload: Dict[str, Any] = {
             "name": row.name_ru or row.name_en,
             "description": row.description_ru or row.name_en,
-            # Prefer multi-class list
-            "classes": [caster_class],
+            # Prefer multi-class list when provided
+            "classes": classes_list,
             "school": school,
             "level": row.level,
+            "ritual": ritual_val,
             "casting_time": row.casting_time,
             "range": row.range,
             "duration": row.duration,
+            "is_concentration": conc_flag,
             "components": row.components_dict,
             "name_ru": row.name_ru,
             "name_en": row.name_en,

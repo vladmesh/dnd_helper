@@ -82,3 +82,5 @@ compose.override.yaml
 .DS_Store
 Thumbs.db
 
+*.dtn
+spells.json

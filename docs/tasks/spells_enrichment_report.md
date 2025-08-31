@@ -1,0 +1,110 @@
+## Spells enrichment report
+
+- Total spells: 524
+- Aux index size: 3537
+- Updated spells: 436
+- Added classes: 321
+- Added ritual: 2 (true=2, false=0)
+- Added concentration: 248 (true=248)
+
+### Spells still missing classes (showing up to 100):
+- Blade Ward
+- Friends
+- Witch Bolt
+- Blindness/Deafness
+- Cloud of Daggers
+- Crown of Madness
+- Enlarge/Reduce
+- Phantasmal Force
+- Feign Death
+- Arcane Gate
+- Drawmij's Instant Summon
+- Antipathy/Sympathy
+- Feeblemind
+- Telepathy
+- Grasping Vine
+- Crusader's Mantle
+- Thorn Whip
+- Beast Sense
+- Wrathful Smite
+- Branding Smite
+- Aura of Vitality
+- Blinding Smite
+- Elemental Weapon
+- Aura of Purity
+- Staggering Smite
+- Banishing Smite
+- Circle of Power
+- Hail of Thorns
+- Lightning Arrow
+- Conjure Volley
+- Swift Quiver
+- Armor of Agathys
+- Arms of Hadar
+- Hunger of Hadar
+- Tsunami
+- Compelled Duel
+- Thunderous Smite
+- Destructive Wave
+- Cordon of Arrows
+- Conjure Barrage
+- Abi-Dalzim's Horrid Wilting
+- Absorb Elements
+- Aganazzar's Scorcher
+- Beast Bond
+- Bones of the Earth
+- Catapult
+- Control Flames
+- Control Winds
+- Create Bonfire
+- Dust Devil
+- Earth Tremor
+- Earthbind
+- Elemental Bane
+- Erupting Earth
+- Flame Arrows
+- Frostbite
+- Gust
+- Ice Knife
+- Immolation
+- Investiture of Flame
+- Investiture of Ice
+- Investiture of Stone
+- Investiture of Wind
+- Maelstrom
+- Magic Stone
+- Maximilian's Earthen Grasp
+- Melf's Minute Meteors
+- Mold Earth
+- Primordial Ward
+- Pyrotechnics
+- Shape Water
+- Skywrite
+- Snilloc's Snowball Swarm
+- Storm Sphere
+- Thunderclap
+- Tidal Wave
+- Transmute Rock
+- Vitriolic Sphere
+- Warding Wind
+- Watery Sphere
+- Whirlwind
+- WALL OF WATER
+- BOOMING BLADE
+- GREEN-FLAME BLADE
+- LIGHTNING LURE
+- SWORD BURST
+- Arm of the Wild
+- Bonding Vine
+- Bridge of Branches
+- Cloud of Spores
+- Conjure Minor Plant Creatures
+- Conjure Plant Creature
+- Dryad's Leap
+- Engulfing Thorns
+- Explosive Seed
+- Fell
+- Gaea's Hand
+- Grasping Sprout
+- Mind Spore
+- Mold Plant
