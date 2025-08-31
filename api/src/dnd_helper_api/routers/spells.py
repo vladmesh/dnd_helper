@@ -2,7 +2,7 @@ import logging
 from typing import List, Optional
 
 from dnd_helper_api.db import get_session
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session, select
 from sqlalchemy import or_
 
@@ -17,7 +17,7 @@ def search_spells(
     q: str,
     level: Optional[int] = None,
     school: Optional[str] = None,
-    klass: Optional[str] = None,
+    klass: Optional[str] = Query(None, alias="class"),
     damage_type: Optional[str] = None,
     save_ability: Optional[str] = None,
     attack_roll: Optional[bool] = None,

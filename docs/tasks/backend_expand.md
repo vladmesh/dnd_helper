@@ -79,14 +79,14 @@ Acceptance:
 
 ---
 
-## Iteration 2 — Spells: additive fields for fast filters
+## Iteration 2 — Spells: additive fields for fast filters (Done)
 Goal: Add recommended fast-filter columns and metadata. Keep `distance` for BC.
 
 DB/model changes (nullable, indexed where useful):
 - Fast filters: `is_concentration BOOL` (duplicate of `concentration` for speed), `ritual BOOL`, `attack_roll BOOL`, `damage_type TEXT`, `save_ability TEXT`
 - Targeting/AoE: `targeting TEXT`, `area JSONB` (already present; keep)
 - Metadata: `source TEXT`, `page INT`, `name_ru TEXT`, `name_en TEXT`, `slug TEXT`
-- Components: extend `components JSONB` schema to include `gp_cost INT`, `consumed BOOL`
+- Components: `components JSONB` may include `gp_cost INT`, `consumed BOOL` keys (no DB change; validation deferred)
 - Keep `casting_time` as string for now; normalization later
 - Keep `distance` and `range` side-by-side
 
@@ -104,18 +104,21 @@ Acceptance:
 - Old tests green.
 - New fields persist/roundtrip.
 
+Note:
+- Completed and verified via curl.
+
 ---
 
-## Iteration 3 — API: basic filters
+## Iteration 3 — API: basic filters (Done)
 Goal: Introduce simple filters using indexed scalar fields.
 
 Monsters `/monsters/search`:
-- Optional params: `type`, `size`, `cr_min`, `cr_max`, `is_flying`, `is_legendary`, `roles[]`, `environments[]`
+- Optional params: `type`, `size`, `cr_min`, `cr_max`, `is_flying`, `is_legendary`, `roles` (repeatable), `environments` (repeatable)
 - Combine with existing name search
 - Only AND conditions; sane defaults
 
 Spells `/spells/search`:
-- Optional params: `level`, `school`, `class` (from `classes`), `damage_type`, `save_ability`, `attack_roll`, `ritual`, `is_concentration`, `tags[]`, `targeting`
+- Optional params: `level`, `school`, `class` (public param; internally `klass`), `damage_type`, `save_ability`, `attack_roll`, `ritual`, `is_concentration`, `tags` (repeatable), `targeting`
 
 Execution:
 - Extend routers; keep existing behavior if no filters are passed.
@@ -125,6 +128,9 @@ Execution:
 Acceptance:
 - Empty filters preserve current behavior.
 - Filters compose correctly and are covered by tests.
+
+Note:
+- Implemented and manually verified via curl. Minimal API tests for filters to be added next.
 
 ---
 
@@ -155,7 +161,7 @@ Acceptance:
 ## Iteration 5 — Indexing pass
 Goal: Add indexes aligned with recommendations and observed filters.
 
-- Note: Many B-Tree indexes for monster fields were already created in Iteration 1 via model `index=True`. This pass focuses on additional indices (e.g., GIN/trgm) where needed.
+- Note: Many B-Tree indexes for monster and spell fields were already created in Iteration 1/2 via model `index=True`. This pass focuses on additional indices (e.g., GIN/trgm) where needed.
 
 - B-Tree: `cr`, `ac`, `hp`, `size`, `type`, `is_flying`, `is_legendary`, `is_spellcaster`, `threat_tier`, `level`, `school`, `is_concentration`, `ritual`, `damage_type`, `save_ability`
 - GIN (ARRAY): `languages`, `damage_immunities`, `damage_resistances`, `damage_vulnerabilities`, `condition_immunities`, `environments`, `roles`, `classes`, `tags`
