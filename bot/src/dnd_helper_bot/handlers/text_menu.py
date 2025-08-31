@@ -5,11 +5,15 @@ from telegram.ext import ContextTypes
 
 from dnd_helper_bot.handlers.dice import show_dice_menu
 from dnd_helper_bot.handlers.menu import show_bestiarie_menu, show_spells_menu
-from dnd_helper_bot.keyboards.main import build_main_menu
+from dnd_helper_bot.keyboards.main import build_main_menu_inline
 
 logger = logging.getLogger(__name__)
 
 async def handle_menu_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """DEPRECATED: Kept only for backward compatibility. Not used in normal flow.
+
+    Previously routed plain-text menu commands. Inline callback buttons replaced this flow.
+    """
     text = (update.message.text or "").strip()
     chat_id = update.effective_chat.id if update.effective_chat else None
     user_id = update.effective_user.id if update.effective_user else None
@@ -23,7 +27,7 @@ async def handle_menu_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     else:
         logger.warning("Unknown menu command", extra={"correlation_id": chat_id, "user_id": user_id, "text": text})
         await update.message.reply_text(
-            "Не понимаю команду. Выберите действие:", reply_markup=build_main_menu()
+            "Не понимаю команду. Выберите действие:", reply_markup=build_main_menu_inline()
         )
 
 

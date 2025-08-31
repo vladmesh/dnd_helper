@@ -9,8 +9,8 @@ from telegram.ext import (
     filters,
 )
 
-from dnd_helper_bot.handlers.dice import dice_roll
-from dnd_helper_bot.handlers.menu import show_main_menu_from_callback, start
+from dnd_helper_bot.handlers.dice import dice_roll, show_dice_menu_from_callback
+from dnd_helper_bot.handlers.menu import show_main_menu_from_callback, start, show_bestiarie_menu_from_callback, show_spells_menu_from_callback
 from dnd_helper_bot.handlers.monsters import (
     monster_detail,
     monster_random,
@@ -40,6 +40,7 @@ def main() -> None:
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_search_text))
 
     application.add_handler(CallbackQueryHandler(dice_roll, pattern=r"^dice:(d20|d6|2d6|custom)$"))
+    application.add_handler(CallbackQueryHandler(show_dice_menu_from_callback, pattern=r"^menu:dice$"))
 
     application.add_handler(CallbackQueryHandler(monsters_list, pattern=r"^monster:list:page:\d+$"))
     application.add_handler(CallbackQueryHandler(monster_detail, pattern=r"^monster:detail:\d+$"))
@@ -52,6 +53,8 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(spell_detail, pattern=r"^spell:detail:\d+$"))
     application.add_handler(CallbackQueryHandler(spell_random, pattern=r"^spell:random$"))
     application.add_handler(CallbackQueryHandler(spell_search_prompt, pattern=r"^spell:search$"))
+    application.add_handler(CallbackQueryHandler(show_bestiarie_menu_from_callback, pattern=r"^menu:monsters$"))
+    application.add_handler(CallbackQueryHandler(show_spells_menu_from_callback, pattern=r"^menu:spells$"))
 
     application.add_handler(
         CallbackQueryHandler(show_main_menu_from_callback, pattern=r"^menu:main$")

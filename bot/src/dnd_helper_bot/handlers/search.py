@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
-from dnd_helper_bot.keyboards.main import build_main_menu
+from dnd_helper_bot.keyboards.main import build_main_menu_inline
 from dnd_helper_bot.repositories.api_client import api_get
 
 logger = logging.getLogger(__name__)
@@ -23,12 +23,8 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
     awaiting_monster = bool(context.user_data.get("awaiting_monster_query"))
     awaiting_spell = bool(context.user_data.get("awaiting_spell_query"))
     if not (awaiting_monster or awaiting_spell):
-        # Delegate to main menu handler when not in search mode
-        from dnd_helper_bot.handlers.text_menu import (
-            handle_menu_text,  # local import to avoid cycle
-        )
-
-        await handle_menu_text(update, context)
+        # Not in search mode: show inline main menu directly
+        await update.message.reply_text("Выберите действие:", reply_markup=build_main_menu_inline())
         return
 
     if awaiting_monster:
@@ -39,7 +35,7 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
     query_text = (update.message.text or "").strip()
     if not query_text:
         logger.warning("Empty search query", extra={"correlation_id": update.effective_chat.id if update.effective_chat else None})
-        await update.message.reply_text("Пустой запрос. Повторите.", reply_markup=build_main_menu())
+        await update.message.reply_text("Пустой запрос. Повторите.", reply_markup=build_main_menu_inline())
         return
 
     q = urllib.parse.quote(query_text)
@@ -55,7 +51,7 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     if not items:
         logger.info("Search no results", extra={"correlation_id": update.effective_chat.id if update.effective_chat else None, "query": query_text})
-        await update.message.reply_text("Ничего не найдено.", reply_markup=build_main_menu())
+        await update.message.reply_text("Ничего не найдено.", reply_markup=build_main_menu_inline())
         return
 
     rows: List[List[InlineKeyboardButton]] = []

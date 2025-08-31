@@ -132,3 +132,15 @@ async def handle_dice_text_input(update: Update, context: ContextTypes.DEFAULT_T
         await update.message.reply_text(response_text)
         return
 
+
+async def show_dice_menu_from_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("d20", callback_data="dice:d20")],
+        [InlineKeyboardButton("d6", callback_data="dice:d6")],
+        [InlineKeyboardButton("2d6", callback_data="dice:2d6")],
+        [InlineKeyboardButton("Произвольный бросок", callback_data="dice:custom")],
+    ])
+    await query.edit_message_text("Бросить кубики:", reply_markup=keyboard)
+
