@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("", response_model=User, status_code=status.HTTP_201_CREATED)
-def create_user(user: User, session: Session = Depends(get_session)) -> User:
+def create_user(user: User, session: Session = Depends(get_session)) -> User:  # noqa: B008
     # Ignore client-provided id
     user.id = None
     session.add(user)

@@ -3,7 +3,6 @@ from typing import Any, Dict, List, Optional
 
 from dnd_helper_api.db import get_session
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import or_
 from sqlmodel import Session, select
 
 from shared_models import Spell
@@ -97,7 +96,7 @@ def search_spells(
     is_concentration: Optional[bool] = None,
     targeting: Optional[str] = None,
     tags: Optional[List[str]] = None,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_session),  # noqa: B008
 ) -> List[Spell]:
     if not q:
         logger.warning("Empty spell search query")
@@ -150,7 +149,7 @@ def search_spells(
 
 
 @router.post("", response_model=Spell, status_code=status.HTTP_201_CREATED)
-def create_spell(spell: Spell, session: Session = Depends(get_session)) -> Spell:
+def create_spell(spell: Spell, session: Session = Depends(get_session)) -> Spell:  # noqa: B008
     spell.id = None
     _compute_spell_derived_fields(spell)
     session.add(spell)
@@ -161,7 +160,7 @@ def create_spell(spell: Spell, session: Session = Depends(get_session)) -> Spell
 
 
 @router.get("", response_model=List[Spell])
-def list_spells(session: Session = Depends(get_session)) -> List[Spell]:
+def list_spells(session: Session = Depends(get_session)) -> List[Spell]:  # noqa: B008
     spells = session.exec(select(Spell)).all()
     logger.info("Spells listed", extra={"count": len(spells)})
     return spells
