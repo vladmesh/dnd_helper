@@ -24,6 +24,12 @@ import sys
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
+# Import shared enum for Iteration 1 parallel field
+try:
+    from shared_models.enums import ChallengeRating
+except Exception:
+    ChallengeRating = None  # type: ignore
+
 RE_CELLS = re.compile(r"(\d+)\s*клет")
 
 
@@ -460,6 +466,23 @@ def build_monster_payloads(monsters_json: Dict[str, Any], limit: Optional[int] =
                 except Exception:
                     xp_val = None
 
+        # Map numeric CR to enum string for cr_enum (Iteration 1)
+        cr_enum_value: Optional[str] = None
+        if cr_val is not None:
+            if abs(cr_val - 0.125) < 1e-9:
+                cr_enum_value = "1/8"
+            elif abs(cr_val - 0.25) < 1e-9:
+                cr_enum_value = "1/4"
+            elif abs(cr_val - 0.5) < 1e-9:
+                cr_enum_value = "1/2"
+            else:
+                try:
+                    i = int(cr_val)
+                    if 1 <= i <= 30 and abs(cr_val - i) < 1e-9:
+                        cr_enum_value = str(i)
+                except Exception:
+                    cr_enum_value = None
+
         payload: Dict[str, Any] = {
             "name": name_ru or row.name_raw or "",
             "description": row.description_plain or (row.type_text or "").capitalize(),
@@ -472,6 +495,8 @@ def build_monster_payloads(monsters_json: Dict[str, Any], limit: Optional[int] =
             "alignment": row.alignment,
             "hit_dice": row.hit_dice,
             "cr": cr_val,
+            # Iteration 1 parallel enum field
+            "cr_enum": cr_enum_value,
             "xp": xp_val,
             "abilities": row.abilities or None,
             "skills": None,  # free-form string -> skip structured mapping

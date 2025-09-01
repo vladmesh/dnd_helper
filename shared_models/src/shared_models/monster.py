@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlmodel import Field
 
 from .base import BaseModel
-from .enums import DangerLevel
+from .enums import ChallengeRating, DangerLevel
 
 
 class Monster(BaseModel, table=True):
@@ -24,6 +24,7 @@ class Monster(BaseModel, table=True):
     alignment: Optional[str] = Field(default=None)
     hit_dice: Optional[str] = Field(default=None)
     cr: Optional[float] = Field(default=None, index=True)
+    cr_enum: Optional[ChallengeRating] = Field(default=None, index=True)
     xp: Optional[int] = Field(default=None)
     proficiency_bonus: Optional[int] = Field(default=None)
     abilities: Optional[Dict[str, int]] = Field(default=None, sa_type=JSONB)
