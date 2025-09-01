@@ -121,7 +121,7 @@ def search_monsters(
 
 
 @router.post("", response_model=Monster, status_code=status.HTTP_201_CREATED)
-def create_monster(monster: Monster, session: Session = Depends(get_session)) -> Monster:
+def create_monster(monster: Monster, session: Session = Depends(get_session)) -> Monster:  # noqa: B008
     # Ignore client-provided id
     monster.id = None
     _compute_monster_derived_fields(monster)
@@ -133,14 +133,14 @@ def create_monster(monster: Monster, session: Session = Depends(get_session)) ->
 
 
 @router.get("", response_model=List[Monster])
-def list_monsters(session: Session = Depends(get_session)) -> List[Monster]:
+def list_monsters(session: Session = Depends(get_session)) -> List[Monster]:  # noqa: B008
     monsters = session.exec(select(Monster)).all()
     logger.info("Monsters listed", extra={"count": len(monsters)})
     return monsters
 
 
 @router.get("/{monster_id}", response_model=Monster)
-def get_monster(monster_id: int, session: Session = Depends(get_session)) -> Monster:
+def get_monster(monster_id: int, session: Session = Depends(get_session)) -> Monster:  # noqa: B008
     monster = session.get(Monster, monster_id)
     if monster is None:
         logger.warning("Monster not found", extra={"monster_id": monster_id})
@@ -150,7 +150,7 @@ def get_monster(monster_id: int, session: Session = Depends(get_session)) -> Mon
 
 
 @router.put("/{monster_id}", response_model=Monster)
-def update_monster(monster_id: int, payload: Monster, session: Session = Depends(get_session)) -> Monster:
+def update_monster(monster_id: int, payload: Monster, session: Session = Depends(get_session)) -> Monster:  # noqa: E501
     monster = session.get(Monster, monster_id)
     if monster is None:
         logger.warning("Monster not found for update", extra={"monster_id": monster_id})
@@ -214,7 +214,7 @@ def update_monster(monster_id: int, payload: Monster, session: Session = Depends
 
 
 @router.delete("/{monster_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_monster(monster_id: int, session: Session = Depends(get_session)) -> None:
+def delete_monster(monster_id: int, session: Session = Depends(get_session)) -> None:  # noqa: B008
     monster = session.get(Monster, monster_id)
     if monster is None:
         logger.warning("Monster not found for delete", extra={"monster_id": monster_id})
