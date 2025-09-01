@@ -2,17 +2,7 @@ from enum import Enum
 
 
 class DangerLevel(str, Enum):
-    """Threat level for monsters."""
-
-    TRIVIAL = "trivial"
-    LOW = "low"
-    MODERATE = "moderate"
-    HIGH = "high"
-    DEADLY = "deadly"
-
-
-class ChallengeRating(str, Enum):
-    """CR domain values for monsters (temporary for Iteration 1)."""
+    """Challenge Rating values for monsters (final)."""
 
     CR_1_8 = "1/8"
     CR_1_4 = "1/4"
@@ -212,4 +202,9 @@ class MonsterRole(str, Enum):
     LURKER = "lurker"
     SUPPORT = "support"
     SOLO = "solo"
+
+
+class Language(str, Enum):
+    RU = "ru"
+    EN = "en"
 

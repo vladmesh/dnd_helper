@@ -157,7 +157,6 @@ def update_monster(monster_id: int, payload: Monster, session: Session = Depends
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Monster not found")
     monster.name = payload.name
     monster.description = payload.description
-    monster.dangerous_lvl = payload.dangerous_lvl
     monster.hp = payload.hp
     monster.ac = payload.ac
     # legacy speed removed

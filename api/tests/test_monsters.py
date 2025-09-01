@@ -19,7 +19,7 @@ def test_search_monsters_hit_and_miss(client) -> None:
             Monster(
                 name="Goblin Scout",
                 description="",
-                dangerous_lvl=DangerLevel.LOW,
+                cr=DangerLevel.CR_1_4,
                 hp=7,
                 ac=15,
             )
@@ -28,7 +28,7 @@ def test_search_monsters_hit_and_miss(client) -> None:
             Monster(
                 name="Orc Warrior",
                 description="",
-                dangerous_lvl=DangerLevel.MODERATE,
+                cr=DangerLevel.CR_2,
                 hp=15,
                 ac=13,
             )
@@ -52,7 +52,7 @@ def test_monsters_accept_and_return_extended_fields(client) -> None:
     create_payload = {
         "name": "Gobbo",
         "description": "",
-        "dangerous_lvl": "low",
+        "cr": "1/4",
         "hp": 7,
         "ac": 15,
         
@@ -60,7 +60,7 @@ def test_monsters_accept_and_return_extended_fields(client) -> None:
         "size": "Small",
         "alignment": "neutral evil",
         "speeds": {"walk": 30},
-        "cr": 0.25,
+        # cr as enum-string
         "xp": 50,
         "proficiency_bonus": 2,
         "abilities": {"str": 8, "dex": 14, "con": 10, "int": 10, "wis": 8, "cha": 8},
@@ -85,7 +85,7 @@ def test_monsters_accept_and_return_extended_fields(client) -> None:
     monster_id = body["id"]
     assert body["name"] == "Gobbo"
     assert body["type"] == "humanoid"
-    assert body["cr"] == 0.25
+    assert body["cr"] == "1/4"
     assert body["senses"]["darkvision"] == 60
 
     # Search by name
@@ -99,7 +99,7 @@ def test_monster_crud_lifecycle(client) -> None:
     create_payload = {
         "name": "Troll",
         "description": "Regenerating giant",
-        "dangerous_lvl": "high",
+        # no dangerous_lvl in Iteration 3
         "hp": 84,
         "ac": 15,
         
@@ -128,7 +128,8 @@ def test_monster_crud_lifecycle(client) -> None:
     updated = client.put(f"/monsters/{monster_id}", json=update_payload)
     assert updated.status_code == HTTPStatus.OK
     assert updated.json()["name"] == "Young Troll"
-    assert updated.json()["dangerous_lvl"] == "moderate"
+    # dangerous_lvl removed; ensure name updated
+    assert updated.json()["name"] == "Young Troll"
 
     # List should include exactly one
     listed = client.get("/monsters")
@@ -150,7 +151,7 @@ def test_monster_create_ignores_client_id(client) -> None:
         "id": 999,
         "name": "Orc",
         "description": "Brutal warrior",
-        "dangerous_lvl": "moderate",
+        # no dangerous_lvl in Iteration 3
         "hp": 15,
         "ac": 13,
         "speed": 30,

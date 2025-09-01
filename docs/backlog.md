@@ -124,3 +124,10 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
   - List buttons display names without `(#id)` suffix.
   - Detail views show names and content only; no internal IDs exposed.
 
+### 13) Full-text search for localized content (RU/EN)
+- Goal: Add FTS for `monster_translations` and `spell_translations` with per-language indexes.
+- Scope: `api` service, PostgreSQL GIN indexes.
+- Acceptance:
+  - Language-specific search works with `lang` parameter.
+  - Indexes exist and are used; performance verified on seed data size.
+

@@ -141,7 +141,7 @@ async def monster_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     monster_id = int(query.data.split(":")[-1])
     logger.info("Monster detail requested", extra={"correlation_id": query.message.chat_id if query and query.message else None, "monster_id": monster_id})
     m = await api_get_one(f"/monsters/{monster_id}")
-    danger_text = m.get('cr_enum') or m.get('dangerous_lvl', '-')
+    danger_text = m.get('cr') or m.get('cr_enum') or m.get('dangerous_lvl', '-')
     text = (
         f"{m.get('name','-')}\n"
         f"{m.get('description','')}\n"
@@ -162,7 +162,7 @@ async def monster_random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await query.edit_message_text("Монстров нет.")
         return
     m = random.choice(all_monsters)
-    danger_text = m.get('cr_enum') or m.get('dangerous_lvl', '-')
+    danger_text = m.get('cr') or m.get('cr_enum') or m.get('dangerous_lvl', '-')
     text = (
         f"{m.get('description','')}" + " (random)\n"
         f"CR: {danger_text}\n"
