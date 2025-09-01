@@ -1,14 +1,12 @@
 import logging
 
+from dnd_helper_bot.keyboards.main import build_main_menu_inline  # noqa: E402
+from dnd_helper_bot.keyboards.monsters import build_monsters_root_keyboard  # noqa: E402
+from dnd_helper_bot.keyboards.spells import build_spells_root_keyboard  # noqa: E402
 from telegram import Update
 from telegram.ext import ContextTypes
 
 logger = logging.getLogger(__name__)
-
-
-from dnd_helper_bot.keyboards.main import build_main_menu_inline
-from dnd_helper_bot.keyboards.monsters import build_monsters_root_keyboard
-from dnd_helper_bot.keyboards.spells import build_spells_root_keyboard
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

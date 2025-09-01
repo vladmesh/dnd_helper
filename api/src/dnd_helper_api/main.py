@@ -1,3 +1,4 @@
+# ruff: noqa: I001
 import os
 
 from dnd_helper_api.logging_config import configure_logging
@@ -16,9 +17,6 @@ app = FastAPI(title="DnD Helper API")
 @app.get("/health")
 def healthcheck() -> dict:
     return {"status": "ok"}
-
-
- 
 
 
 app.include_router(users_router)
