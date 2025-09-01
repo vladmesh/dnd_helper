@@ -39,8 +39,6 @@ Non-goals
   - Extend payload with optional `translations: { ru: {name, description}, en: {name, description} }`.
   - If only scalar `name`/`description` provided, map them into requested `lang` (or default `ru`).
   - Persist into `*_translations` with upsert on `(entity_id, lang)`.
-- Seed script `seed_from_dtn.py`:
-  - Produce RU/EN translation payloads for names/descriptions when available.
 - Deliverables:
   - Pydantic/SQLModel DTOs updated (non-breaking; `translations` optional)
   - Write logic for upsert translations

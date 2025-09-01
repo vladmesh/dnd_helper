@@ -2,7 +2,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from dnd_helper_api.db import get_session
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlmodel import Session, select
 
 from shared_models import Monster
@@ -169,8 +169,10 @@ def search_monsters(
 
 
 @router.post("", response_model=Monster, status_code=status.HTTP_201_CREATED)
-def create_monster(
+async def create_monster(
     monster: Monster,
+    lang: Optional[str] = None,
+    request: Request = None,
     session: Session = Depends(get_session),  # noqa: B008
 ) -> Monster:
     # Ignore client-provided id
@@ -179,6 +181,61 @@ def create_monster(
     session.add(monster)
     session.commit()
     session.refresh(monster)
+    # Upsert translations from payload if provided; else map scalar name/description into selected lang
+    try:
+        body = await request.json() if request is not None else {}
+    except Exception:
+        body = {}
+    translations = body.get("translations") if isinstance(body, dict) else None
+
+    if isinstance(translations, dict):
+        for lang_code in ("ru", "en"):
+            data = translations.get(lang_code)
+            if isinstance(data, dict) and data.get("name") and data.get("description"):
+                l = _select_language(lang_code)
+                existing = session.exec(
+                    select(MonsterTranslation).where(
+                        MonsterTranslation.monster_id == monster.id,
+                        MonsterTranslation.lang == l,
+                    )
+                ).first()
+                if existing is None:
+                    session.add(
+                        MonsterTranslation(
+                            monster_id=monster.id,
+                            lang=l,
+                            name=data["name"],
+                            description=data["description"],
+                        )
+                    )
+                else:
+                    existing.name = data["name"]
+                    existing.description = data["description"]
+                    session.add(existing)
+        session.commit()
+    else:
+        l = _select_language(lang)
+        existing = session.exec(
+            select(MonsterTranslation).where(
+                MonsterTranslation.monster_id == monster.id,
+                MonsterTranslation.lang == l,
+            )
+        ).first()
+        if existing is None:
+            session.add(
+                MonsterTranslation(
+                    monster_id=monster.id,
+                    lang=l,
+                    name=monster.name,
+                    description=monster.description,
+                )
+            )
+        else:
+            existing.name = monster.name
+            existing.description = monster.description
+            session.add(existing)
+        session.commit()
+
     logger.info("Monster created", extra={"monster_id": monster.id, "monster_name": monster.name})
     return monster
 
@@ -211,9 +268,11 @@ def get_monster(
 
 
 @router.put("/{monster_id}", response_model=Monster)
-def update_monster(
+async def update_monster(
     monster_id: int,
     payload: Monster,
+    lang: Optional[str] = None,
+    request: Request = None,
     session: Session = Depends(get_session),  # noqa: B008
 ) -> Monster:
     monster = session.get(Monster, monster_id)
@@ -273,6 +332,61 @@ def update_monster(
     session.add(monster)
     session.commit()
     session.refresh(monster)
+
+    # Upsert translations from payload if provided; else map scalar name/description into selected lang
+    try:
+        body = await request.json() if request is not None else {}
+    except Exception:
+        body = {}
+    translations = body.get("translations") if isinstance(body, dict) else None
+
+    if isinstance(translations, dict):
+        for lang_code in ("ru", "en"):
+            data = translations.get(lang_code)
+            if isinstance(data, dict) and data.get("name") and data.get("description"):
+                l = _select_language(lang_code)
+                existing = session.exec(
+                    select(MonsterTranslation).where(
+                        MonsterTranslation.monster_id == monster.id,
+                        MonsterTranslation.lang == l,
+                    )
+                ).first()
+                if existing is None:
+                    session.add(
+                        MonsterTranslation(
+                            monster_id=monster.id,
+                            lang=l,
+                            name=data["name"],
+                            description=data["description"],
+                        )
+                    )
+                else:
+                    existing.name = data["name"]
+                    existing.description = data["description"]
+                    session.add(existing)
+        session.commit()
+    else:
+        l = _select_language(lang)
+        existing = session.exec(
+            select(MonsterTranslation).where(
+                MonsterTranslation.monster_id == monster.id,
+                MonsterTranslation.lang == l,
+            )
+        ).first()
+        if existing is None:
+            session.add(
+                MonsterTranslation(
+                    monster_id=monster.id,
+                    lang=l,
+                    name=monster.name,
+                    description=monster.description,
+                )
+            )
+        else:
+            existing.name = monster.name
+            existing.description = monster.description
+            session.add(existing)
+        session.commit()
     logger.info("Monster updated", extra={"monster_id": monster.id})
     return monster
 

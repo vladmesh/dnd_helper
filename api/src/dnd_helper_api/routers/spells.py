@@ -2,7 +2,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from dnd_helper_api.db import get_session
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from sqlmodel import Session, select
 
 from shared_models import Spell
@@ -194,8 +194,10 @@ def search_spells(
 
 
 @router.post("", response_model=Spell, status_code=status.HTTP_201_CREATED)
-def create_spell(
+async def create_spell(
     spell: Spell,
+    lang: Optional[str] = None,
+    request: Request = None,
     session: Session = Depends(get_session),  # noqa: B008
 ) -> Spell:
     spell.id = None
@@ -203,6 +205,61 @@ def create_spell(
     session.add(spell)
     session.commit()
     session.refresh(spell)
+    # Upsert translations from payload if provided; else map scalar name/description into selected lang
+    try:
+        body = await request.json() if request is not None else {}
+    except Exception:
+        body = {}
+    translations = body.get("translations") if isinstance(body, dict) else None
+
+    if isinstance(translations, dict):
+        for lang_code in ("ru", "en"):
+            data = translations.get(lang_code)
+            if isinstance(data, dict) and data.get("name") and data.get("description"):
+                l = _select_language(lang_code)
+                existing = session.exec(
+                    select(SpellTranslation).where(
+                        SpellTranslation.spell_id == spell.id,
+                        SpellTranslation.lang == l,
+                    )
+                ).first()
+                if existing is None:
+                    session.add(
+                        SpellTranslation(
+                            spell_id=spell.id,
+                            lang=l,
+                            name=data["name"],
+                            description=data["description"],
+                        )
+                    )
+                else:
+                    existing.name = data["name"]
+                    existing.description = data["description"]
+                    session.add(existing)
+        session.commit()
+    else:
+        l = _select_language(lang)
+        existing = session.exec(
+            select(SpellTranslation).where(
+                SpellTranslation.spell_id == spell.id,
+                SpellTranslation.lang == l,
+            )
+        ).first()
+        if existing is None:
+            session.add(
+                SpellTranslation(
+                    spell_id=spell.id,
+                    lang=l,
+                    name=spell.name,
+                    description=spell.description,
+                )
+            )
+        else:
+            existing.name = spell.name
+            existing.description = spell.description
+            session.add(existing)
+        session.commit()
+
     logger.info("Spell created", extra={"spell_id": spell.id, "spell_name": spell.name})
     return spell
 
@@ -235,9 +292,11 @@ def get_spell(
 
 
 @router.put("/{spell_id}", response_model=Spell)
-def update_spell(
+async def update_spell(
     spell_id: int,
     payload: Spell,
+    lang: Optional[str] = None,
+    request: Request = None,
     session: Session = Depends(get_session),  # noqa: B008
 ) -> Spell:
     spell = session.get(Spell, spell_id)
@@ -278,6 +337,61 @@ def update_spell(
     session.add(spell)
     session.commit()
     session.refresh(spell)
+
+    # Upsert translations from payload if provided; else map scalar name/description into selected lang
+    try:
+        body = await request.json() if request is not None else {}
+    except Exception:
+        body = {}
+    translations = body.get("translations") if isinstance(body, dict) else None
+
+    if isinstance(translations, dict):
+        for lang_code in ("ru", "en"):
+            data = translations.get(lang_code)
+            if isinstance(data, dict) and data.get("name") and data.get("description"):
+                l = _select_language(lang_code)
+                existing = session.exec(
+                    select(SpellTranslation).where(
+                        SpellTranslation.spell_id == spell.id,
+                        SpellTranslation.lang == l,
+                    )
+                ).first()
+                if existing is None:
+                    session.add(
+                        SpellTranslation(
+                            spell_id=spell.id,
+                            lang=l,
+                            name=data["name"],
+                            description=data["description"],
+                        )
+                    )
+                else:
+                    existing.name = data["name"]
+                    existing.description = data["description"]
+                    session.add(existing)
+        session.commit()
+    else:
+        l = _select_language(lang)
+        existing = session.exec(
+            select(SpellTranslation).where(
+                SpellTranslation.spell_id == spell.id,
+                SpellTranslation.lang == l,
+            )
+        ).first()
+        if existing is None:
+            session.add(
+                SpellTranslation(
+                    spell_id=spell.id,
+                    lang=l,
+                    name=spell.name,
+                    description=spell.description,
+                )
+            )
+        else:
+            existing.name = spell.name
+            existing.description = spell.description
+            session.add(existing)
+        session.commit()
     logger.info("Spell updated", extra={"spell_id": spell.id})
     return spell
 
