@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlmodel import Field
 
 from .base import BaseModel
-from .enums import ChallengeRating, DangerLevel
+from .enums import DangerLevel
 
 
 class Monster(BaseModel, table=True):
@@ -14,7 +14,7 @@ class Monster(BaseModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     description: str
-    dangerous_lvl: DangerLevel = Field(index=True)
+    # Iteration 3: `cr` replaces dangerous_lvl and becomes enum-string
     hp: int
     ac: int
     
@@ -23,8 +23,7 @@ class Monster(BaseModel, table=True):
     size: Optional[str] = Field(default=None, index=True)
     alignment: Optional[str] = Field(default=None)
     hit_dice: Optional[str] = Field(default=None)
-    cr: Optional[float] = Field(default=None, index=True)
-    cr_enum: Optional[ChallengeRating] = Field(default=None, index=True)
+    cr: Optional[DangerLevel] = Field(default=None, sa_type=String(), index=True)
     xp: Optional[int] = Field(default=None)
     proficiency_bonus: Optional[int] = Field(default=None)
     abilities: Optional[Dict[str, int]] = Field(default=None, sa_type=JSONB)
@@ -65,7 +64,6 @@ class Monster(BaseModel, table=True):
     is_flying: Optional[bool] = Field(default=None, index=True)
     has_ranged: Optional[bool] = Field(default=None, index=True)
     has_aoe: Optional[bool] = Field(default=None, index=True)
-    threat_tier: Optional[int] = Field(default=None, sa_type=SmallInteger(), index=True)
 
     # Speeds derived
     speed_walk: Optional[int] = Field(default=None, index=True)
