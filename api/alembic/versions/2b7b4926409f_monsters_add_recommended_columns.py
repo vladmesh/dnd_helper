@@ -5,9 +5,9 @@ Revises: 83e04999b45a
 Create Date: 2025-08-31 21:06:04.612295
 
 """
-from alembic import op  # noqa: F401
 import sqlalchemy as sa  # noqa: F401
-import sqlmodel # noqa: F401
+import sqlmodel  # noqa: F401
+from alembic import op  # noqa: F401
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.

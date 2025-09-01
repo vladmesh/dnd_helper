@@ -83,3 +83,44 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
 - For dice: implement a small, safe parser rather than `eval`; add input caps to prevent abuse.
 
 
+### 7) Multilingual support (Bot UI)
+- Goal: Provide RU/EN (and potentially more) language support for bot texts and keyboards.
+- Scope: `bot` service (handlers, keyboards, messages). API remains language-agnostic for now.
+- Acceptance:
+  - Language can be switched (command or settings submenu), and persists per user.
+  - All current bot flows render localized texts consistently (menus, lists, details, errors).
+
+### 8) Filter/search fields refinement
+- Goal: Align and finalize filterable/searchable fields for Spells and Monsters across API and Bot.
+- Scope: `api` review of `/spells` and `/monsters` models and derived fields; `bot` quick filters mapping.
+- Acceptance:
+  - Agreed field list (documented) with types, value domains, and nullability.
+  - Bot quick filters map 1:1 to documented fields or derived ones; gaps identified.
+
+### 9) Source discovery for missing DB fields
+- Goal: Identify data sources to populate currently missing attributes (e.g., roles, environments, tags, range normalization).
+- Scope: Research and propose ingestion/backfill strategy; do not implement ingestion yet.
+- Acceptance:
+  - Brief report with candidate sources, license notes, and data coverage.
+  - Proposed backfill approach (one-time vs. migrations) and risks.
+
+### 10) Tests for new filtering functionality
+- Goal: Cover newly added inline filters and list rendering in Bot; extend API tests if backend filters/pagination are added later.
+- Scope: `bot` tests for spells/monsters filters, pagination and state; optional `api` when Iteration 3 backend is implemented.
+- Acceptance:
+  - Bot tests validate toggles, Apply/Reset, pagination over filtered sets.
+  - Tests run green via `bot/docker_compose_tests.yml`.
+
+### 11) Linting pass
+- Goal: Ensure clean lint status across updated files.
+- Scope: `api`, `bot` as needed after feature changes.
+- Acceptance:
+  - `python manage.py lint` (ruff) passes without violations.
+
+### 12) Remove IDs from UI display
+- Goal: Stop showing internal IDs in list item labels and detail views.
+- Scope: `bot` list buttons and detail messages for monsters and spells.
+- Acceptance:
+  - List buttons display names without `(#id)` suffix.
+  - Detail views show names and content only; no internal IDs exposed.
+

@@ -1,8 +1,8 @@
 from typing import Any, Dict, List, Optional
 
-from sqlmodel import Field
 from sqlalchemy import SmallInteger, String
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlmodel import Field
 
 from .base import BaseModel
 from .enums import DangerLevel

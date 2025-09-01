@@ -1,10 +1,10 @@
 import logging
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
 from dnd_helper_api.db import get_session
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlmodel import Session, select
 from sqlalchemy import or_
+from sqlmodel import Session, select
 
 from shared_models import Spell
 

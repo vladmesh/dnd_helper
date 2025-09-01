@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from dnd_helper_api.db import engine
 from sqlmodel import Session, select
 
-from dnd_helper_api.db import engine
 from shared_models import CasterClass, DangerLevel, Monster, Spell, SpellSchool
 
 

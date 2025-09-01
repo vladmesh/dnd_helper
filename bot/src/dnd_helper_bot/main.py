@@ -1,32 +1,23 @@
 import asyncio
 import os
 
-from telegram.ext import (
-    ApplicationBuilder,
-    CallbackQueryHandler,
-    CommandHandler,
-    MessageHandler,
-    filters,
-)
-
-from dnd_helper_bot.handlers.dice import dice_roll, show_dice_menu_from_callback
-from dnd_helper_bot.handlers.menu import show_main_menu_from_callback, start, show_bestiarie_menu_from_callback, show_spells_menu_from_callback
-from dnd_helper_bot.handlers.monsters import (
-    monster_detail,
-    monster_random,
-    monster_search_prompt,
-    monsters_list,
-    monsters_filter_action,
-)
+from dnd_helper_bot.handlers.dice import (dice_roll,
+                                          show_dice_menu_from_callback)
+from dnd_helper_bot.handlers.menu import (show_bestiarie_menu_from_callback,
+                                          show_main_menu_from_callback,
+                                          show_spells_menu_from_callback,
+                                          start)
+from dnd_helper_bot.handlers.monsters import (monster_detail, monster_random,
+                                              monster_search_prompt,
+                                              monsters_filter_action,
+                                              monsters_list)
 from dnd_helper_bot.handlers.search import handle_search_text
-from dnd_helper_bot.handlers.spells import (
-    spell_detail,
-    spell_random,
-    spell_search_prompt,
-    spells_list,
-    spells_filter_action,
-)
+from dnd_helper_bot.handlers.spells import (spell_detail, spell_random,
+                                            spell_search_prompt,
+                                            spells_filter_action, spells_list)
 from dnd_helper_bot.logging_config import configure_logging
+from telegram.ext import (ApplicationBuilder, CallbackQueryHandler,
+                          CommandHandler, MessageHandler, filters)
 
 
 def main() -> None:

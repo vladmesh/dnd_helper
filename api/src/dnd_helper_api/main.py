@@ -1,11 +1,10 @@
 import os
 
-from fastapi import FastAPI
-
 from dnd_helper_api.logging_config import configure_logging
 from dnd_helper_api.routers.monsters import router as monsters_router
 from dnd_helper_api.routers.spells import router as spells_router
 from dnd_helper_api.routers.users import router as users_router
+from fastapi import FastAPI
 
 configure_logging(
     service_name=os.getenv("LOG_SERVICE_NAME", "api"),

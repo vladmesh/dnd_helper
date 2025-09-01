@@ -25,7 +25,6 @@ import sys
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-
 RE_CELLS = re.compile(r"(\d+)\s*клет")
 
 
