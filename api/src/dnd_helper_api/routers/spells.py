@@ -168,7 +168,7 @@ def list_spells(session: Session = Depends(get_session)) -> List[Spell]:
 
 
 @router.get("/{spell_id}", response_model=Spell)
-def get_spell(spell_id: int, session: Session = Depends(get_session)) -> Spell:
+def get_spell(spell_id: int, session: Session = Depends(get_session)) -> Spell:  # noqa: B008
     spell = session.get(Spell, spell_id)
     if spell is None:
         logger.warning("Spell not found", extra={"spell_id": spell_id})
@@ -178,7 +178,7 @@ def get_spell(spell_id: int, session: Session = Depends(get_session)) -> Spell:
 
 
 @router.put("/{spell_id}", response_model=Spell)
-def update_spell(spell_id: int, payload: Spell, session: Session = Depends(get_session)) -> Spell:
+def update_spell(spell_id: int, payload: Spell, session: Session = Depends(get_session)) -> Spell:  # noqa: B008
     spell = session.get(Spell, spell_id)
     if spell is None:
         logger.warning("Spell not found for update", extra={"spell_id": spell_id})
@@ -222,7 +222,7 @@ def update_spell(spell_id: int, payload: Spell, session: Session = Depends(get_s
 
 
 @router.delete("/{spell_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_spell(spell_id: int, session: Session = Depends(get_session)) -> None:
+def delete_spell(spell_id: int, session: Session = Depends(get_session)) -> None:  # noqa: B008
     spell = session.get(Spell, spell_id)
     if spell is None:
         logger.warning("Spell not found for delete", extra={"spell_id": spell_id})
