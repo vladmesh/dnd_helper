@@ -9,6 +9,7 @@ from .monster import Monster
 from .monster_translation import MonsterTranslation
 from .spell import Spell
 from .spell_translation import SpellTranslation
+from .enum_translation import EnumTranslation
 from .user import User
 
 __all__ = [
@@ -21,6 +22,7 @@ __all__ = [
     "MonsterTranslation",
     "Spell",
     "SpellTranslation",
+    "EnumTranslation",
 ]
 
 

@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 
 from dnd_helper_api.db import get_session
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
+from sqlalchemy import delete
 from sqlmodel import Session, select
 
 from shared_models import Spell
@@ -405,6 +406,10 @@ def delete_spell(
     if spell is None:
         logger.warning("Spell not found for delete", extra={"spell_id": spell_id})
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Spell not found")
+    # Delete translations first to satisfy FK constraints
+    session.exec(
+        delete(SpellTranslation).where(SpellTranslation.spell_id == spell_id)
+    )
     session.delete(spell)
     session.commit()
     logger.info("Spell deleted", extra={"spell_id": spell_id})

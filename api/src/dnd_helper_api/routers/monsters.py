@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 
 from dnd_helper_api.db import get_session
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from sqlalchemy import delete
 from sqlmodel import Session, select
 
 from shared_models import Monster
@@ -400,6 +401,10 @@ def delete_monster(
     if monster is None:
         logger.warning("Monster not found for delete", extra={"monster_id": monster_id})
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Monster not found")
+    # Delete translations first to satisfy FK constraints
+    session.exec(
+        delete(MonsterTranslation).where(MonsterTranslation.monster_id == monster_id)
+    )
     session.delete(monster)
     session.commit()
     logger.info("Monster deleted", extra={"monster_id": monster_id})

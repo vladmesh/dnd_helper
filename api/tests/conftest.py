@@ -14,6 +14,8 @@ from sqlalchemy import delete
 from sqlmodel import Session
 
 from shared_models import Monster, Spell, User
+from shared_models.monster_translation import MonsterTranslation
+from shared_models.spell_translation import SpellTranslation
 
 
 @pytest.fixture(scope="session")
@@ -26,7 +28,9 @@ def client() -> Iterator[TestClient]:
 def _clean_db() -> Iterator[None]:
     # Ensure a clean state before each test to avoid cross-test interference
     with Session(engine) as session:
-        # Order matters only if there are FKs; current models are independent
+        # Respect FKs: delete translation rows first, then base entities
+        session.exec(delete(SpellTranslation))
+        session.exec(delete(MonsterTranslation))
         session.exec(delete(Spell))
         session.exec(delete(Monster))
         session.exec(delete(User))
