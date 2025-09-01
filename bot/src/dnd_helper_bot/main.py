@@ -16,6 +16,7 @@ from dnd_helper_bot.handlers.monsters import (
     monster_random,
     monster_search_prompt,
     monsters_list,
+    monsters_filter_action,
 )
 from dnd_helper_bot.handlers.search import handle_search_text
 from dnd_helper_bot.handlers.spells import (
@@ -49,6 +50,7 @@ def main() -> None:
     application.add_handler(
         CallbackQueryHandler(monster_search_prompt, pattern=r"^monster:search$")
     )
+    application.add_handler(CallbackQueryHandler(monsters_filter_action, pattern=r"^mflt:"))
 
     application.add_handler(CallbackQueryHandler(spells_list, pattern=r"^spell:list:page:\d+$"))
     application.add_handler(CallbackQueryHandler(spell_detail, pattern=r"^spell:detail:\d+$"))
