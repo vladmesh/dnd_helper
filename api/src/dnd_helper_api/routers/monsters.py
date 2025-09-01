@@ -74,7 +74,7 @@ def search_monsters(
     is_legendary: Optional[bool] = None,
     roles: Optional[List[str]] = None,
     environments: Optional[List[str]] = None,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_session),  # noqa: B008
 ) -> List[Monster]:
     if not q:
         logger.warning("Empty monster search query")

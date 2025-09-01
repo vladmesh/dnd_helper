@@ -23,14 +23,14 @@ def create_user(user: User, session: Session = Depends(get_session)) -> User:  #
 
 
 @router.get("", response_model=List[User])
-def list_users(session: Session = Depends(get_session)) -> List[User]:
+def list_users(session: Session = Depends(get_session)) -> List[User]:  # noqa: B008
     users = session.exec(select(User)).all()
     logger.info("Users listed", extra={"count": len(users)})
     return users
 
 
 @router.get("/{user_id}", response_model=User)
-def get_user(user_id: int, session: Session = Depends(get_session)) -> User:
+def get_user(user_id: int, session: Session = Depends(get_session)) -> User:  # noqa: B008
     user = session.get(User, user_id)
     if user is None:
         logger.warning("User not found", extra={"user_id": user_id})
@@ -40,7 +40,7 @@ def get_user(user_id: int, session: Session = Depends(get_session)) -> User:
 
 
 @router.put("/{user_id}", response_model=User)
-def update_user(user_id: int, payload: User, session: Session = Depends(get_session)) -> User:
+def update_user(user_id: int, payload: User, session: Session = Depends(get_session)) -> User:  # noqa: B008
     user = session.get(User, user_id)
     if user is None:
         logger.warning("User not found for update", extra={"user_id": user_id})
@@ -55,7 +55,7 @@ def update_user(user_id: int, payload: User, session: Session = Depends(get_sess
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(user_id: int, session: Session = Depends(get_session)) -> None:
+def delete_user(user_id: int, session: Session = Depends(get_session)) -> None:  # noqa: B008
     user = session.get(User, user_id)
     if user is None:
         logger.warning("User not found for delete", extra={"user_id": user_id})
