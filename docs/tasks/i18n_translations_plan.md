@@ -36,12 +36,12 @@ Non-goals
 
 ### Iteration 3 — Write path: API accepts and stores translations
 - POST/PUT for monsters and spells:
-  - Extend payload with optional `translations: { ru: {name, description}, en: {name, description} }`.
-  - If only scalar `name`/`description` provided, map them into requested `lang` (or default `ru`).
-  - Persist into `*_translations` with upsert on `(entity_id, lang)`.
+  - Extend payload with optional `translations: { ru: {name, description}, en: {name, description} }`. [DONE]
+  - If only scalar `name`/`description` provided, map them into requested `lang` (or default `ru`). [DONE]
+  - Persist into `*_translations` with upsert on `(entity_id, lang)`. [DONE]
 - Deliverables:
-  - Pydantic/SQLModel DTOs updated (non-breaking; `translations` optional)
-  - Write logic for upsert translations
+  - Pydantic/SQLModel DTOs updated (non-breaking; `translations` optional) — implemented at router level without separate DTO classes [DONE]
+  - Write logic for upsert translations [DONE]
   - Seed updates and tests
 
 ### Iteration 4 — Enum label translations schema
@@ -52,8 +52,8 @@ Non-goals
   - Option E1 (minimal change): keep DB enums; still translate labels via `enum_translations` by matching textual value.
   - Option E2 (simpler long-term): migrate DB enum columns to `VARCHAR` with validated codes (no DB ENUM types). This simplifies future additions and joins.
 - Deliverables:
-  - SQLModel for `EnumTranslation` (table=True)
-  - Alembic migration for the table and indexes
+  - SQLModel for `EnumTranslation` (table=True) [DONE]
+  - Alembic migration for the table and indexes [DONE]
   - If picking E2: migrations converting enum-typed columns to text for: `Spell.school`, `Spell.classes[]`, `Monster.cr`, and anywhere else enums are used; drop obsolete DB enum types
 
 ### Iteration 5 — API response: code + label for enums

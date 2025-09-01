@@ -26,7 +26,7 @@ def upgrade() -> None:
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('enum_type', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
         sa.Column('enum_value', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column('lang', sa.Enum('RU', 'EN', name='language', create_type=False), nullable=False),
+        sa.Column('lang', sa.Enum('RU', 'EN', name='language', native_enum=False), nullable=False),
         sa.Column('label', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
         sa.Column('description', sa.TEXT(), nullable=True),
         sa.Column('synonyms', sa.dialects.postgresql.JSONB(astext_type=sa.Text()), nullable=True),
