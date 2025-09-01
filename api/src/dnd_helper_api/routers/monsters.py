@@ -6,9 +6,57 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
 from shared_models import Monster
+from shared_models.enums import Language
+from shared_models.monster_translation import MonsterTranslation
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/monsters", tags=["monsters"])
 logger = logging.getLogger(__name__)
+
+
+def _select_language(lang: Optional[str]) -> Language:
+    try:
+        if isinstance(lang, str):
+            val = lang.strip().lower()
+            if val in {"ru", "en"}:
+                return Language(val)
+    except Exception:
+        pass
+    return Language.RU
+
+
+def _fallback_language(primary: Language) -> Language:
+    return Language.EN if primary == Language.RU else Language.RU
+
+
+def _apply_monster_translation(
+    session: Session,
+    monster: Monster,
+    lang: Optional[str],
+) -> None:
+    """Apply localized name/description to a Monster instance in-place.
+
+    Fallback to the other available language if primary not found. Silent if no translations.
+    """
+    primary = _select_language(lang)
+    fallback = _fallback_language(primary)
+
+    tr = session.exec(
+        select(MonsterTranslation).where(
+            MonsterTranslation.monster_id == monster.id,
+            MonsterTranslation.lang == primary,
+        )
+    ).first()
+    if tr is None:
+        tr = session.exec(
+            select(MonsterTranslation).where(
+                MonsterTranslation.monster_id == monster.id,
+                MonsterTranslation.lang == fallback,
+            )
+        ).first()
+    if tr is not None:
+        monster.name = tr.name
+        monster.description = tr.description
 
 
 def _compute_monster_derived_fields(monster: Monster) -> None:
@@ -121,7 +169,10 @@ def search_monsters(
 
 
 @router.post("", response_model=Monster, status_code=status.HTTP_201_CREATED)
-def create_monster(monster: Monster, session: Session = Depends(get_session)) -> Monster:  # noqa: B008
+def create_monster(
+    monster: Monster,
+    session: Session = Depends(get_session),  # noqa: B008
+) -> Monster:
     # Ignore client-provided id
     monster.id = None
     _compute_monster_derived_fields(monster)
@@ -133,24 +184,38 @@ def create_monster(monster: Monster, session: Session = Depends(get_session)) ->
 
 
 @router.get("", response_model=List[Monster])
-def list_monsters(session: Session = Depends(get_session)) -> List[Monster]:  # noqa: B008
+def list_monsters(
+    lang: Optional[str] = None,
+    session: Session = Depends(get_session),  # noqa: B008
+) -> List[Monster]:
     monsters = session.exec(select(Monster)).all()
+    for m in monsters:
+        _apply_monster_translation(session, m, lang)
     logger.info("Monsters listed", extra={"count": len(monsters)})
     return monsters
 
 
 @router.get("/{monster_id}", response_model=Monster)
-def get_monster(monster_id: int, session: Session = Depends(get_session)) -> Monster:  # noqa: B008
+def get_monster(
+    monster_id: int,
+    lang: Optional[str] = None,
+    session: Session = Depends(get_session),  # noqa: B008
+) -> Monster:
     monster = session.get(Monster, monster_id)
     if monster is None:
         logger.warning("Monster not found", extra={"monster_id": monster_id})
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Monster not found")
+    _apply_monster_translation(session, monster, lang)
     logger.info("Monster fetched", extra={"monster_id": monster_id})
     return monster
 
 
 @router.put("/{monster_id}", response_model=Monster)
-def update_monster(monster_id: int, payload: Monster, session: Session = Depends(get_session)) -> Monster:  # noqa: E501
+def update_monster(
+    monster_id: int,
+    payload: Monster,
+    session: Session = Depends(get_session),  # noqa: B008
+) -> Monster:
     monster = session.get(Monster, monster_id)
     if monster is None:
         logger.warning("Monster not found for update", extra={"monster_id": monster_id})
@@ -213,7 +278,10 @@ def update_monster(monster_id: int, payload: Monster, session: Session = Depends
 
 
 @router.delete("/{monster_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_monster(monster_id: int, session: Session = Depends(get_session)) -> None:  # noqa: B008
+def delete_monster(
+    monster_id: int,
+    session: Session = Depends(get_session),  # noqa: B008
+) -> None:
     monster = session.get(Monster, monster_id)
     if monster is None:
         logger.warning("Monster not found for delete", extra={"monster_id": monster_id})
@@ -221,6 +289,53 @@ def delete_monster(monster_id: int, session: Session = Depends(get_session)) -> 
     session.delete(monster)
     session.commit()
     logger.info("Monster deleted", extra={"monster_id": monster_id})
+    return None
+
+
+class MonsterTranslationUpsert(BaseModel):
+    lang: str
+    name: str
+    description: str
+
+
+@router.post("/{monster_id}/translations", status_code=status.HTTP_204_NO_CONTENT)
+def upsert_monster_translation(
+    monster_id: int,
+    body: MonsterTranslationUpsert,
+    session: Session = Depends(get_session),  # noqa: B008
+) -> None:
+    monster = session.get(Monster, monster_id)
+    if monster is None:
+        logger.warning("Monster not found for translation upsert", extra={"monster_id": monster_id})
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Monster not found")
+
+    lang = _select_language(body.lang)
+
+    existing = session.exec(
+        select(MonsterTranslation).where(
+            MonsterTranslation.monster_id == monster_id,
+            MonsterTranslation.lang == lang,
+        )
+    ).first()
+
+    if existing is None:
+        tr = MonsterTranslation(
+            monster_id=monster_id,
+            lang=lang,
+            name=body.name,
+            description=body.description,
+        )
+        session.add(tr)
+    else:
+        existing.name = body.name
+        existing.description = body.description
+        session.add(existing)
+
+    session.commit()
+    logger.info(
+        "Monster translation upserted",
+        extra={"monster_id": monster_id, "lang": lang.value},
+    )
     return None
 
 

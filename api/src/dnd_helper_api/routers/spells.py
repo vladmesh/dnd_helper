@@ -6,9 +6,53 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session, select
 
 from shared_models import Spell
+from shared_models.enums import Language
+from shared_models.spell_translation import SpellTranslation
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/spells", tags=["spells"])
 logger = logging.getLogger(__name__)
+
+
+def _select_language(lang: Optional[str]) -> Language:
+    try:
+        if isinstance(lang, str):
+            val = lang.strip().lower()
+            if val in {"ru", "en"}:
+                return Language(val)
+    except Exception:
+        pass
+    return Language.RU
+
+
+def _fallback_language(primary: Language) -> Language:
+    return Language.EN if primary == Language.RU else Language.RU
+
+
+def _apply_spell_translation(
+    session: Session,
+    spell: Spell,
+    lang: Optional[str],
+) -> None:
+    """Apply localized name/description to a Spell instance in-place with fallback."""
+    primary = _select_language(lang)
+    fallback = _fallback_language(primary)
+    tr = session.exec(
+        select(SpellTranslation).where(
+            SpellTranslation.spell_id == spell.id,
+            SpellTranslation.lang == primary,
+        )
+    ).first()
+    if tr is None:
+        tr = session.exec(
+            select(SpellTranslation).where(
+                SpellTranslation.spell_id == spell.id,
+                SpellTranslation.lang == fallback,
+            )
+        ).first()
+    if tr is not None:
+        spell.name = tr.name
+        spell.description = tr.description
 
 
 def _compute_spell_derived_fields(spell: Spell) -> None:
@@ -83,6 +127,7 @@ def _normalize_casting_time(value: str) -> str:
         return "1h"
     return v
 
+
 @router.get("/search", response_model=List[Spell])
 def search_spells(
     q: str,
@@ -149,7 +194,10 @@ def search_spells(
 
 
 @router.post("", response_model=Spell, status_code=status.HTTP_201_CREATED)
-def create_spell(spell: Spell, session: Session = Depends(get_session)) -> Spell:  # noqa: B008
+def create_spell(
+    spell: Spell,
+    session: Session = Depends(get_session),  # noqa: B008
+) -> Spell:
     spell.id = None
     _compute_spell_derived_fields(spell)
     session.add(spell)
@@ -160,24 +208,38 @@ def create_spell(spell: Spell, session: Session = Depends(get_session)) -> Spell
 
 
 @router.get("", response_model=List[Spell])
-def list_spells(session: Session = Depends(get_session)) -> List[Spell]:  # noqa: B008
+def list_spells(
+    lang: Optional[str] = None,
+    session: Session = Depends(get_session),  # noqa: B008
+) -> List[Spell]:
     spells = session.exec(select(Spell)).all()
+    for s in spells:
+        _apply_spell_translation(session, s, lang)
     logger.info("Spells listed", extra={"count": len(spells)})
     return spells
 
 
 @router.get("/{spell_id}", response_model=Spell)
-def get_spell(spell_id: int, session: Session = Depends(get_session)) -> Spell:  # noqa: B008
+def get_spell(
+    spell_id: int,
+    lang: Optional[str] = None,
+    session: Session = Depends(get_session),  # noqa: B008
+) -> Spell:
     spell = session.get(Spell, spell_id)
     if spell is None:
         logger.warning("Spell not found", extra={"spell_id": spell_id})
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Spell not found")
+    _apply_spell_translation(session, spell, lang)
     logger.info("Spell fetched", extra={"spell_id": spell_id})
     return spell
 
 
 @router.put("/{spell_id}", response_model=Spell)
-def update_spell(spell_id: int, payload: Spell, session: Session = Depends(get_session)) -> Spell:  # noqa: B008
+def update_spell(
+    spell_id: int,
+    payload: Spell,
+    session: Session = Depends(get_session),  # noqa: B008
+) -> Spell:
     spell = session.get(Spell, spell_id)
     if spell is None:
         logger.warning("Spell not found for update", extra={"spell_id": spell_id})
@@ -221,7 +283,10 @@ def update_spell(spell_id: int, payload: Spell, session: Session = Depends(get_s
 
 
 @router.delete("/{spell_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_spell(spell_id: int, session: Session = Depends(get_session)) -> None:  # noqa: B008
+def delete_spell(
+    spell_id: int,
+    session: Session = Depends(get_session),  # noqa: B008
+) -> None:
     spell = session.get(Spell, spell_id)
     if spell is None:
         logger.warning("Spell not found for delete", extra={"spell_id": spell_id})
@@ -229,6 +294,53 @@ def delete_spell(spell_id: int, session: Session = Depends(get_session)) -> None
     session.delete(spell)
     session.commit()
     logger.info("Spell deleted", extra={"spell_id": spell_id})
+    return None
+
+
+class SpellTranslationUpsert(BaseModel):
+    lang: str
+    name: str
+    description: str
+
+
+@router.post("/{spell_id}/translations", status_code=status.HTTP_204_NO_CONTENT)
+def upsert_spell_translation(
+    spell_id: int,
+    body: SpellTranslationUpsert,
+    session: Session = Depends(get_session),  # noqa: B008
+) -> None:
+    spell = session.get(Spell, spell_id)
+    if spell is None:
+        logger.warning("Spell not found for translation upsert", extra={"spell_id": spell_id})
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Spell not found")
+
+    lang = _select_language(body.lang)
+
+    existing = session.exec(
+        select(SpellTranslation).where(
+            SpellTranslation.spell_id == spell_id,
+            SpellTranslation.lang == lang,
+        )
+    ).first()
+
+    if existing is None:
+        tr = SpellTranslation(
+            spell_id=spell_id,
+            lang=lang,
+            name=body.name,
+            description=body.description,
+        )
+        session.add(tr)
+    else:
+        existing.name = body.name
+        existing.description = body.description
+        session.add(existing)
+
+    session.commit()
+    logger.info(
+        "Spell translation upserted",
+        extra={"spell_id": spell_id, "lang": lang.value},
+    )
     return None
 
 

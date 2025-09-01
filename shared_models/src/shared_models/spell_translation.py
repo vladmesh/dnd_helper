@@ -2,7 +2,7 @@ from typing import Optional
 
 from sqlalchemy import Enum as SAEnum, UniqueConstraint
 from sqlalchemy.dialects.postgresql import TEXT
-from sqlmodel import Field, Relationship
+from sqlmodel import Field
 
 from .base import BaseModel
 from .enums import Language

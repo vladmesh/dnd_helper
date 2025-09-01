@@ -9,7 +9,7 @@ Non-goals
 - We do not aim to support >2 languages immediately; design must allow it without schema changes.
 - We do not implement complex MT (machine translation) or admin UI in this scope.
 
-### Iteration 1 — DB groundwork: base translation tables
+### Iteration 1 — DB groundwork: base translation tables [DONE]
 - Add code enum `Language` with values: `ru`, `en` (Python enum only; used by ORM and API).
 - Create tables:
   - `monster_translations` (id, monster_id FK, lang, name, description, created_at, updated_at)
@@ -22,7 +22,7 @@ Non-goals
   - New SQLModel classes `MonsterTranslation`, `SpellTranslation` (table=True)
   - Alembic migration: create tables, constraints, indexes
 
-### Iteration 2 — Read path: API can return localized content
+### Iteration 2 — Read path: API can return localized content [DONE]
 - API accepts `lang` query param (`ru|en`), default `ru`.
 - GET /monsters, /monsters/{id}, /spells, /spells/{id}:
   - Join translations; choose row by requested `lang` with fallback to the other existing language.
