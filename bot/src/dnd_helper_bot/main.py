@@ -23,6 +23,7 @@ from dnd_helper_bot.handlers.spells import (
     spell_random,
     spell_search_prompt,
     spells_list,
+    spells_filter_action,
 )
 from dnd_helper_bot.logging_config import configure_logging
 
@@ -53,6 +54,7 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(spell_detail, pattern=r"^spell:detail:\d+$"))
     application.add_handler(CallbackQueryHandler(spell_random, pattern=r"^spell:random$"))
     application.add_handler(CallbackQueryHandler(spell_search_prompt, pattern=r"^spell:search$"))
+    application.add_handler(CallbackQueryHandler(spells_filter_action, pattern=r"^sflt:"))
     application.add_handler(CallbackQueryHandler(show_bestiarie_menu_from_callback, pattern=r"^menu:monsters$"))
     application.add_handler(CallbackQueryHandler(show_spells_menu_from_callback, pattern=r"^menu:spells$"))
 
