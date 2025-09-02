@@ -2,8 +2,8 @@ import logging
 from typing import List, Optional
 
 from dnd_helper_api.db import get_session
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, col, select
+from fastapi import APIRouter, Body, Depends, HTTPException, status
+from sqlmodel import Session, select
 
 from shared_models import User
 from shared_models.enums import Language
@@ -30,7 +30,7 @@ def list_users(  # noqa: B008
 ) -> List[User]:
     stmt = select(User)
     if telegram_id is not None:
-        stmt = stmt.where(col(User.telegram_id) == telegram_id)
+        stmt = stmt.where(User.telegram_id == telegram_id)
     users = session.exec(stmt).all()
     logger.info("Users listed", extra={"count": len(users)})
     return users
@@ -48,7 +48,7 @@ def get_user(user_id: int, session: Session = Depends(get_session)) -> User:  # 
 
 @router.get("/by-telegram/{telegram_id}", response_model=User)
 def get_user_by_telegram(telegram_id: int, session: Session = Depends(get_session)) -> User:  # noqa: B008
-    user = session.exec(select(User).where(col(User.telegram_id) == telegram_id)).first()
+    user = session.exec(select(User).where(User.telegram_id == telegram_id)).first()
     if user is None:
         logger.warning("User not found by telegram", extra={"telegram_id": telegram_id})
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -72,7 +72,11 @@ def update_user(user_id: int, payload: User, session: Session = Depends(get_sess
 
 
 @router.patch("/{user_id}", response_model=User)
-def patch_user(user_id: int, lang: Language, session: Session = Depends(get_session)) -> User:  # noqa: B008
+def patch_user(
+    user_id: int,
+    lang: Language = Body(..., embed=True),
+    session: Session = Depends(get_session),  # noqa: B008
+) -> User:
     """Minimal partial update: currently supports updating language only.
     
     Expects body like: {"lang": "ru" | "en"}
