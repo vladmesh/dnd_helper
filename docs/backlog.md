@@ -131,3 +131,42 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
   - Language-specific search works with `lang` parameter.
   - Indexes exist and are used; performance verified on seed data size.
 
+### 14) More informative error logs (500 details)
+- Goal: Improve observability by including request context and exception details when HTTP 5xx errors occur.
+- Scope: `api` service primarily; minor alignment in `bot` for upstream error surfaces.
+- Proposal:
+  - Add FastAPI exception handlers/middleware to log:
+    - route, method, status code
+    - correlation id (if present), user id (if available)
+    - exception type, message, stacktrace
+    - request payload size (not body), response time
+  - Keep response bodies unchanged; do not leak internals to clients in production.
+  - Gate verbose stacktraces behind env flag (e.g., `LOG_INCLUDE_TRACEBACK=true`).
+- Acceptance:
+  - 500 responses produce structured error logs with route/method and exception info.
+  - Toggle controls verbosity via env without code changes.
+  - No sensitive data (secrets, raw request bodies) in logs.
+
+### 15) Clean up and squash Alembic migrations
+- Goal: Reduce migration noise and speed up setup by squashing and cleaning obsolete revisions.
+- Scope: `api` service Alembic history.
+- Proposal:
+  - Remove redundant/empty or superseded revisions.
+  - Create a new baseline squashed revision representing current schema.
+  - Preserve production safety: perform only after verifying all environments are at `head`.
+- Acceptance:
+  - Fresh database can be created with a minimal set of migrations (ideally one baseline + recent changes).
+  - CI and local setup times improve; no functional changes to runtime schema.
+
+### 16) Align DB schema and Alembic autogenerate (prevent spurious diffs)
+- Goal: Stop Alembic autogenerate from emitting unrelated FK/constraint changes when editing unrelated columns.
+- Scope: `api` service models and Alembic env.
+- Proposal:
+  - Ensure ORM metadata for FKs (ondelete, names) match the actual DB (migrations).
+  - Stabilize constraint names (use explicit names) to avoid name-based churn.
+  - Add Alembic `include_object`/render options to ignore known-noise changes if intentional.
+  - Document policy: which constraints/indexes are managed in migrations only vs ORM.
+- Acceptance:
+  - Running `alembic revision --autogenerate` after a no-op model change yields only the intended column diffs, no FK churn.
+  - FK constraints for `monster_translations` and `spell_translations` no longer flap (drop/create) without intentional change.
+
