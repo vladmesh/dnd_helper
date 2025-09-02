@@ -14,6 +14,8 @@ from dnd_helper_bot.handlers.menu import (
     show_bestiarie_menu_from_callback,
     show_main_menu_from_callback,
     show_spells_menu_from_callback,
+    show_settings_from_callback,
+    set_language,
     start,
 )
 from dnd_helper_bot.handlers.monsters import (
@@ -64,6 +66,8 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(spells_filter_action, pattern=r"^sflt:"))
     application.add_handler(CallbackQueryHandler(show_bestiarie_menu_from_callback, pattern=r"^menu:monsters$"))
     application.add_handler(CallbackQueryHandler(show_spells_menu_from_callback, pattern=r"^menu:spells$"))
+    application.add_handler(CallbackQueryHandler(show_settings_from_callback, pattern=r"^menu:settings$"))
+    application.add_handler(CallbackQueryHandler(set_language, pattern=r"^lang:set:(ru|en)$"))
 
     application.add_handler(
         CallbackQueryHandler(show_main_menu_from_callback, pattern=r"^menu:main$")
