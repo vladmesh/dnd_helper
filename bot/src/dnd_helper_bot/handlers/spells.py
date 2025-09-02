@@ -114,10 +114,19 @@ def _build_filters_keyboard(pending: Dict[str, Any]) -> List[List[InlineKeyboard
     ]
 
 
+def _detect_lang(update_or_query) -> str:
+    try:
+        user_lang = (update_or_query.effective_user.language_code or "ru").lower()
+        return "en" if user_lang.startswith("en") else "ru"
+    except Exception:
+        return "ru"
+
+
 async def _render_spells_list(query, context: ContextTypes.DEFAULT_TYPE, page: int) -> None:
     context.user_data["spells_current_page"] = page
     pending, applied = _get_filter_state(context)
-    all_spells: List[Dict[str, Any]] = await api_get("/spells")
+    lang = _detect_lang(query)
+    all_spells: List[Dict[str, Any]] = await api_get("/spells", params={"lang": lang})
     filtered = _filter_spells(all_spells, applied)
     total = len(filtered)
     if total == 0:
@@ -154,7 +163,8 @@ async def spell_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await query.answer()
     spell_id = int(query.data.split(":")[-1])
     logger.info("Spell detail requested", extra={"correlation_id": query.message.chat_id if query and query.message else None, "spell_id": spell_id})
-    s = await api_get_one(f"/spells/{spell_id}")
+    lang = _detect_lang(query)
+    s = await api_get_one(f"/spells/{spell_id}", params={"lang": lang})
     classes = s.get("classes") or []
     classes_str = ", ".join(classes) if isinstance(classes, list) else str(classes or "-")
     text = (
@@ -171,7 +181,8 @@ async def spell_random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     query = update.callback_query
     await query.answer()
     logger.info("Spell random requested", extra={"correlation_id": query.message.chat_id if query and query.message else None})
-    all_spells = await api_get("/spells")
+    lang = _detect_lang(query)
+    all_spells = await api_get("/spells", params={"lang": lang})
     if not all_spells:
         logger.warning("No spells available for random", extra={"correlation_id": query.message.chat_id if query and query.message else None})
         await query.edit_message_text("Заклинаний нет.")

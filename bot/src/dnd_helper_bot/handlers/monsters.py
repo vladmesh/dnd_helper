@@ -100,10 +100,19 @@ def _build_filters_keyboard(pending: Dict[str, Any]) -> List[List[InlineKeyboard
     ]
 
 
+def _detect_lang(update_or_query) -> str:
+    try:
+        user_lang = (update_or_query.effective_user.language_code or "ru").lower()
+        return "en" if user_lang.startswith("en") else "ru"
+    except Exception:
+        return "ru"
+
+
 async def _render_monsters_list(query, context: ContextTypes.DEFAULT_TYPE, page: int) -> None:
     context.user_data["monsters_current_page"] = page
     pending, applied = _get_filter_state(context)
-    all_monsters: List[Dict[str, Any]] = await api_get("/monsters")
+    lang = _detect_lang(query)
+    all_monsters: List[Dict[str, Any]] = await api_get("/monsters", params={"lang": lang})
     filtered = _filter_monsters(all_monsters, applied)
     total = len(filtered)
     if total == 0:
@@ -140,7 +149,8 @@ async def monster_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await query.answer()
     monster_id = int(query.data.split(":")[-1])
     logger.info("Monster detail requested", extra={"correlation_id": query.message.chat_id if query and query.message else None, "monster_id": monster_id})
-    m = await api_get_one(f"/monsters/{monster_id}")
+    lang = _detect_lang(query)
+    m = await api_get_one(f"/monsters/{monster_id}", params={"lang": lang})
     danger_text = m.get('cr') or m.get('cr_enum') or m.get('dangerous_lvl', '-')
     text = (
         f"{m.get('name','-')}\n"
@@ -156,7 +166,8 @@ async def monster_random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     query = update.callback_query
     await query.answer()
     logger.info("Monster random requested", extra={"correlation_id": query.message.chat_id if query and query.message else None})
-    all_monsters = await api_get("/monsters")
+    lang = _detect_lang(query)
+    all_monsters = await api_get("/monsters", params={"lang": lang})
     if not all_monsters:
         logger.warning("No monsters available for random", extra={"correlation_id": query.message.chat_id if query and query.message else None})
         await query.edit_message_text("Монстров нет.")
