@@ -10,6 +10,7 @@ from shared_models import Monster
 from shared_models.enums import Language
 from shared_models.monster_translation import MonsterTranslation
 from pydantic import BaseModel
+from dnd_helper_api.utils.enum_labels import resolve_enum_labels
 
 router = APIRouter(prefix="/monsters", tags=["monsters"])
 logger = logging.getLogger(__name__)
@@ -253,6 +254,42 @@ def list_monsters(
     return monsters
 
 
+def _with_labels(monster: Monster, labels: Dict[tuple[str, str], str]) -> Dict[str, Any]:
+    body = monster.model_dump()
+    # Normalize codes to lowercase for lookup
+    t = body.get("type")
+    if t:
+        code = str(t).lower()
+        body["type"] = {"code": code, "label": labels.get(("monster_type", code), str(t))}
+    s = body.get("size")
+    if s:
+        code = str(s).lower()
+        body["size"] = {"code": code, "label": labels.get(("monster_size", code), str(s))}
+    cr = body.get("cr")
+    if cr:
+        code = str(cr)
+        body["cr"] = {"code": code, "label": labels.get(("danger_level", code), code)}
+    return body
+
+
+@router.get("/labeled", response_model=List[Dict[str, Any]])
+def list_monsters_labeled(
+    lang: Optional[str] = None,
+    session: Session = Depends(get_session),  # noqa: B008
+) -> List[Dict[str, Any]]:
+    monsters = session.exec(select(Monster)).all()
+    for m in monsters:
+        _apply_monster_translation(session, m, lang)
+    requested_lang = _select_language(lang)
+    codes = {
+        "monster_type": {str(m.type).lower() for m in monsters if m.type},
+        "monster_size": {str(m.size).lower() for m in monsters if m.size},
+        "danger_level": {str(m.cr) for m in monsters if m.cr},
+    }
+    labels = resolve_enum_labels(session, requested_lang, codes)
+    return [_with_labels(m, labels) for m in monsters]
+
+
 @router.get("/{monster_id}", response_model=Monster)
 def get_monster(
     monster_id: int,
@@ -266,6 +303,26 @@ def get_monster(
     _apply_monster_translation(session, monster, lang)
     logger.info("Monster fetched", extra={"monster_id": monster_id})
     return monster
+
+@router.get("/{monster_id}/labeled", response_model=Dict[str, Any])
+def get_monster_labeled(
+    monster_id: int,
+    lang: Optional[str] = None,
+    session: Session = Depends(get_session),  # noqa: B008
+) -> Dict[str, Any]:
+    monster = session.get(Monster, monster_id)
+    if monster is None:
+        logger.warning("Monster not found", extra={"monster_id": monster_id})
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Monster not found")
+    _apply_monster_translation(session, monster, lang)
+    requested_lang = _select_language(lang)
+    codes = {
+        "monster_type": {str(monster.type).lower()} if monster.type else set(),
+        "monster_size": {str(monster.size).lower()} if monster.size else set(),
+        "danger_level": {str(monster.cr)} if monster.cr else set(),
+    }
+    labels = resolve_enum_labels(session, requested_lang, codes)
+    return _with_labels(monster, labels)
 
 
 @router.put("/{monster_id}", response_model=Monster)

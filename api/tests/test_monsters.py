@@ -93,6 +93,18 @@ def test_monsters_accept_and_return_extended_fields(client) -> None:
     assert found.status_code == HTTPStatus.OK
     assert any(m["id"] == monster_id for m in found.json())
 
+    # Labeled listing RU
+    labeled_ru = client.get("/monsters/labeled", params={"lang": "ru"})
+    assert labeled_ru.status_code == HTTPStatus.OK
+    items = labeled_ru.json()
+    assert any(i["id"] == monster_id and isinstance(i.get("cr"), dict) for i in items)
+
+    # Labeled detail EN
+    labeled_en = client.get(f"/monsters/{monster_id}/labeled", params={"lang": "en"})
+    assert labeled_en.status_code == HTTPStatus.OK
+    body_en = labeled_en.json()
+    assert isinstance(body_en.get("cr"), dict) and {"code", "label"} <= set(body_en["cr"].keys())
+
 
 def test_monster_crud_lifecycle(client) -> None:
     # Create

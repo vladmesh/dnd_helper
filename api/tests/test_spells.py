@@ -119,4 +119,18 @@ def test_spells_accept_and_return_extended_fields(client) -> None:
     assert found.status_code == HTTPStatus.OK
     assert any(s["id"] == spell_id for s in found.json())
 
+    # Labeled listing RU
+    labeled_ru = client.get("/spells/labeled", params={"lang": "ru"})
+    assert labeled_ru.status_code == HTTPStatus.OK
+    items = labeled_ru.json()
+    assert any(
+        i["id"] == spell_id and i["school"]["label"] for i in items
+    )
+
+    # Labeled detail EN
+    labeled_en = client.get(f"/spells/{spell_id}/labeled", params={"lang": "en"})
+    assert labeled_en.status_code == HTTPStatus.OK
+    body_en = labeled_en.json()
+    assert isinstance(body_en["school"], dict) and {"code", "label"} <= set(body_en["school"].keys())
+
 

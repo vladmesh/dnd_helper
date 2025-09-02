@@ -10,6 +10,7 @@ from shared_models import Spell
 from shared_models.enums import Language
 from shared_models.spell_translation import SpellTranslation
 from pydantic import BaseModel
+from dnd_helper_api.utils.enum_labels import resolve_enum_labels
 
 router = APIRouter(prefix="/spells", tags=["spells"])
 logger = logging.getLogger(__name__)
@@ -194,6 +195,20 @@ def search_spells(
     return spells
 
 
+def _with_labels(spell: Spell, labels: Dict[tuple[str, str], str]) -> Dict[str, Any]:
+    body = spell.model_dump()
+    # single code -> {code,label}
+    code = body.get("school")
+    if code:
+        body["school"] = {"code": code, "label": labels.get(("spell_school", str(code)), str(code))}
+    # array of codes -> array of {code,label}
+    classes = body.get("classes") or []
+    body["classes"] = [
+        {"code": c, "label": labels.get(("caster_class", str(c)), str(c))} for c in classes
+    ]
+    return body
+
+
 @router.post("", response_model=Spell, status_code=status.HTTP_201_CREATED)
 async def create_spell(
     spell: Spell,
@@ -277,6 +292,23 @@ def list_spells(
     return spells
 
 
+@router.get("/labeled", response_model=List[Dict[str, Any]])
+def list_spells_labeled(
+    lang: Optional[str] = None,
+    session: Session = Depends(get_session),  # noqa: B008
+) -> List[Dict[str, Any]]:
+    spells = session.exec(select(Spell)).all()
+    for s in spells:
+        _apply_spell_translation(session, s, lang)
+    requested_lang = _select_language(lang)
+    codes = {
+        "spell_school": {str(s.school) for s in spells if s.school},
+        "caster_class": {c for s in spells for c in (s.classes or [])},
+    }
+    labels = resolve_enum_labels(session, requested_lang, codes)
+    return [_with_labels(s, labels) for s in spells]
+
+
 @router.get("/{spell_id}", response_model=Spell)
 def get_spell(
     spell_id: int,
@@ -290,6 +322,26 @@ def get_spell(
     _apply_spell_translation(session, spell, lang)
     logger.info("Spell fetched", extra={"spell_id": spell_id})
     return spell
+
+
+@router.get("/{spell_id}/labeled", response_model=Dict[str, Any])
+def get_spell_labeled(
+    spell_id: int,
+    lang: Optional[str] = None,
+    session: Session = Depends(get_session),  # noqa: B008
+) -> Dict[str, Any]:
+    spell = session.get(Spell, spell_id)
+    if spell is None:
+        logger.warning("Spell not found", extra={"spell_id": spell_id})
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Spell not found")
+    _apply_spell_translation(session, spell, lang)
+    requested_lang = _select_language(lang)
+    codes = {
+        "spell_school": {str(spell.school)} if spell.school else set(),
+        "caster_class": set(spell.classes or []),
+    }
+    labels = resolve_enum_labels(session, requested_lang, codes)
+    return _with_labels(spell, labels)
 
 
 @router.put("/{spell_id}", response_model=Spell)
