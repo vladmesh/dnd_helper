@@ -18,6 +18,20 @@ class JsonFormatter(logging.Formatter):
         corr = getattr(record, "correlation_id", None)
         if corr:
             base["correlation_id"] = corr
+        # Include common extra fields if present
+        for key in (
+            "method",
+            "path",
+            "status_code",
+            "client",
+            "duration_ms",
+            "exception_type",
+            "exception_message",
+            "traceback",
+        ):
+            value = getattr(record, key, None)
+            if value is not None:
+                base[key] = value
         return json.dumps(base, ensure_ascii=False)
 
 
