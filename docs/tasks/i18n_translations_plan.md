@@ -51,10 +51,11 @@ Non-goals
 - Decide storage for enum columns:
   - Option E1 (minimal change): keep DB enums; still translate labels via `enum_translations` by matching textual value.
   - Option E2 (simpler long-term): migrate DB enum columns to `VARCHAR` with validated codes (no DB ENUM types). This simplifies future additions and joins.
+  - Decision: choose E2. Store codes as strings in DB; validate via Python enums and app-level checks.
 - Deliverables:
   - SQLModel for `EnumTranslation` (table=True) [DONE]
   - Alembic migration for the table and indexes [DONE]
-  - If picking E2: migrations converting enum-typed columns to text for: `Spell.school`, `Spell.classes[]`, `Monster.cr`, and anywhere else enums are used; drop obsolete DB enum types
+  - E2: migrate enum-typed columns to text for: `Spell.school`, `Spell.classes[]`, `monster_translations.lang`, `spell_translations.lang` (and any remaining), keep Python enums for validation; drop obsolete DB enum types in cleanup iteration
 
 ### Iteration 5 — API response: code + label for enums
 - For all enum-coded fields in responses return both the canonical code and the localized label, e.g.:

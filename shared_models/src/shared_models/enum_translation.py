@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlalchemy import Enum as SAEnum, UniqueConstraint
+from sqlalchemy import UniqueConstraint, String
 from sqlalchemy.dialects.postgresql import JSONB, TEXT
 from sqlmodel import Field
 
@@ -28,7 +28,7 @@ class EnumTranslation(BaseModel, table=True):
     enum_value: str = Field(index=True)
 
     # Target language
-    lang: Language = Field(sa_type=SAEnum(Language, name="language"), index=True)
+    lang: Language = Field(sa_type=String(), index=True)
 
     # Localized content
     label: str = Field(index=True)

@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlalchemy import Enum as SAEnum, UniqueConstraint
+from sqlalchemy import UniqueConstraint, String
 from sqlalchemy.dialects.postgresql import TEXT
 from sqlmodel import Field
 
@@ -18,7 +18,7 @@ class SpellTranslation(BaseModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     spell_id: int = Field(foreign_key="spell.id", index=True)
-    lang: Language = Field(sa_type=SAEnum(Language, name="language"), index=True)
+    lang: Language = Field(sa_type=String(), index=True)
 
     name: str = Field(index=True)
     description: str = Field(sa_type=TEXT)
