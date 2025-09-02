@@ -97,20 +97,25 @@ def _filter_spells(items: List[Dict[str, Any]], filters: Dict[str, Any]) -> List
     return result
 
 
-def _build_filters_keyboard(pending: Dict[str, Any]) -> List[List[InlineKeyboardButton]]:
-    rit = "✅ Ritual" if pending.get("ritual") else "Ritual"
-    conc = "✅ Concentration" if pending.get("is_concentration") else "Concentration"
-    bonus = "✅ Bonus" if pending.get("cast", {}).get("bonus") else "Bonus"
-    react = "✅ Reaction" if pending.get("cast", {}).get("reaction") else "Reaction"
+def _build_filters_keyboard(pending: Dict[str, Any], lang: str) -> List[List[InlineKeyboardButton]]:
+    def t(en: str, ru: str) -> str:
+        return en if lang == "en" else ru
+
+    rit = ("✅ " if pending.get("ritual") else "") + t("Ritual", "Ритуал")
+    conc = ("✅ " if pending.get("is_concentration") else "") + t("Concentration", "Концентрация")
+    bonus = ("✅ " if pending.get("cast", {}).get("bonus") else "") + t("Bonus", "Бонус")
+    react = ("✅ " if pending.get("cast", {}).get("reaction") else "") + t("Reaction", "Реакция")
     lv = pending.get("level_range")
-    lv13 = ("✅ Lv 1-3" if lv == "13" else "Lv 1-3")
-    lv45 = ("✅ Lv 4-5" if lv == "45" else "Lv 4-5")
-    lv69 = ("✅ Lv 6-9" if lv == "69" else "Lv 6-9")
+    lv13 = ("✅ " if lv == "13" else "") + t("Lv 1-3", "Ур 1-3")
+    lv45 = ("✅ " if lv == "45" else "") + t("Lv 4-5", "Ур 4-5")
+    lv69 = ("✅ " if lv == "69" else "") + t("Lv 6-9", "Ур 6-9")
+    apply = t("Apply", "Применить")
+    reset = t("Reset", "Сброс")
     return [
         [InlineKeyboardButton(rit, callback_data="sflt:rit"), InlineKeyboardButton(conc, callback_data="sflt:conc")],
         [InlineKeyboardButton(bonus, callback_data="sflt:ct:ba"), InlineKeyboardButton(react, callback_data="sflt:ct:re")],
         [InlineKeyboardButton(lv13, callback_data="sflt:lv:13"), InlineKeyboardButton(lv45, callback_data="sflt:lv:45"), InlineKeyboardButton(lv69, callback_data="sflt:lv:69")],
-        [InlineKeyboardButton("Apply", callback_data="sflt:apply"), InlineKeyboardButton("Reset", callback_data="sflt:reset")],
+        [InlineKeyboardButton(apply, callback_data="sflt:apply"), InlineKeyboardButton(reset, callback_data="sflt:reset")],
     ]
 
 
@@ -126,28 +131,29 @@ async def _render_spells_list(query, context: ContextTypes.DEFAULT_TYPE, page: i
     context.user_data["spells_current_page"] = page
     pending, applied = _get_filter_state(context)
     lang = _detect_lang(query)
-    all_spells: List[Dict[str, Any]] = await api_get("/spells", params={"lang": lang})
+    all_spells: List[Dict[str, Any]] = await api_get("/spells/labeled", params={"lang": lang})
     filtered = _filter_spells(all_spells, applied)
     total = len(filtered)
     if total == 0:
-        rows: List[List[InlineKeyboardButton]] = _build_filters_keyboard(pending)
+        rows: List[List[InlineKeyboardButton]] = _build_filters_keyboard(pending, lang)
         markup = InlineKeyboardMarkup(rows)
-        await query.edit_message_text("Заклинаний нет.", reply_markup=markup)
+        await query.edit_message_text(("No spells." if lang == "en" else "Заклинаний нет."), reply_markup=markup)
         return
     page_items = paginate(filtered, page)
-    rows: List[List[InlineKeyboardButton]] = _build_filters_keyboard(pending)
+    rows: List[List[InlineKeyboardButton]] = _build_filters_keyboard(pending, lang)
     for s in page_items:
-        label = f"Подробнее: {s.get('name','')} (#{s.get('id')})"
+        more = ("More:" if lang == "en" else "Подробнее:")
+        label = f"{more} {s.get('name','')} (#{s.get('id')})"
         rows.append([InlineKeyboardButton(label, callback_data=f"spell:detail:{s['id']}")])
     nav: List[InlineKeyboardButton] = []
     if (page - 1) * 5 > 0:
-        nav.append(InlineKeyboardButton("⬅️ Назад", callback_data=f"spell:list:page:{page-1}"))
+        nav.append(InlineKeyboardButton(("⬅️ Back" if lang == "en" else "⬅️ Назад"), callback_data=f"spell:list:page:{page-1}"))
     if page * 5 < total:
-        nav.append(InlineKeyboardButton("➡️ Далее", callback_data=f"spell:list:page:{page+1}"))
+        nav.append(InlineKeyboardButton(("➡️ Next" if lang == "en" else "➡️ Далее"), callback_data=f"spell:list:page:{page+1}"))
     if nav:
         rows.append(nav)
     markup = InlineKeyboardMarkup(rows)
-    await query.edit_message_text(f"Список заклинаний (стр. {page})", reply_markup=markup)
+    await query.edit_message_text((f"Spells list (p. {page})" if lang == "en" else f"Список заклинаний (стр. {page})"), reply_markup=markup)
 
 
 async def spells_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -164,16 +170,22 @@ async def spell_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     spell_id = int(query.data.split(":")[-1])
     logger.info("Spell detail requested", extra={"correlation_id": query.message.chat_id if query and query.message else None, "spell_id": spell_id})
     lang = _detect_lang(query)
-    s = await api_get_one(f"/spells/{spell_id}", params={"lang": lang})
-    classes = s.get("classes") or []
-    classes_str = ", ".join(classes) if isinstance(classes, list) else str(classes or "-")
+    s = await api_get_one(f"/spells/{spell_id}/labeled", params={"lang": lang})
+    classes_raw = s.get("classes") or []
+    if classes_raw and isinstance(classes_raw[0], dict):
+        classes_str = ", ".join([c.get("label") or c.get("code") for c in classes_raw])
+    else:
+        classes_str = ", ".join(classes_raw) if isinstance(classes_raw, list) else str(classes_raw or "-")
+    school_raw = s.get("school")
+    school_str = school_raw.get("label") if isinstance(school_raw, dict) else (school_raw or "-")
     text = (
         f"{s.get('name','-')}\n"
         f"{s.get('description','')}\n"
-        f"Classes: {classes_str}\n"
-        f"School: {s.get('school','-')}"
+        f"{('Classes' if lang == 'en' else 'Классы')}: {classes_str}\n"
+        f"{('School' if lang == 'en' else 'Школа')}: {school_str}"
     )
-    markup = InlineKeyboardMarkup([[InlineKeyboardButton("К списку", callback_data="spell:list:page:1")]])
+    back = ("Back to list" if lang == "en" else "К списку")
+    markup = InlineKeyboardMarkup([[InlineKeyboardButton(back, callback_data="spell:list:page:1")]])
     await query.edit_message_text(text, reply_markup=markup)
 
 
@@ -182,18 +194,24 @@ async def spell_random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await query.answer()
     logger.info("Spell random requested", extra={"correlation_id": query.message.chat_id if query and query.message else None})
     lang = _detect_lang(query)
-    all_spells = await api_get("/spells", params={"lang": lang})
+    all_spells = await api_get("/spells/labeled", params={"lang": lang})
     if not all_spells:
         logger.warning("No spells available for random", extra={"correlation_id": query.message.chat_id if query and query.message else None})
         await query.edit_message_text("Заклинаний нет.")
         return
     s = random.choice(all_spells)
-    classes = s.get("classes") or []
-    classes_str = ", ".join(classes) if isinstance(classes, list) else str(classes or "-")
+    classes_raw = s.get("classes") or []
+    if classes_raw and isinstance(classes_raw[0], dict):
+        classes_str = ", ".join([c.get("label") or c.get("code") for c in classes_raw])
+    else:
+        classes_str = ", ".join(classes_raw) if isinstance(classes_raw, list) else str(classes_raw or "-")
+    school_raw = s.get("school")
+    school_str = school_raw.get("label") if isinstance(school_raw, dict) else (school_raw or "-")
     text = (
-        f"{s.get('description','')}" + " (random)\n"
-        f"Classes: {classes_str}\n"
-        f"School: {s.get('school','-')}"
+        f"{s.get('description','')}"
+        + (" (random)\n" if lang == "en" else " (случайно)\n")
+        + f"{('Classes' if lang == 'en' else 'Классы')}: {classes_str}\n"
+        + f"{('School' if lang == 'en' else 'Школа')}: {school_str}"
     )
     await query.edit_message_text(text)
 

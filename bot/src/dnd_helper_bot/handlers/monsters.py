@@ -81,22 +81,27 @@ def _filter_monsters(items: List[Dict[str, Any]], filters: Dict[str, Any]) -> Li
     return result
 
 
-def _build_filters_keyboard(pending: Dict[str, Any]) -> List[List[InlineKeyboardButton]]:
-    leg = "✅ Legendary" if pending.get("legendary") else "Legendary"
-    fly = "✅ Flying" if pending.get("flying") else "Flying"
+def _build_filters_keyboard(pending: Dict[str, Any], lang: str) -> List[List[InlineKeyboardButton]]:
+    def t(en: str, ru: str) -> str:
+        return en if lang == "en" else ru
+
+    leg = ("✅ " if pending.get("legendary") else "") + t("Legendary", "Легендарный")
+    fly = ("✅ " if pending.get("flying") else "") + t("Flying", "Летающий")
     cr = pending.get("cr_range")
-    cr03 = ("✅ CR 0-3" if cr == "03" else "CR 0-3")
-    cr48 = ("✅ CR 4-8" if cr == "48" else "CR 4-8")
-    cr9p = ("✅ CR 9+" if cr == "9p" else "CR 9+")
+    cr03 = ("✅ " if cr == "03" else "") + t("CR 0-3", "ОВ 0-3")
+    cr48 = ("✅ " if cr == "48" else "") + t("CR 4-8", "ОВ 4-8")
+    cr9p = ("✅ " if cr == "9p" else "") + t("CR 9+", "ОВ 9+")
     sz = pending.get("size")
-    szS = ("✅ Size S" if sz == "S" else "Size S")
-    szM = ("✅ Size M" if sz == "M" else "Size M")
-    szL = ("✅ Size L" if sz == "L" else "Size L")
+    szS = ("✅ " if sz == "S" else "") + t("Size S", "Размер S")
+    szM = ("✅ " if sz == "M" else "") + t("Size M", "Размер M")
+    szL = ("✅ " if sz == "L" else "") + t("Size L", "Размер L")
+    apply = t("Apply", "Применить")
+    reset = t("Reset", "Сброс")
     return [
         [InlineKeyboardButton(leg, callback_data="mflt:leg"), InlineKeyboardButton(fly, callback_data="mflt:fly")],
         [InlineKeyboardButton(cr03, callback_data="mflt:cr:03"), InlineKeyboardButton(cr48, callback_data="mflt:cr:48"), InlineKeyboardButton(cr9p, callback_data="mflt:cr:9p")],
         [InlineKeyboardButton(szS, callback_data="mflt:sz:S"), InlineKeyboardButton(szM, callback_data="mflt:sz:M"), InlineKeyboardButton(szL, callback_data="mflt:sz:L")],
-        [InlineKeyboardButton("Apply", callback_data="mflt:apply"), InlineKeyboardButton("Reset", callback_data="mflt:reset")],
+        [InlineKeyboardButton(apply, callback_data="mflt:apply"), InlineKeyboardButton(reset, callback_data="mflt:reset")],
     ]
 
 
@@ -112,28 +117,28 @@ async def _render_monsters_list(query, context: ContextTypes.DEFAULT_TYPE, page:
     context.user_data["monsters_current_page"] = page
     pending, applied = _get_filter_state(context)
     lang = _detect_lang(query)
-    all_monsters: List[Dict[str, Any]] = await api_get("/monsters", params={"lang": lang})
+    all_monsters: List[Dict[str, Any]] = await api_get("/monsters/labeled", params={"lang": lang})
     filtered = _filter_monsters(all_monsters, applied)
     total = len(filtered)
     if total == 0:
-        rows: List[List[InlineKeyboardButton]] = _build_filters_keyboard(pending)
+        rows: List[List[InlineKeyboardButton]] = _build_filters_keyboard(pending, lang)
         markup = InlineKeyboardMarkup(rows)
-        await query.edit_message_text("Монстров нет.", reply_markup=markup)
+        await query.edit_message_text(("No monsters." if lang == "en" else "Монстров нет."), reply_markup=markup)
         return
     page_items = paginate(filtered, page)
-    rows: List[List[InlineKeyboardButton]] = _build_filters_keyboard(pending)
+    rows: List[List[InlineKeyboardButton]] = _build_filters_keyboard(pending, lang)
     for m in page_items:
         label = f"{m.get('name','')} (#{m.get('id')})"
         rows.append([InlineKeyboardButton(label, callback_data=f"monster:detail:{m['id']}")])
     nav: List[InlineKeyboardButton] = []
     if (page - 1) * 5 > 0:
-        nav.append(InlineKeyboardButton("⬅️ Назад", callback_data=f"monster:list:page:{page-1}"))
+        nav.append(InlineKeyboardButton(("⬅️ Back" if lang == "en" else "⬅️ Назад"), callback_data=f"monster:list:page:{page-1}"))
     if page * 5 < total:
-        nav.append(InlineKeyboardButton("➡️ Далее", callback_data=f"monster:list:page:{page+1}"))
+        nav.append(InlineKeyboardButton(("➡️ Next" if lang == "en" else "➡️ Далее"), callback_data=f"monster:list:page:{page+1}"))
     if nav:
         rows.append(nav)
     markup = InlineKeyboardMarkup(rows)
-    await query.edit_message_text(f"Список монстров (стр. {page})", reply_markup=markup)
+    await query.edit_message_text((f"Monsters list (p. {page})" if lang == "en" else f"Список монстров (стр. {page})"), reply_markup=markup)
 
 
 async def monsters_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -150,15 +155,17 @@ async def monster_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     monster_id = int(query.data.split(":")[-1])
     logger.info("Monster detail requested", extra={"correlation_id": query.message.chat_id if query and query.message else None, "monster_id": monster_id})
     lang = _detect_lang(query)
-    m = await api_get_one(f"/monsters/{monster_id}", params={"lang": lang})
-    danger_text = m.get('cr') or m.get('cr_enum') or m.get('dangerous_lvl', '-')
+    m = await api_get_one(f"/monsters/{monster_id}/labeled", params={"lang": lang})
+    cr_raw = m.get('cr')
+    danger_text = (cr_raw.get('label') if isinstance(cr_raw, dict) else cr_raw) or '-'
     text = (
         f"{m.get('name','-')}\n"
         f"{m.get('description','')}\n"
         f"CR: {danger_text}\n"
         f"HP: {m.get('hp','-')}, AC: {m.get('ac','-')}, Speed: {m.get('speed','-')}"
     )
-    markup = InlineKeyboardMarkup([[InlineKeyboardButton("К списку", callback_data="monster:list:page:1")]])
+    back = ("Back to list" if lang == "en" else "К списку")
+    markup = InlineKeyboardMarkup([[InlineKeyboardButton(back, callback_data="monster:list:page:1")]])
     await query.edit_message_text(text, reply_markup=markup)
 
 
@@ -167,13 +174,14 @@ async def monster_random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await query.answer()
     logger.info("Monster random requested", extra={"correlation_id": query.message.chat_id if query and query.message else None})
     lang = _detect_lang(query)
-    all_monsters = await api_get("/monsters", params={"lang": lang})
+    all_monsters = await api_get("/monsters/labeled", params={"lang": lang})
     if not all_monsters:
         logger.warning("No monsters available for random", extra={"correlation_id": query.message.chat_id if query and query.message else None})
         await query.edit_message_text("Монстров нет.")
         return
     m = random.choice(all_monsters)
-    danger_text = m.get('cr') or m.get('cr_enum') or m.get('dangerous_lvl', '-')
+    cr_raw = m.get('cr')
+    danger_text = (cr_raw.get('label') if isinstance(cr_raw, dict) else cr_raw) or '-'
     text = (
         f"{m.get('description','')}" + " (random)\n"
         f"CR: {danger_text}\n"
