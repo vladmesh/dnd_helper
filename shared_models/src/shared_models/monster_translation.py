@@ -1,7 +1,7 @@
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import UniqueConstraint, String
-from sqlalchemy.dialects.postgresql import TEXT
+from sqlalchemy.dialects.postgresql import TEXT, JSONB
 from sqlmodel import Field
 
 from .base import BaseModel
@@ -22,6 +22,13 @@ class MonsterTranslation(BaseModel, table=True):
 
     name: str = Field(index=True)
     description: str = Field(sa_type=TEXT)
+
+    # Localized text blocks
+    traits: Optional[List[Dict[str, str]]] = Field(default=None, sa_type=JSONB)
+    actions: Optional[List[Dict[str, str]]] = Field(default=None, sa_type=JSONB)
+    reactions: Optional[List[Dict[str, str]]] = Field(default=None, sa_type=JSONB)
+    legendary_actions: Optional[List[Dict[str, str]]] = Field(default=None, sa_type=JSONB)
+    spellcasting: Optional[Dict[str, Any]] = Field(default=None, sa_type=JSONB)
 
     # Optional relationship backref, defined here to avoid import cycles
     # The Monster model may define `translations` Relationship as well

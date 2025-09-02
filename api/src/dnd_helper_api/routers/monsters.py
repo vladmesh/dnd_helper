@@ -59,6 +59,17 @@ def _apply_monster_translation(
     if tr is not None:
         monster.name = tr.name
         monster.description = tr.description
+        # Localized blocks override base when present
+        if tr.traits is not None:
+            monster.traits = tr.traits
+        if tr.actions is not None:
+            monster.actions = tr.actions
+        if tr.reactions is not None:
+            monster.reactions = tr.reactions
+        if tr.legendary_actions is not None:
+            monster.legendary_actions = tr.legendary_actions
+        if tr.spellcasting is not None:
+            monster.spellcasting = tr.spellcasting
 
 
 def _compute_monster_derived_fields(monster: Monster) -> None:
@@ -193,7 +204,7 @@ async def create_monster(
     if isinstance(translations, dict):
         for lang_code in ("ru", "en"):
             data = translations.get(lang_code)
-            if isinstance(data, dict) and data.get("name") and data.get("description"):
+            if isinstance(data, dict) and (data.get("name") and data.get("description") or any(k in data for k in ("traits","actions","reactions","legendary_actions","spellcasting"))):
                 l = _select_language(lang_code)
                 existing = session.exec(
                     select(MonsterTranslation).where(
@@ -206,13 +217,25 @@ async def create_monster(
                         MonsterTranslation(
                             monster_id=monster.id,
                             lang=l,
-                            name=data["name"],
-                            description=data["description"],
+                            name=data.get("name") or monster.name,
+                            description=data.get("description") or monster.description,
+                            traits=data.get("traits"),
+                            actions=data.get("actions"),
+                            reactions=data.get("reactions"),
+                            legendary_actions=data.get("legendary_actions"),
+                            spellcasting=data.get("spellcasting"),
                         )
                     )
                 else:
-                    existing.name = data["name"]
-                    existing.description = data["description"]
+                    if data.get("name"):
+                        existing.name = data["name"]
+                    if data.get("description"):
+                        existing.description = data["description"]
+                    existing.traits = data.get("traits")
+                    existing.actions = data.get("actions")
+                    existing.reactions = data.get("reactions")
+                    existing.legendary_actions = data.get("legendary_actions")
+                    existing.spellcasting = data.get("spellcasting")
                     session.add(existing)
         session.commit()
     else:
@@ -230,11 +253,21 @@ async def create_monster(
                     lang=l,
                     name=monster.name,
                     description=monster.description,
+                    traits=monster.traits,
+                    actions=monster.actions,
+                    reactions=monster.reactions,
+                    legendary_actions=monster.legendary_actions,
+                    spellcasting=monster.spellcasting,
                 )
             )
         else:
             existing.name = monster.name
             existing.description = monster.description
+            existing.traits = monster.traits
+            existing.actions = monster.actions
+            existing.reactions = monster.reactions
+            existing.legendary_actions = monster.legendary_actions
+            existing.spellcasting = monster.spellcasting
             session.add(existing)
         session.commit()
 
