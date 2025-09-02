@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import Enum, String
+from sqlalchemy import Enum, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlmodel import Field
 
@@ -16,7 +16,7 @@ class Spell(BaseModel, table=True):
     description: str
     # Deprecated: single caster_class removed in favor of multi-class `classes`
     # caster_class: CasterClass = Field(index=True)
-    school: SpellSchool = Field(sa_type=String(), index=True)
+    school: SpellSchool = Field(sa_type=Text(), index=True)
 
     # Iteration 1: additive fields to align with docs/fields.md (all optional)
     level: Optional[int] = Field(default=None, index=True)
@@ -29,7 +29,7 @@ class Spell(BaseModel, table=True):
     components: Optional[Dict[str, Any]] = Field(default=None, sa_type=JSONB)
     classes: Optional[List[CasterClass]] = Field(
         default=None,
-        sa_type=ARRAY(String()),
+        sa_type=ARRAY(Text()),
     )
     damage: Optional[Dict[str, Any]] = Field(default=None, sa_type=JSONB)
     saving_throw: Optional[Dict[str, Any]] = Field(default=None, sa_type=JSONB)
