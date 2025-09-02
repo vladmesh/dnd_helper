@@ -2,7 +2,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from dnd_helper_api.db import get_session
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from sqlalchemy import delete
 from sqlmodel import Session, select
 
@@ -70,6 +70,51 @@ def _apply_monster_translation(
             monster.legendary_actions = tr.legendary_actions
         if tr.spellcasting is not None:
             monster.spellcasting = tr.spellcasting
+
+
+def _apply_monster_translations_bulk(
+    session: Session,
+    monsters: List[Monster],
+    lang: Optional[str],
+) -> None:
+    """Apply localized fields to a list of monsters in batch to avoid N+1."""
+    if not monsters:
+        return
+    primary = _select_language(lang)
+    fallback = _fallback_language(primary)
+    monster_ids = [m.id for m in monsters if m.id is not None]
+    if not monster_ids:
+        return
+    rows = session.exec(
+        select(MonsterTranslation).where(
+            MonsterTranslation.monster_id.in_(monster_ids),
+            MonsterTranslation.lang.in_([primary, fallback]),
+        )
+    ).all()
+    # Map: monster_id -> {lang: translation}
+    by_monster: Dict[int, Dict[Language, MonsterTranslation]] = {}
+    for r in rows:
+        by_monster.setdefault(r.monster_id, {})[r.lang] = r
+
+    for m in monsters:
+        if m.id is None:
+            continue
+        lang_map = by_monster.get(m.id) or {}
+        tr = lang_map.get(primary) or lang_map.get(fallback)
+        if tr is None:
+            continue
+        m.name = tr.name
+        m.description = tr.description
+        if tr.traits is not None:
+            m.traits = tr.traits
+        if tr.actions is not None:
+            m.actions = tr.actions
+        if tr.reactions is not None:
+            m.reactions = tr.reactions
+        if tr.legendary_actions is not None:
+            m.legendary_actions = tr.legendary_actions
+        if tr.spellcasting is not None:
+            m.spellcasting = tr.spellcasting
 
 
 def _compute_monster_derived_fields(monster: Monster) -> None:
@@ -279,10 +324,13 @@ async def create_monster(
 def list_monsters(
     lang: Optional[str] = None,
     session: Session = Depends(get_session),  # noqa: B008
+    response: Response = None,
 ) -> List[Monster]:
     monsters = session.exec(select(Monster)).all()
-    for m in monsters:
-        _apply_monster_translation(session, m, lang)
+    _apply_monster_translations_bulk(session, monsters, lang)
+    requested_lang = _select_language(lang)
+    if response is not None:
+        response.headers["Content-Language"] = requested_lang.value
     logger.info("Monsters listed", extra={"count": len(monsters)})
     return monsters
 
@@ -309,11 +357,13 @@ def _with_labels(monster: Monster, labels: Dict[tuple[str, str], str]) -> Dict[s
 def list_monsters_labeled(
     lang: Optional[str] = None,
     session: Session = Depends(get_session),  # noqa: B008
+    response: Response = None,
 ) -> List[Dict[str, Any]]:
     monsters = session.exec(select(Monster)).all()
-    for m in monsters:
-        _apply_monster_translation(session, m, lang)
+    _apply_monster_translations_bulk(session, monsters, lang)
     requested_lang = _select_language(lang)
+    if response is not None:
+        response.headers["Content-Language"] = requested_lang.value
     codes = {
         "monster_type": {str(m.type).lower() for m in monsters if m.type},
         "monster_size": {str(m.size).lower() for m in monsters if m.size},
@@ -328,12 +378,16 @@ def get_monster(
     monster_id: int,
     lang: Optional[str] = None,
     session: Session = Depends(get_session),  # noqa: B008
+    response: Response = None,
 ) -> Monster:
     monster = session.get(Monster, monster_id)
     if monster is None:
         logger.warning("Monster not found", extra={"monster_id": monster_id})
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Monster not found")
     _apply_monster_translation(session, monster, lang)
+    requested_lang = _select_language(lang)
+    if response is not None:
+        response.headers["Content-Language"] = requested_lang.value
     logger.info("Monster fetched", extra={"monster_id": monster_id})
     return monster
 
@@ -342,6 +396,7 @@ def get_monster_labeled(
     monster_id: int,
     lang: Optional[str] = None,
     session: Session = Depends(get_session),  # noqa: B008
+    response: Response = None,
 ) -> Dict[str, Any]:
     monster = session.get(Monster, monster_id)
     if monster is None:
@@ -349,6 +404,8 @@ def get_monster_labeled(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Monster not found")
     _apply_monster_translation(session, monster, lang)
     requested_lang = _select_language(lang)
+    if response is not None:
+        response.headers["Content-Language"] = requested_lang.value
     codes = {
         "monster_type": {str(monster.type).lower()} if monster.type else set(),
         "monster_size": {str(monster.size).lower()} if monster.size else set(),

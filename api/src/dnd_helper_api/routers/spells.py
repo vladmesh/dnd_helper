@@ -2,7 +2,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from dnd_helper_api.db import get_session
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request, Response
 from sqlalchemy import delete
 from sqlmodel import Session, select
 
@@ -55,6 +55,38 @@ def _apply_spell_translation(
     if tr is not None:
         spell.name = tr.name
         spell.description = tr.description
+
+
+def _apply_spell_translations_bulk(
+    session: Session,
+    spells: List[Spell],
+    lang: Optional[str],
+) -> None:
+    if not spells:
+        return
+    primary = _select_language(lang)
+    fallback = _fallback_language(primary)
+    spell_ids = [s.id for s in spells if s.id is not None]
+    if not spell_ids:
+        return
+    rows = session.exec(
+        select(SpellTranslation).where(
+            SpellTranslation.spell_id.in_(spell_ids),
+            SpellTranslation.lang.in_([primary, fallback]),
+        )
+    ).all()
+    by_spell: Dict[int, Dict[Language, SpellTranslation]] = {}
+    for r in rows:
+        by_spell.setdefault(r.spell_id, {})[r.lang] = r
+    for s in spells:
+        if s.id is None:
+            continue
+        lang_map = by_spell.get(s.id) or {}
+        tr = lang_map.get(primary) or lang_map.get(fallback)
+        if tr is None:
+            continue
+        s.name = tr.name
+        s.description = tr.description
 
 
 def _compute_spell_derived_fields(spell: Spell) -> None:
@@ -284,10 +316,13 @@ async def create_spell(
 def list_spells(
     lang: Optional[str] = None,
     session: Session = Depends(get_session),  # noqa: B008
+    response: Response = None,
 ) -> List[Spell]:
     spells = session.exec(select(Spell)).all()
-    for s in spells:
-        _apply_spell_translation(session, s, lang)
+    _apply_spell_translations_bulk(session, spells, lang)
+    requested_lang = _select_language(lang)
+    if response is not None:
+        response.headers["Content-Language"] = requested_lang.value
     logger.info("Spells listed", extra={"count": len(spells)})
     return spells
 
@@ -296,11 +331,13 @@ def list_spells(
 def list_spells_labeled(
     lang: Optional[str] = None,
     session: Session = Depends(get_session),  # noqa: B008
+    response: Response = None,
 ) -> List[Dict[str, Any]]:
     spells = session.exec(select(Spell)).all()
-    for s in spells:
-        _apply_spell_translation(session, s, lang)
+    _apply_spell_translations_bulk(session, spells, lang)
     requested_lang = _select_language(lang)
+    if response is not None:
+        response.headers["Content-Language"] = requested_lang.value
     codes = {
         "spell_school": {str(s.school) for s in spells if s.school},
         "caster_class": {c for s in spells for c in (s.classes or [])},
@@ -314,12 +351,16 @@ def get_spell(
     spell_id: int,
     lang: Optional[str] = None,
     session: Session = Depends(get_session),  # noqa: B008
+    response: Response = None,
 ) -> Spell:
     spell = session.get(Spell, spell_id)
     if spell is None:
         logger.warning("Spell not found", extra={"spell_id": spell_id})
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Spell not found")
     _apply_spell_translation(session, spell, lang)
+    requested_lang = _select_language(lang)
+    if response is not None:
+        response.headers["Content-Language"] = requested_lang.value
     logger.info("Spell fetched", extra={"spell_id": spell_id})
     return spell
 
@@ -329,6 +370,7 @@ def get_spell_labeled(
     spell_id: int,
     lang: Optional[str] = None,
     session: Session = Depends(get_session),  # noqa: B008
+    response: Response = None,
 ) -> Dict[str, Any]:
     spell = session.get(Spell, spell_id)
     if spell is None:
@@ -336,6 +378,8 @@ def get_spell_labeled(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Spell not found")
     _apply_spell_translation(session, spell, lang)
     requested_lang = _select_language(lang)
+    if response is not None:
+        response.headers["Content-Language"] = requested_lang.value
     codes = {
         "spell_school": {str(spell.school)} if spell.school else set(),
         "caster_class": set(spell.classes or []),
