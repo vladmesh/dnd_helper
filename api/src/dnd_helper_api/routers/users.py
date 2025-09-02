@@ -1,11 +1,12 @@
 import logging
-from typing import List
+from typing import List, Optional
 
 from dnd_helper_api.db import get_session
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from shared_models import User
+from shared_models.enums import Language
 
 router = APIRouter(prefix="/users", tags=["users"])
 logger = logging.getLogger(__name__)
@@ -23,8 +24,14 @@ def create_user(user: User, session: Session = Depends(get_session)) -> User:  #
 
 
 @router.get("", response_model=List[User])
-def list_users(session: Session = Depends(get_session)) -> List[User]:  # noqa: B008
-    users = session.exec(select(User)).all()
+def list_users(  # noqa: B008
+    session: Session = Depends(get_session),
+    telegram_id: Optional[int] = None,
+) -> List[User]:
+    stmt = select(User)
+    if telegram_id is not None:
+        stmt = stmt.where(col(User.telegram_id) == telegram_id)
+    users = session.exec(stmt).all()
     logger.info("Users listed", extra={"count": len(users)})
     return users
 
@@ -36,6 +43,16 @@ def get_user(user_id: int, session: Session = Depends(get_session)) -> User:  # 
         logger.warning("User not found", extra={"user_id": user_id})
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     logger.info("User fetched", extra={"user_id": user_id})
+    return user
+
+
+@router.get("/by-telegram/{telegram_id}", response_model=User)
+def get_user_by_telegram(telegram_id: int, session: Session = Depends(get_session)) -> User:  # noqa: B008
+    user = session.exec(select(User).where(col(User.telegram_id) == telegram_id)).first()
+    if user is None:
+        logger.warning("User not found by telegram", extra={"telegram_id": telegram_id})
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    logger.info("User fetched by telegram", extra={"user_id": user.id, "telegram_id": telegram_id})
     return user
 
 
@@ -51,6 +68,24 @@ def update_user(user_id: int, payload: User, session: Session = Depends(get_sess
     session.commit()
     session.refresh(user)
     logger.info("User updated", extra={"user_id": user.id})
+    return user
+
+
+@router.patch("/{user_id}", response_model=User)
+def patch_user(user_id: int, lang: Language, session: Session = Depends(get_session)) -> User:  # noqa: B008
+    """Minimal partial update: currently supports updating language only.
+    
+    Expects body like: {"lang": "ru" | "en"}
+    """
+    user = session.get(User, user_id)
+    if user is None:
+        logger.warning("User not found for patch", extra={"user_id": user_id})
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    user.lang = lang
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    logger.info("User language updated", extra={"user_id": user.id, "lang": user.lang})
     return user
 
 
