@@ -28,3 +28,23 @@ async def api_get_one(path: str, params: Optional[Dict[str, Any]] = None) -> Dic
         return resp.json()
 
 
+async def api_post(path: str, json: Dict[str, Any]) -> Dict[str, Any]:
+    url = f"{API_BASE_URL}{path}"
+    logger.info("API POST", extra={"url": url})
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.post(url, json=json)
+        logger.info("API POST response", extra={"url": url, "status_code": resp.status_code})
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def api_patch(path: str, json: Dict[str, Any]) -> Dict[str, Any]:
+    url = f"{API_BASE_URL}{path}"
+    logger.info("API PATCH", extra={"url": url})
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.patch(url, json=json)
+        logger.info("API PATCH response", extra={"url": url, "status_code": resp.status_code})
+        resp.raise_for_status()
+        return resp.json()
+
+
