@@ -5,6 +5,7 @@ from dnd_helper_api.logging_config import configure_logging
 from dnd_helper_api.routers.monsters import router as monsters_router
 from dnd_helper_api.routers.spells import router as spells_router
 from dnd_helper_api.routers.users import router as users_router
+from dnd_helper_api.routers.i18n import router as i18n_router
 from fastapi import FastAPI, Request
 from starlette.middleware.base import BaseHTTPMiddleware
 import time
@@ -66,6 +67,7 @@ def healthcheck() -> dict:
 app.include_router(users_router)
 app.include_router(monsters_router)
 app.include_router(spells_router)
+app.include_router(i18n_router)
 
 if __name__ == "__main__":
     import uvicorn

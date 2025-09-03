@@ -11,6 +11,7 @@ from .spell import Spell
 from .spell_translation import SpellTranslation
 from .enum_translation import EnumTranslation
 from .user import User
+from .ui_translation import UiTranslation
 
 __all__ = [
     "BaseModel",
@@ -23,6 +24,7 @@ __all__ = [
     "Spell",
     "SpellTranslation",
     "EnumTranslation",
+    "UiTranslation",
 ]
 
 
