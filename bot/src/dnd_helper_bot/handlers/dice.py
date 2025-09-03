@@ -45,6 +45,12 @@ async def _resolve_lang_by_user(update_or_query) -> str:
         return "ru"
 
 
+async def _nav_row(lang: str) -> list[InlineKeyboardButton]:
+    back = await t("nav.back", lang)
+    main = await t("nav.main", lang)
+    return [InlineKeyboardButton(back, callback_data="menu:main"), InlineKeyboardButton(main, callback_data="menu:main")]
+
+
 async def show_dice_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = update.effective_chat.id if update.effective_chat else None
     user_id = update.effective_user.id if update.effective_user else None
@@ -54,13 +60,15 @@ async def show_dice_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     context.user_data.pop("awaiting_dice_faces", None)
     context.user_data.pop("dice_count", None)
     lang = await _resolve_lang_by_user(update)
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("d20", callback_data="dice:d20")],
-        [InlineKeyboardButton("d6", callback_data="dice:d6")],
-        [InlineKeyboardButton("2d6", callback_data="dice:2d6")],
-        [InlineKeyboardButton(await t("dice.custom.button", lang, default=("Custom roll" if lang == "en" else "Произвольный бросок")), callback_data="dice:custom")],
-    ])
-    await update.message.reply_text(await t("dice.menu.title", lang, default="Бросить кубики"), reply_markup=keyboard)
+    keyboard_rows = [
+        [InlineKeyboardButton(await t("dice.quick.d20", lang), callback_data="dice:d20")],
+        [InlineKeyboardButton(await t("dice.quick.d6", lang), callback_data="dice:d6")],
+        [InlineKeyboardButton(await t("dice.quick.2d6", lang), callback_data="dice:2d6")],
+        [InlineKeyboardButton(await t("dice.custom.button", lang), callback_data="dice:custom")],
+        await _nav_row(lang),
+    ]
+    keyboard = InlineKeyboardMarkup(keyboard_rows)
+    await update.message.reply_text(await t("dice.menu.title", lang), reply_markup=keyboard)
 
 
 async def dice_roll(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -76,7 +84,10 @@ async def dice_roll(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         context.user_data.pop("awaiting_dice_faces", None)
         context.user_data.pop("dice_count", None)
         logger.info("Start dice flow (custom)", extra={"correlation_id": chat_id, "user_id": user_id})
-        await query.edit_message_text(await t("dice.custom.prompt.count", lang, default="Сколько кубиков бросить? (1-100)"))
+        await query.edit_message_text(
+            await t("dice.custom.prompt.count", lang),
+            reply_markup=InlineKeyboardMarkup([await _nav_row(lang)]),
+        )
         return
     elif kind == "d20":
         result = random.randint(1, 20)
@@ -88,12 +99,12 @@ async def dice_roll(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         r1, r2 = random.randint(1, 6), random.randint(1, 6)
         text = f"🎲 2d6 → {r1}+{r2} = {r1 + r2}"
     else:
-        text = "Неизвестный бросок"
+        text = await t("dice.unknown", lang)
         logger.warning("Unknown dice kind", extra={"correlation_id": chat_id, "user_id": user_id, "kind": kind})
         await query.edit_message_text(text)
         return
     logger.info("Dice rolled", extra={"correlation_id": chat_id, "user_id": user_id, "kind": kind, "result": text})
-    await query.edit_message_text(text)
+    await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup([await _nav_row(lang)]))
 
 
 async def handle_dice_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -107,18 +118,18 @@ async def handle_dice_text_input(update: Update, context: ContextTypes.DEFAULT_T
             count = int(text)
         except ValueError:
             logger.warning("Dice count invalid (not int)", extra={"correlation_id": chat_id, "user_id": user_id, "input": text})
-            await update.message.reply_text(await t("dice.custom.prompt.count", lang, default="Введите целое число от 1 до 100"))
+            await update.message.reply_text(await t("dice.custom.prompt.count", lang), reply_markup=InlineKeyboardMarkup([await _nav_row(lang)]))
             return
         if not (1 <= count <= MAX_DICE_COUNT):
             logger.warning("Dice count out of range", extra={"correlation_id": chat_id, "user_id": user_id, "count": count})
-            await update.message.reply_text(await t("dice.custom.error.range", lang, default="Количество должно быть от 1 до 100"))
+            await update.message.reply_text(await t("dice.custom.error.range", lang), reply_markup=InlineKeyboardMarkup([await _nav_row(lang)]))
             return
 
         context.user_data["awaiting_dice_count"] = False
         context.user_data["awaiting_dice_faces"] = True
         context.user_data["dice_count"] = count
         logger.info("Dice flow: count accepted", extra={"correlation_id": chat_id, "user_id": user_id, "count": count})
-        await update.message.reply_text(await t("dice.custom.prompt.faces", lang, default="Номинал кубика? (разрешены: 2,3,4,6,8,10,12,20,100)"))
+        await update.message.reply_text(await t("dice.custom.prompt.faces", lang), reply_markup=InlineKeyboardMarkup([await _nav_row(lang)]))
         return
 
     if context.user_data.get("awaiting_dice_faces"):
@@ -126,11 +137,11 @@ async def handle_dice_text_input(update: Update, context: ContextTypes.DEFAULT_T
             faces = int(text)
         except ValueError:
             logger.warning("Dice faces invalid (not int)", extra={"correlation_id": chat_id, "user_id": user_id, "input": text})
-            await update.message.reply_text(await t("dice.custom.prompt.faces", lang, default="Введите одно из значений: 2,3,4,6,8,10,12,20,100"))
+            await update.message.reply_text(await t("dice.custom.prompt.faces", lang), reply_markup=InlineKeyboardMarkup([await _nav_row(lang)]))
             return
         if faces not in ALLOWED_FACES:
             logger.warning("Dice faces not allowed", extra={"correlation_id": chat_id, "user_id": user_id, "faces": faces})
-            await update.message.reply_text(await t("dice.custom.error.allowed", lang, default="Разрешены только: 2,3,4,6,8,10,12,20,100"))
+            await update.message.reply_text(await t("dice.custom.error.allowed", lang), reply_markup=InlineKeyboardMarkup([await _nav_row(lang)]))
             return
 
         count = int(context.user_data.get("dice_count", 1))
@@ -162,7 +173,7 @@ async def handle_dice_text_input(update: Update, context: ContextTypes.DEFAULT_T
         # Clear state
         context.user_data.pop("awaiting_dice_faces", None)
         context.user_data.pop("dice_count", None)
-        await update.message.reply_text(response_text)
+        await update.message.reply_text(response_text, reply_markup=InlineKeyboardMarkup([await _nav_row(lang)]))
         return
 
 
@@ -170,11 +181,13 @@ async def show_dice_menu_from_callback(update: Update, context: ContextTypes.DEF
     query = update.callback_query
     await query.answer()
     lang = await _resolve_lang_by_user(query)
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("d20", callback_data="dice:d20")],
-        [InlineKeyboardButton("d6", callback_data="dice:d6")],
-        [InlineKeyboardButton("2d6", callback_data="dice:2d6")],
-        [InlineKeyboardButton(await t("dice.custom.button", lang, default=("Custom roll" if lang == "en" else "Произвольный бросок")), callback_data="dice:custom")],
-    ])
-    await query.edit_message_text(await t("dice.menu.title", lang, default="Бросить кубики"), reply_markup=keyboard)
+    keyboard_rows = [
+        [InlineKeyboardButton(await t("dice.quick.d20", lang), callback_data="dice:d20")],
+        [InlineKeyboardButton(await t("dice.quick.d6", lang), callback_data="dice:d6")],
+        [InlineKeyboardButton(await t("dice.quick.2d6", lang), callback_data="dice:2d6")],
+        [InlineKeyboardButton(await t("dice.custom.button", lang), callback_data="dice:custom")],
+        await _nav_row(lang),
+    ]
+    keyboard = InlineKeyboardMarkup(keyboard_rows)
+    await query.edit_message_text(await t("dice.menu.title", lang), reply_markup=keyboard)
 
