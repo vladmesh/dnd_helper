@@ -52,12 +52,12 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text("Empty query. Repeat." if lang == "en" else "Пустой запрос. Повторите.", reply_markup=build_main_menu_inline(lang))
         return
 
-    q = urllib.parse.quote(query_text)
     try:
+        params = {"q": query_text, "lang": lang}
         if awaiting_monster:
-            items: List[Dict[str, Any]] = await api_get(f"/monsters/search?q={q}&lang={lang}")
+            items: List[Dict[str, Any]] = await api_get("/monsters/search", params=params)
         else:
-            items = await api_get(f"/spells/search?q={q}&lang={lang}")
+            items = await api_get("/spells/search", params=params)
     except Exception as exc:
         logger.error("API search request failed", extra={"correlation_id": update.effective_chat.id if update.effective_chat else None, "error": str(exc)})
         await update.message.reply_text("API request error." if lang == "en" else "Ошибка при запросе к API.")

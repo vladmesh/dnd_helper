@@ -14,6 +14,16 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
 
 ## Backlog
 
+### 0) Async consistency audit across services (api, bot)
+- Goal: Ensure code paths that are expected to be asynchronous are consistently async across both services; avoid blocking calls in async contexts.
+- Scope:
+  - API: routers, DB access patterns, background tasks, HTTP clients.
+  - Bot: handlers, API client usage, network IO.
+- Acceptance:
+  - No synchronous I/O inside async handlers (network, DB, file) without proper offloading.
+  - HTTP and DB libraries used in async-compatible modes where applicable.
+  - Identified action items documented if issues found.
+
 ### 1) Search flow should return to main menu (not Bestiary/Spells) [DONE]
 - Scope: Bot UX primarily. Backend is already returning search results.
 - Goal: After showing search results for monsters/spells, the navigation button should bring user back to Main Menu instead of feature roots.
