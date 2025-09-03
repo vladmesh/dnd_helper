@@ -45,7 +45,7 @@ def cmd_ultimate_restart(_: argparse.Namespace) -> None:
     time.sleep(5)
     # Seed data via REST (host script calling localhost:8000) for monsters and spells
     project_root = os.path.dirname(os.path.abspath(__file__))
-    seed_path = os.path.join(project_root, "seed_from_dtn.py")
+    seed_path = os.path.join(project_root, "seed.py")
     run_command(["python3", seed_path, "--monsters", "--spells"])
 
 

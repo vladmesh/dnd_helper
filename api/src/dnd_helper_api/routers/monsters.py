@@ -180,7 +180,9 @@ def search_monsters(
     is_legendary: Optional[bool] = None,
     roles: Optional[List[str]] = None,
     environments: Optional[List[str]] = None,
+    lang: Optional[str] = None,
     session: Session = Depends(get_session),  # noqa: B008
+    response: Response = None,
 ) -> List[Monster]:
     if not q:
         logger.warning("Empty monster search query")
@@ -206,6 +208,11 @@ def search_monsters(
         conditions.append(Monster.environments.contains(environments))
 
     monsters = session.exec(select(Monster).where(*conditions)).all()
+    # Apply translations and expose effective language
+    _apply_monster_translations_bulk(session, monsters, lang)
+    requested_lang = _select_language(lang)
+    if response is not None:
+        response.headers["Content-Language"] = requested_lang.value
     logger.info(
         "Monster search completed",
         extra={

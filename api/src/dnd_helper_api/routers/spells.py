@@ -175,7 +175,9 @@ def search_spells(
     is_concentration: Optional[bool] = None,
     targeting: Optional[str] = None,
     tags: Optional[List[str]] = None,
+    lang: Optional[str] = None,
     session: Session = Depends(get_session),  # noqa: B008
+    response: Response = None,
 ) -> List[Spell]:
     if not q:
         logger.warning("Empty spell search query")
@@ -205,6 +207,10 @@ def search_spells(
         conditions.append(Spell.tags.contains(tags))
 
     spells = session.exec(select(Spell).where(*conditions)).all()
+    _apply_spell_translations_bulk(session, spells, lang)
+    requested_lang = _select_language(lang)
+    if response is not None:
+        response.headers["Content-Language"] = requested_lang.value
     logger.info(
         "Spell search completed",
         extra={

@@ -11,6 +11,33 @@ from dnd_helper_bot.utils.pagination import paginate
 logger = logging.getLogger(__name__)
 
 
+async def _resolve_lang_by_user(update_or_query) -> str:
+    """Prefer DB user's language; fallback to Telegram UI language."""
+    try:
+        tg_user = None
+        if hasattr(update_or_query, "effective_user") and update_or_query.effective_user is not None:
+            tg_user = update_or_query.effective_user
+        elif hasattr(update_or_query, "from_user") and update_or_query.from_user is not None:
+            tg_user = update_or_query.from_user
+        tg_id = getattr(tg_user, "id", None)
+        if tg_id is not None:
+            user = await api_get_one(f"/users/by-telegram/{tg_id}")
+            lang = user.get("lang")
+            if lang in ("ru", "en"):
+                return lang
+    except Exception:
+        pass
+    try:
+        code = None
+        if hasattr(update_or_query, "effective_user") and update_or_query.effective_user is not None:
+            code = (update_or_query.effective_user.language_code or "ru").lower()
+        elif hasattr(update_or_query, "from_user") and update_or_query.from_user is not None:
+            code = (update_or_query.from_user.language_code or "ru").lower()
+        return "en" if str(code).startswith("en") else "ru"
+    except Exception:
+        return "ru"
+
+
 def _default_spells_filters() -> Dict[str, Any]:
     return {
         "ritual": None,  # None or True
@@ -120,6 +147,7 @@ def _build_filters_keyboard(pending: Dict[str, Any], lang: str) -> List[List[Inl
 
 
 def _detect_lang(update_or_query) -> str:
+    # Deprecated: kept for compatibility
     try:
         user_lang = (update_or_query.effective_user.language_code or "ru").lower()
         return "en" if user_lang.startswith("en") else "ru"
@@ -130,7 +158,7 @@ def _detect_lang(update_or_query) -> str:
 async def _render_spells_list(query, context: ContextTypes.DEFAULT_TYPE, page: int) -> None:
     context.user_data["spells_current_page"] = page
     pending, applied = _get_filter_state(context)
-    lang = _detect_lang(query)
+    lang = await _resolve_lang_by_user(query)
     all_spells: List[Dict[str, Any]] = await api_get("/spells/labeled", params={"lang": lang})
     filtered = _filter_spells(all_spells, applied)
     total = len(filtered)
@@ -169,7 +197,7 @@ async def spell_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await query.answer()
     spell_id = int(query.data.split(":")[-1])
     logger.info("Spell detail requested", extra={"correlation_id": query.message.chat_id if query and query.message else None, "spell_id": spell_id})
-    lang = _detect_lang(query)
+    lang = await _resolve_lang_by_user(query)
     s = await api_get_one(f"/spells/{spell_id}/labeled", params={"lang": lang})
     classes_raw = s.get("classes") or []
     if classes_raw and isinstance(classes_raw[0], dict):
@@ -193,7 +221,7 @@ async def spell_random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     query = update.callback_query
     await query.answer()
     logger.info("Spell random requested", extra={"correlation_id": query.message.chat_id if query and query.message else None})
-    lang = _detect_lang(query)
+    lang = await _resolve_lang_by_user(query)
     all_spells = await api_get("/spells/labeled", params={"lang": lang})
     if not all_spells:
         logger.warning("No spells available for random", extra={"correlation_id": query.message.chat_id if query and query.message else None})

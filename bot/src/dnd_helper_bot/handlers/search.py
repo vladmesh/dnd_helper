@@ -55,9 +55,9 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
     q = urllib.parse.quote(query_text)
     try:
         if awaiting_monster:
-            items: List[Dict[str, Any]] = await api_get(f"/monsters/search?q={q}")
+            items: List[Dict[str, Any]] = await api_get(f"/monsters/search?q={q}&lang={lang}")
         else:
-            items = await api_get(f"/spells/search?q={q}")
+            items = await api_get(f"/spells/search?q={q}&lang={lang}")
     except Exception as exc:
         logger.error("API search request failed", extra={"correlation_id": update.effective_chat.id if update.effective_chat else None, "error": str(exc)})
         await update.message.reply_text("API request error." if lang == "en" else "Ошибка при запросе к API.")
