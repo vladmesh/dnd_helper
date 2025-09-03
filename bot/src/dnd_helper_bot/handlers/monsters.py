@@ -7,6 +7,7 @@ from telegram.ext import ContextTypes
 
 from dnd_helper_bot.repositories.api_client import api_get, api_get_one
 from dnd_helper_bot.utils.pagination import paginate
+from dnd_helper_bot.utils.i18n import t
 
 logger = logging.getLogger(__name__)
 
@@ -110,21 +111,21 @@ def _filter_monsters(items: List[Dict[str, Any]], filters: Dict[str, Any]) -> Li
 
 
 def _build_filters_keyboard(pending: Dict[str, Any], lang: str) -> List[List[InlineKeyboardButton]]:
-    def t(en: str, ru: str) -> str:
+    def _tt(en: str, ru: str) -> str:
         return en if lang == "en" else ru
 
-    leg = ("✅ " if pending.get("legendary") else "") + t("Legendary", "Легендарный")
-    fly = ("✅ " if pending.get("flying") else "") + t("Flying", "Летающий")
+    leg = ("✅ " if pending.get("legendary") else "") + _tt("Legendary", "Легендарный")
+    fly = ("✅ " if pending.get("flying") else "") + _tt("Flying", "Летающий")
     cr = pending.get("cr_range")
-    cr03 = ("✅ " if cr == "03" else "") + t("CR 0-3", "ОВ 0-3")
-    cr48 = ("✅ " if cr == "48" else "") + t("CR 4-8", "ОВ 4-8")
-    cr9p = ("✅ " if cr == "9p" else "") + t("CR 9+", "ОВ 9+")
+    cr03 = ("✅ " if cr == "03" else "") + _tt("CR 0-3", "ОВ 0-3")
+    cr48 = ("✅ " if cr == "48" else "") + _tt("CR 4-8", "ОВ 4-8")
+    cr9p = ("✅ " if cr == "9p" else "") + _tt("CR 9+", "ОВ 9+")
     sz = pending.get("size")
-    szS = ("✅ " if sz == "S" else "") + t("Size S", "Размер S")
-    szM = ("✅ " if sz == "M" else "") + t("Size M", "Размер M")
-    szL = ("✅ " if sz == "L" else "") + t("Size L", "Размер L")
-    apply = t("Apply", "Применить")
-    reset = t("Reset", "Сброс")
+    szS = ("✅ " if sz == "S" else "") + _tt("Size S", "Размер S")
+    szM = ("✅ " if sz == "M" else "") + _tt("Size M", "Размер M")
+    szL = ("✅ " if sz == "L" else "") + _tt("Size L", "Размер L")
+    apply = _tt("Apply", "Применить")
+    reset = _tt("Reset", "Сброс")
     return [
         [InlineKeyboardButton(leg, callback_data="mflt:leg"), InlineKeyboardButton(fly, callback_data="mflt:fly")],
         [InlineKeyboardButton(cr03, callback_data="mflt:cr:03"), InlineKeyboardButton(cr48, callback_data="mflt:cr:48"), InlineKeyboardButton(cr9p, callback_data="mflt:cr:9p")],
@@ -133,7 +134,7 @@ def _build_filters_keyboard(pending: Dict[str, Any], lang: str) -> List[List[Inl
     ]
 
 
-def _detect_lang(update_or_query) -> str:
+async def _detect_lang(update_or_query) -> str:
     # Deprecated: kept for compatibility in case it's referenced elsewhere
     try:
         user_lang = (update_or_query.effective_user.language_code or "ru").lower()
@@ -152,7 +153,7 @@ async def _render_monsters_list(query, context: ContextTypes.DEFAULT_TYPE, page:
     if total == 0:
         rows: List[List[InlineKeyboardButton]] = _build_filters_keyboard(pending, lang)
         markup = InlineKeyboardMarkup(rows)
-        await query.edit_message_text(("No monsters." if lang == "en" else "Монстров нет."), reply_markup=markup)
+        await query.edit_message_text(await t("list.empty.monsters", lang, default=("No monsters." if lang == "en" else "Монстров нет.")), reply_markup=markup)
         return
     page_items = paginate(filtered, page)
     rows: List[List[InlineKeyboardButton]] = _build_filters_keyboard(pending, lang)
@@ -161,9 +162,9 @@ async def _render_monsters_list(query, context: ContextTypes.DEFAULT_TYPE, page:
         rows.append([InlineKeyboardButton(label, callback_data=f"monster:detail:{m['id']}")])
     nav: List[InlineKeyboardButton] = []
     if (page - 1) * 5 > 0:
-        nav.append(InlineKeyboardButton(("⬅️ Back" if lang == "en" else "⬅️ Назад"), callback_data=f"monster:list:page:{page-1}"))
+        nav.append(InlineKeyboardButton((await t("nav.back", lang, default=("⬅️ Back" if lang == "en" else "⬅️ Назад"))), callback_data=f"monster:list:page:{page-1}"))
     if page * 5 < total:
-        nav.append(InlineKeyboardButton(("➡️ Next" if lang == "en" else "➡️ Далее"), callback_data=f"monster:list:page:{page+1}"))
+        nav.append(InlineKeyboardButton((await t("nav.next", lang, default=("➡️ Next" if lang == "en" else "➡️ Далее"))), callback_data=f"monster:list:page:{page+1}"))
     if nav:
         rows.append(nav)
     markup = InlineKeyboardMarkup(rows)
@@ -193,7 +194,7 @@ async def monster_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         f"CR: {danger_text}\n"
         f"HP: {m.get('hp','-')}, AC: {m.get('ac','-')}, Speed: {m.get('speed','-')}"
     )
-    back = ("Back to list" if lang == "en" else "К списку")
+    back = (await t("nav.back", lang, default=("Back to list" if lang == "en" else "К списку")))
     markup = InlineKeyboardMarkup([[InlineKeyboardButton(back, callback_data="monster:list:page:1")]])
     await query.edit_message_text(text, reply_markup=markup)
 
@@ -206,7 +207,7 @@ async def monster_random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     all_monsters = await api_get("/monsters/labeled", params={"lang": lang})
     if not all_monsters:
         logger.warning("No monsters available for random", extra={"correlation_id": query.message.chat_id if query and query.message else None})
-        await query.edit_message_text("Монстров нет.")
+        await query.edit_message_text(await t("list.empty.monsters", lang, default="Монстров нет."))
         return
     m = random.choice(all_monsters)
     cr_raw = m.get('cr')
@@ -224,7 +225,8 @@ async def monster_search_prompt(update: Update, context: ContextTypes.DEFAULT_TY
     await query.answer()
     context.user_data["awaiting_monster_query"] = True
     logger.info("Monster search prompt shown", extra={"correlation_id": query.message.chat_id if query and query.message else None})
-    await query.edit_message_text("Введите подстроку для поиска по названию монстра:")
+    lang = await _resolve_lang_by_user(query)
+    await query.edit_message_text(await t("monsters.search.prompt", lang, default="Введите подстроку для поиска по названию монстра:"))
 
 
 async def monsters_filter_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

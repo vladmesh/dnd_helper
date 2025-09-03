@@ -7,6 +7,7 @@ from dnd_helper_bot.keyboards.main import build_main_menu_inline  # noqa: E402
 from dnd_helper_bot.keyboards.monsters import build_monsters_root_keyboard  # noqa: E402
 from dnd_helper_bot.keyboards.spells import build_spells_root_keyboard  # noqa: E402
 from dnd_helper_bot.repositories.api_client import api_get_one, api_post, api_patch  # noqa: E402
+from dnd_helper_bot.utils.i18n import t  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -140,8 +141,12 @@ async def show_settings_from_callback(update: Update, context: ContextTypes.DEFA
     chat_id = query.message.chat_id if query and query.message else None
     logger.info("Callback to settings", extra={"correlation_id": chat_id, "user_id": user_id, "callback": getattr(query, 'data', None)})
     await query.answer()
-    # Keep text neutral without language dependency
-    await query.message.edit_text("Settings:", reply_markup=_build_language_keyboard(include_back=True))
+    class _QWrap:
+        effective_user = None
+        def __init__(self, q):
+            self.effective_user = q.from_user if q and getattr(q, "from_user", None) else None
+    lang = await _resolve_lang_by_user(_QWrap(query))
+    await query.message.edit_text(await t("menu.settings.title", lang, default="Settings:"), reply_markup=_build_language_keyboard(include_back=True))
 
 
 async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

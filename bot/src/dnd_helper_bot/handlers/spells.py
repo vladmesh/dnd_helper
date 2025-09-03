@@ -7,6 +7,7 @@ from telegram.ext import ContextTypes
 
 from dnd_helper_bot.repositories.api_client import api_get, api_get_one
 from dnd_helper_bot.utils.pagination import paginate
+from dnd_helper_bot.utils.i18n import t
 
 logger = logging.getLogger(__name__)
 
@@ -125,19 +126,19 @@ def _filter_spells(items: List[Dict[str, Any]], filters: Dict[str, Any]) -> List
 
 
 def _build_filters_keyboard(pending: Dict[str, Any], lang: str) -> List[List[InlineKeyboardButton]]:
-    def t(en: str, ru: str) -> str:
+    def _tt(en: str, ru: str) -> str:
         return en if lang == "en" else ru
 
-    rit = ("✅ " if pending.get("ritual") else "") + t("Ritual", "Ритуал")
-    conc = ("✅ " if pending.get("is_concentration") else "") + t("Concentration", "Концентрация")
-    bonus = ("✅ " if pending.get("cast", {}).get("bonus") else "") + t("Bonus", "Бонус")
-    react = ("✅ " if pending.get("cast", {}).get("reaction") else "") + t("Reaction", "Реакция")
+    rit = ("✅ " if pending.get("ritual") else "") + _tt("Ritual", "Ритуал")
+    conc = ("✅ " if pending.get("is_concentration") else "") + _tt("Concentration", "Концентрация")
+    bonus = ("✅ " if pending.get("cast", {}).get("bonus") else "") + _tt("Bonus", "Бонус")
+    react = ("✅ " if pending.get("cast", {}).get("reaction") else "") + _tt("Reaction", "Реакция")
     lv = pending.get("level_range")
-    lv13 = ("✅ " if lv == "13" else "") + t("Lv 1-3", "Ур 1-3")
-    lv45 = ("✅ " if lv == "45" else "") + t("Lv 4-5", "Ур 4-5")
-    lv69 = ("✅ " if lv == "69" else "") + t("Lv 6-9", "Ур 6-9")
-    apply = t("Apply", "Применить")
-    reset = t("Reset", "Сброс")
+    lv13 = ("✅ " if lv == "13" else "") + _tt("Lv 1-3", "Ур 1-3")
+    lv45 = ("✅ " if lv == "45" else "") + _tt("Lv 4-5", "Ур 4-5")
+    lv69 = ("✅ " if lv == "69" else "") + _tt("Lv 6-9", "Ур 6-9")
+    apply = _tt("Apply", "Применить")
+    reset = _tt("Reset", "Сброс")
     return [
         [InlineKeyboardButton(rit, callback_data="sflt:rit"), InlineKeyboardButton(conc, callback_data="sflt:conc")],
         [InlineKeyboardButton(bonus, callback_data="sflt:ct:ba"), InlineKeyboardButton(react, callback_data="sflt:ct:re")],
@@ -146,7 +147,7 @@ def _build_filters_keyboard(pending: Dict[str, Any], lang: str) -> List[List[Inl
     ]
 
 
-def _detect_lang(update_or_query) -> str:
+async def _detect_lang(update_or_query) -> str:
     # Deprecated: kept for compatibility
     try:
         user_lang = (update_or_query.effective_user.language_code or "ru").lower()
@@ -165,7 +166,7 @@ async def _render_spells_list(query, context: ContextTypes.DEFAULT_TYPE, page: i
     if total == 0:
         rows: List[List[InlineKeyboardButton]] = _build_filters_keyboard(pending, lang)
         markup = InlineKeyboardMarkup(rows)
-        await query.edit_message_text(("No spells." if lang == "en" else "Заклинаний нет."), reply_markup=markup)
+        await query.edit_message_text(await t("list.empty.spells", lang, default=("No spells." if lang == "en" else "Заклинаний нет.")), reply_markup=markup)
         return
     page_items = paginate(filtered, page)
     rows: List[List[InlineKeyboardButton]] = _build_filters_keyboard(pending, lang)
@@ -175,9 +176,9 @@ async def _render_spells_list(query, context: ContextTypes.DEFAULT_TYPE, page: i
         rows.append([InlineKeyboardButton(label, callback_data=f"spell:detail:{s['id']}")])
     nav: List[InlineKeyboardButton] = []
     if (page - 1) * 5 > 0:
-        nav.append(InlineKeyboardButton(("⬅️ Back" if lang == "en" else "⬅️ Назад"), callback_data=f"spell:list:page:{page-1}"))
+        nav.append(InlineKeyboardButton((await t("nav.back", lang, default=("⬅️ Back" if lang == "en" else "⬅️ Назад"))), callback_data=f"spell:list:page:{page-1}"))
     if page * 5 < total:
-        nav.append(InlineKeyboardButton(("➡️ Next" if lang == "en" else "➡️ Далее"), callback_data=f"spell:list:page:{page+1}"))
+        nav.append(InlineKeyboardButton((await t("nav.next", lang, default=("➡️ Next" if lang == "en" else "➡️ Далее"))), callback_data=f"spell:list:page:{page+1}"))
     if nav:
         rows.append(nav)
     markup = InlineKeyboardMarkup(rows)
@@ -212,7 +213,7 @@ async def spell_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         f"{('Classes' if lang == 'en' else 'Классы')}: {classes_str}\n"
         f"{('School' if lang == 'en' else 'Школа')}: {school_str}"
     )
-    back = ("Back to list" if lang == "en" else "К списку")
+    back = (await t("nav.back", lang, default=("Back to list" if lang == "en" else "К списку")))
     markup = InlineKeyboardMarkup([[InlineKeyboardButton(back, callback_data="spell:list:page:1")]])
     await query.edit_message_text(text, reply_markup=markup)
 
@@ -225,7 +226,7 @@ async def spell_random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     all_spells = await api_get("/spells/labeled", params={"lang": lang})
     if not all_spells:
         logger.warning("No spells available for random", extra={"correlation_id": query.message.chat_id if query and query.message else None})
-        await query.edit_message_text("Заклинаний нет.")
+        await query.edit_message_text(await t("list.empty.spells", lang, default="Заклинаний нет."))
         return
     s = random.choice(all_spells)
     classes_raw = s.get("classes") or []
@@ -249,7 +250,8 @@ async def spell_search_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE
     await query.answer()
     context.user_data["awaiting_spell_query"] = True
     logger.info("Spell search prompt shown", extra={"correlation_id": query.message.chat_id if query and query.message else None})
-    await query.edit_message_text("Введите подстроку для поиска по названию заклинания:")
+    lang = await _resolve_lang_by_user(query)
+    await query.edit_message_text(await t("spells.search.prompt", lang, default="Введите подстроку для поиска по названию заклинания:"))
 
 
 async def spells_filter_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
