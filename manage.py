@@ -43,10 +43,10 @@ def cmd_ultimate_restart(_: argparse.Namespace) -> None:
     ])
     # Wait a bit for API to be fully ready before seeding via REST
     time.sleep(5)
-    # Seed data via REST (host script calling localhost:8000) for monsters and spells
+    # Seed data via unified root script (monsters, spells, enums, ui)
     project_root = os.path.dirname(os.path.abspath(__file__))
     seed_path = os.path.join(project_root, "seed.py")
-    run_command(["python3", seed_path, "--monsters", "--spells"])
+    run_command(["python3", seed_path, "--all"])  # includes enums & ui upserts
 
 
 def cmd_makemigration(args: argparse.Namespace) -> None:

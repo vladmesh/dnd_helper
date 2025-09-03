@@ -5,6 +5,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 from dnd_helper_bot.utils.i18n import t
+from dnd_helper_bot.repositories.api_client import api_get_one
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,33 @@ def roll_dice(count: int, faces: int) -> list[int]:
     return [random.randint(1, faces) for _ in range(count)]
 
 
+async def _resolve_lang_by_user(update_or_query) -> str:
+    """Prefer DB user's language; fallback to Telegram UI language."""
+    try:
+        tg_user = None
+        if hasattr(update_or_query, "effective_user") and update_or_query.effective_user is not None:
+            tg_user = update_or_query.effective_user
+        elif hasattr(update_or_query, "from_user") and update_or_query.from_user is not None:
+            tg_user = update_or_query.from_user
+        tg_id = getattr(tg_user, "id", None)
+        if tg_id is not None:
+            user = await api_get_one(f"/users/by-telegram/{tg_id}")
+            lang = user.get("lang")
+            if lang in ("ru", "en"):
+                return lang
+    except Exception:
+        pass
+    try:
+        code = None
+        if hasattr(update_or_query, "effective_user") and update_or_query.effective_user is not None:
+            code = (update_or_query.effective_user.language_code or "ru").lower()
+        elif hasattr(update_or_query, "from_user") and update_or_query.from_user is not None:
+            code = (update_or_query.from_user.language_code or "ru").lower()
+        return "en" if str(code).startswith("en") else "ru"
+    except Exception:
+        return "ru"
+
+
 async def show_dice_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = update.effective_chat.id if update.effective_chat else None
     user_id = update.effective_user.id if update.effective_user else None
@@ -25,14 +53,12 @@ async def show_dice_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     context.user_data.pop("awaiting_dice_count", None)
     context.user_data.pop("awaiting_dice_faces", None)
     context.user_data.pop("dice_count", None)
-    # Language heuristic: try stored user.lang if available in context
-    lang = context.user_data.get("lang") or (update.effective_user.language_code or "ru").lower()
-    lang = "en" if str(lang).startswith("en") else "ru"
+    lang = await _resolve_lang_by_user(update)
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("d20", callback_data="dice:d20")],
         [InlineKeyboardButton("d6", callback_data="dice:d6")],
         [InlineKeyboardButton("2d6", callback_data="dice:2d6")],
-        [InlineKeyboardButton(await t("dice.menu.title", lang, default="Бросить кубики"), callback_data="dice:custom")],
+        [InlineKeyboardButton(await t("dice.custom.button", lang, default=("Custom roll" if lang == "en" else "Произвольный бросок")), callback_data="dice:custom")],
     ])
     await update.message.reply_text(await t("dice.menu.title", lang, default="Бросить кубики"), reply_markup=keyboard)
 
@@ -43,9 +69,7 @@ async def dice_roll(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     kind = query.data.split(":", 1)[1]
     chat_id = query.message.chat_id if query and query.message else None
     user_id = query.from_user.id if query and query.from_user else None
-    # Language heuristic
-    lang = context.user_data.get("lang") or (query.from_user.language_code if query and query.from_user else "ru")
-    lang = "en" if str(lang or "ru").lower().startswith("en") else "ru"
+    lang = await _resolve_lang_by_user(query)
     if kind == "custom":
         # Start two-step flow: ask for count first
         context.user_data["awaiting_dice_count"] = True
@@ -76,9 +100,7 @@ async def handle_dice_text_input(update: Update, context: ContextTypes.DEFAULT_T
     chat_id = update.effective_chat.id if update.effective_chat else None
     user_id = update.effective_user.id if update.effective_user else None
     text = (update.message.text or "").strip()
-    # Language heuristic
-    lang = context.user_data.get("lang") or (update.effective_user.language_code or "ru").lower()
-    lang = "en" if str(lang).startswith("en") else "ru"
+    lang = await _resolve_lang_by_user(update)
 
     if context.user_data.get("awaiting_dice_count"):
         try:
@@ -147,13 +169,12 @@ async def handle_dice_text_input(update: Update, context: ContextTypes.DEFAULT_T
 async def show_dice_menu_from_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-    lang = context.user_data.get("lang") or (query.from_user.language_code if query and query.from_user else "ru")
-    lang = "en" if str(lang or "ru").lower().startswith("en") else "ru"
+    lang = await _resolve_lang_by_user(query)
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("d20", callback_data="dice:d20")],
         [InlineKeyboardButton("d6", callback_data="dice:d6")],
         [InlineKeyboardButton("2d6", callback_data="dice:2d6")],
-        [InlineKeyboardButton(await t("dice.menu.title", lang, default="Бросить кубики"), callback_data="dice:custom")],
+        [InlineKeyboardButton(await t("dice.custom.button", lang, default=("Custom roll" if lang == "en" else "Произвольный бросок")), callback_data="dice:custom")],
     ])
     await query.edit_message_text(await t("dice.menu.title", lang, default="Бросить кубики"), reply_markup=keyboard)
 
