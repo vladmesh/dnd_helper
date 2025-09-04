@@ -104,7 +104,12 @@ async def show_bestiarie_menu_from_callback(update: Update, context: ContextType
         def __init__(self, q):
             self.effective_user = q.from_user if q and getattr(q, "from_user", None) else None
     lang = await _resolve_lang_by_user(_QWrap(query))
-    await query.message.edit_text("Bestiary:" if lang == "en" else "Бестиарий:", reply_markup=build_monsters_root_keyboard(lang))
+    kb = build_monsters_root_keyboard(lang)
+    rows = list(kb.inline_keyboard)
+    back = await t("nav.back", lang)
+    main = await t("nav.main", lang)
+    rows.append([InlineKeyboardButton(back, callback_data="menu:main"), InlineKeyboardButton(main, callback_data="menu:main")])
+    await query.message.edit_text("Bestiary:" if lang == "en" else "Бестиарий:", reply_markup=InlineKeyboardMarkup(rows))
 
 
 async def show_spells_menu_from_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -118,7 +123,12 @@ async def show_spells_menu_from_callback(update: Update, context: ContextTypes.D
         def __init__(self, q):
             self.effective_user = q.from_user if q and getattr(q, "from_user", None) else None
     lang = await _resolve_lang_by_user(_QWrap(query))
-    await query.message.edit_text("Spells:" if lang == "en" else "Заклинания:", reply_markup=build_spells_root_keyboard(lang))
+    kb = build_spells_root_keyboard(lang)
+    rows = list(kb.inline_keyboard)
+    back = await t("nav.back", lang)
+    main = await t("nav.main", lang)
+    rows.append([InlineKeyboardButton(back, callback_data="menu:main"), InlineKeyboardButton(main, callback_data="menu:main")])
+    await query.message.edit_text("Spells:" if lang == "en" else "Заклинания:", reply_markup=InlineKeyboardMarkup(rows))
 
 
 # --- Settings & Language selection ---
