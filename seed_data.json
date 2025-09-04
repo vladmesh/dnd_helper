@@ -158,9 +158,12 @@
       "monster_slug": "aarakocra",
       "lang": "en",
       "name": "Aarakocra",
-      "description": "TBD",
-      "traits": null,
-      "actions": null,
+      "description": "Aarakocra dwell within the Howling Gyre, guarding it from the incursions of Elemental Evil.",
+      "traits": [{"name": "Dive Attack", "text": "If the aarakocra is flying and dives at least 30 feet straight toward a target and then hits it with a melee attack, the attack deals an extra 1d6 damage."}],
+      "actions": [
+        {"name": "Claws", "text": "+4 to hit... 1d4+2 slashing"},
+        {"name": "Javelin", "text": "+4 to hit... 1d6+2 piercing"}
+      ],
       "reactions": null,
       "legendary_actions": null,
       "spellcasting": null
@@ -191,18 +194,29 @@
       "monster_slug": "aboleth",
       "lang": "en",
       "name": "Aboleth",
-      "description": "TBD",
-      "traits": null,
-      "actions": null,
+      "description": "Before the gods came, aboleths lurked in the primal oceans, shaping memories and enslaving those who approached.",
+      "traits": [
+        {"name": "Amphibious", "text": "The aboleth can breathe air and water."},
+        {"name": "Mucous Cloud", "text": "While underwater, the aboleth is surrounded by transformative slime..."},
+        {"name": "Probing Telepathy", "text": "If a creature communicates telepathically with the aboleth..."}
+      ],
+      "actions": [
+        {"name": "Multiattack", "text": "The aboleth makes three tentacle attacks."},
+        {"name": "Tentacle", "text": "+9 to hit... 2d6+5 bludgeoning"},
+        {"name": "Tail", "text": "+9 to hit... 3d6+5 bludgeoning"}
+      ],
       "reactions": null,
-      "legendary_actions": null,
+      "legendary_actions": [
+        {"name": "Detect", "text": "The aboleth makes a Wisdom (Perception) check."},
+        {"name": "Tail Swipe", "text": "The aboleth makes one tail attack."}
+      ],
       "spellcasting": null
     },
     {
       "monster_slug": "abominable-yeti",
       "lang": "ru",
       "name": "Отвратительный Йети",
-      "description": null,
+      "description": "Огромный хищник тундр, боится огня.",
       "traits": [
         {"name": "Боязнь огня", "text": "Помеха на атаки после урона огнем"},
         {"name": "Чуткий Нюх", "text": "Преимущество на Восприятие по запаху"},
@@ -221,9 +235,17 @@
       "monster_slug": "abominable-yeti",
       "lang": "en",
       "name": "Abominable Yeti",
-      "description": "TBD",
-      "traits": null,
-      "actions": null,
+      "description": "A huge predator of the tundra that fears fire.",
+      "traits": [
+        {"name": "Fear of Fire", "text": "The yeti has disadvantage on attack rolls after taking fire damage until the end of its next turn."},
+        {"name": "Keen Smell", "text": "The yeti has advantage on Wisdom (Perception) checks that rely on smell."},
+        {"name": "Snow Camouflage", "text": "The yeti has advantage on Dexterity (Stealth) checks made to hide in snowy terrain."}
+      ],
+      "actions": [
+        {"name": "Multiattack", "text": "The yeti uses Chilling Gaze and makes two claw attacks."},
+        {"name": "Claw", "text": "+11 to hit... 2d6+7 slashing + 2d6 cold"},
+        {"name": "Chilling Gaze", "text": "DC 18 Constitution, cold damage and paralysis on a failed save."}
+      ],
       "reactions": null,
       "legendary_actions": null,
       "spellcasting": null

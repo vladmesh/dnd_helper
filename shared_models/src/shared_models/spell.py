@@ -1,4 +1,5 @@
 from typing import Any, Dict, List, Optional
+from pydantic import field_validator
 
 from sqlalchemy import Enum, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -49,4 +50,35 @@ class Spell(BaseModel, table=True):
     page: Optional[int] = Field(default=None)
     slug: Optional[str] = Field(default=None, index=True)
 
+
+
+    # Validators to coerce DB strings into Python Enums before serialization
+    @field_validator("school", mode="before")
+    @classmethod
+    def _coerce_school_enum(cls, value: Any) -> Any:
+        if value is None or isinstance(value, SpellSchool):
+            return value
+        try:
+            return SpellSchool(value)
+        except Exception as exc:  # keep strictness: invalid values should fail
+            raise ValueError(f"Invalid SpellSchool: {value}") from exc
+
+    @field_validator("classes", mode="before")
+    @classmethod
+    def _coerce_classes_enum_list(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        # Accept a single item (str/enum) and convert to list
+        if not isinstance(value, list):
+            value = [value]
+        result: List[CasterClass] = []
+        for item in value:
+            if isinstance(item, CasterClass):
+                result.append(item)
+            else:
+                try:
+                    result.append(CasterClass(item))
+                except Exception as exc:
+                    raise ValueError(f"Invalid CasterClass: {item}") from exc
+        return result
 
