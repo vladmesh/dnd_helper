@@ -6,6 +6,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 from dnd_helper_bot.keyboards.main import build_main_menu_inline
+from dnd_helper_bot.utils.i18n import t  # noqa: E402
 from dnd_helper_bot.handlers.menu import _build_language_keyboard  # noqa: E402
 from dnd_helper_bot.repositories.api_client import api_get, api_get_one
 
@@ -78,7 +79,7 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
             label = s.get("name") or s.get("description", "<no name>")
             rows.append([InlineKeyboardButton(label, callback_data=f"spell:detail:{s['id']}")])
 
-    rows.append([InlineKeyboardButton("Main menu" if lang == "en" else "К главному меню", callback_data="menu:main")])
+    rows.append([InlineKeyboardButton(await t("nav.main", lang, default=("Main menu" if lang == "en" else "К главному меню")), callback_data="menu:main")])
     logger.info("Search results shown", extra={"correlation_id": update.effective_chat.id if update.effective_chat else None, "count": len(rows) - 1})
 
     markup = InlineKeyboardMarkup(rows)
