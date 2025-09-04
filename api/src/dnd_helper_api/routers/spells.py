@@ -242,6 +242,13 @@ def search_spells(
 
 def _with_labels(spell: Spell, labels: Dict[tuple[str, str], str]) -> Dict[str, Any]:
     body = spell.model_dump()
+    # Include translated fields applied in-place
+    name = getattr(spell, "name", None)
+    if name is not None:
+        body["name"] = name
+    description = getattr(spell, "description", None)
+    if description is not None:
+        body["description"] = description
     # single code -> {code,label}
     code = body.get("school")
     if code:

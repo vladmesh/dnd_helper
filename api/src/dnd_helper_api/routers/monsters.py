@@ -316,6 +316,13 @@ def list_monsters(
 
 def _with_labels(monster: Monster, labels: Dict[tuple[str, str], str]) -> Dict[str, Any]:
     body = monster.model_dump()
+    # Include translated fields applied in-place (they are not part of ORM schema)
+    name = getattr(monster, "name", None)
+    if name is not None:
+        body["name"] = name
+    description = getattr(monster, "description", None)
+    if description is not None:
+        body["description"] = description
     # Normalize codes to lowercase for lookup
     t = body.get("type")
     if t:
