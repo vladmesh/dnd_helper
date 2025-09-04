@@ -156,6 +156,12 @@ async def _detect_lang(update_or_query) -> str:
         return "ru"
 
 
+async def _nav_row(lang: str, back_callback: str) -> list[InlineKeyboardButton]:
+    back = await t("nav.back", lang)
+    main = await t("nav.main", lang)
+    return [InlineKeyboardButton(back, callback_data=back_callback), InlineKeyboardButton(main, callback_data="menu:main")]
+
+
 async def _render_spells_list(query, context: ContextTypes.DEFAULT_TYPE, page: int) -> None:
     context.user_data["spells_current_page"] = page
     pending, applied = _get_filter_state(context)
@@ -181,6 +187,7 @@ async def _render_spells_list(query, context: ContextTypes.DEFAULT_TYPE, page: i
         nav.append(InlineKeyboardButton((await t("nav.next", lang, default=("➡️ Next" if lang == "en" else "➡️ Далее"))), callback_data=f"spell:list:page:{page+1}"))
     if nav:
         rows.append(nav)
+    rows.append(await _nav_row(lang, "menu:spells"))
     markup = InlineKeyboardMarkup(rows)
     await query.edit_message_text((f"Spells list (p. {page})" if lang == "en" else f"Список заклинаний (стр. {page})"), reply_markup=markup)
 
@@ -213,8 +220,8 @@ async def spell_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         f"{('Classes' if lang == 'en' else 'Классы')}: {classes_str}\n"
         f"{('School' if lang == 'en' else 'Школа')}: {school_str}"
     )
-    back = (await t("nav.back", lang, default=("Back to list" if lang == "en" else "К списку")))
-    markup = InlineKeyboardMarkup([[InlineKeyboardButton(back, callback_data="spell:list:page:1")]])
+    page = int(context.user_data.get("spells_current_page", 1))
+    markup = InlineKeyboardMarkup([await _nav_row(lang, f"spell:list:page:{page}")])
     await query.edit_message_text(text, reply_markup=markup)
 
 

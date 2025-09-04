@@ -48,13 +48,13 @@ Add localized "Back" and "Main menu" inline buttons to all bot menus and flows (
 
 4) Monsters list and detail
 - File: `handlers/monsters.py`
-  - `_render_monsters_list`: after page navigation row append, add `rows.append(await build_nav_row(lang))`.
-  - `monster_detail`: after existing "Back to list" row, add a second row `await build_nav_row(lang)`.
+  - `_render_monsters_list`: after page navigation row append, add bottom nav row where Back leads to monsters submenu (`menu:monsters`) and Main to main menu.
+  - `monster_detail`: replace old list-back button; add bottom nav row where Back leads to current list page (`monster:list:page:<current>`), Main to main menu.
 
 5) Spells list and detail
 - File: `handlers/spells.py`
-  - `_render_spells_list`: after page navigation row append, add `rows.append(await build_nav_row(lang))`.
-  - `spell_detail`: after existing "Back to list" row, add a second row `await build_nav_row(lang)`.
+  - `_render_spells_list`: after page navigation row append, add bottom nav row where Back leads to spells submenu (`menu:spells`) and Main to main menu.
+  - `spell_detail`: replace old list-back button; add bottom nav row where Back leads to current list page (`spell:list:page:<current>`), Main to main menu.
 
 6) Search results
 - File: `handlers/search.py`
@@ -70,15 +70,15 @@ Iteration 1 — Monsters list and detail
 - Changes:
   - `handlers/monsters.py`: add bottom nav row in `_render_monsters_list` and add bottom nav row below the existing "Back to list" in `monster_detail`.
 - Test:
-  - Open monsters list, paginate, ensure new Back/Main row is present and both lead to main menu.
-  - Open a monster detail, verify the additional Back/Main row works; existing "Back to list" remains.
+  - Open monsters list, paginate: bottom Back/Main row present; Back returns to Bestiary submenu, Main to main menu.
+  - Open a monster detail: bottom Back/Main row present; Back returns to the same list page, Main to main.
 
 Iteration 2 — Spells list and detail
 - Changes:
   - `handlers/spells.py`: add bottom nav row in `_render_spells_list` and add bottom nav row below the existing "Back to list" in `spell_detail`.
 - Test:
-  - Open spells list, paginate, ensure new Back/Main row is present and working.
-  - Open a spell detail, verify the additional Back/Main row works; existing "Back to list" remains.
+  - Open spells list, paginate: bottom Back/Main row present; Back возвращает в подменю Заклинаний, Main — в главное меню.
+  - Open a spell detail: bottom Back/Main row present; Back возвращает на текущую страницу списка, Main — в главное меню.
 
 Iteration 3 — Root menus for monsters and spells
 - Changes:
@@ -100,7 +100,10 @@ Iteration 5 — Optional (deferred): nav-row helper centralization
 
 ## Edge Cases and Notes
 
-- Using the same `callback_data` (`menu:main`) for both "Back" and "Main menu" is intentional to match the dice flow and avoid branching logic.
+- Back is contextual:
+  - From list screens: back to the corresponding submenu (`menu:monsters` / `menu:spells`).
+  - From detail screens: back to the current list page (`monster:list:page:<n>` / `spell:list:page:<n>`).
+  - From submenus: back to main menu (handled in iteration 3).
 - Keep per-page nav (back/next) in lists intact; the new nav row is an extra row at the bottom.
 - Do not change message texts beyond what is necessary to attach the new keyboard rows.
 
