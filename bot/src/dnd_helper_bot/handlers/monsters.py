@@ -8,6 +8,7 @@ from telegram.ext import ContextTypes
 from dnd_helper_bot.repositories.api_client import api_get, api_get_one
 from dnd_helper_bot.utils.pagination import paginate
 from dnd_helper_bot.utils.i18n import t
+from dnd_helper_bot.utils.nav import build_nav_row
 
 logger = logging.getLogger(__name__)
 
@@ -144,9 +145,7 @@ async def _detect_lang(update_or_query) -> str:
 
 
 async def _nav_row(lang: str, back_callback: str) -> list[InlineKeyboardButton]:
-    back = await t("nav.back", lang)
-    main = await t("nav.main", lang)
-    return [InlineKeyboardButton(back, callback_data=back_callback), InlineKeyboardButton(main, callback_data="menu:main")]
+    return await build_nav_row(lang, back_callback)
 
 
 async def _render_monsters_list(query, context: ContextTypes.DEFAULT_TYPE, page: int) -> None:
@@ -224,7 +223,8 @@ async def monster_random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         f"CR: {danger_text}\n"
         f"HP: {m.get('hp','-')}, AC: {m.get('ac','-')}, Speed: {m.get('speed','-')}"
     )
-    await query.edit_message_text(text)
+    markup = InlineKeyboardMarkup([await _nav_row(lang, "menu:monsters")])
+    await query.edit_message_text(text, reply_markup=markup)
 
 
 async def monster_search_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -233,7 +233,8 @@ async def monster_search_prompt(update: Update, context: ContextTypes.DEFAULT_TY
     context.user_data["awaiting_monster_query"] = True
     logger.info("Monster search prompt shown", extra={"correlation_id": query.message.chat_id if query and query.message else None})
     lang = await _resolve_lang_by_user(query)
-    await query.edit_message_text(await t("monsters.search.prompt", lang, default="Введите подстроку для поиска по названию монстра:"))
+    markup = InlineKeyboardMarkup([await _nav_row(lang, "menu:monsters")])
+    await query.edit_message_text(await t("monsters.search.prompt", lang, default="Введите подстроку для поиска по названию монстра:"), reply_markup=markup)
 
 
 async def monsters_filter_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

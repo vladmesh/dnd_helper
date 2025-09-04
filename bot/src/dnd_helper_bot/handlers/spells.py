@@ -8,6 +8,7 @@ from telegram.ext import ContextTypes
 from dnd_helper_bot.repositories.api_client import api_get, api_get_one
 from dnd_helper_bot.utils.pagination import paginate
 from dnd_helper_bot.utils.i18n import t
+from dnd_helper_bot.utils.nav import build_nav_row
 
 logger = logging.getLogger(__name__)
 
@@ -157,9 +158,7 @@ async def _detect_lang(update_or_query) -> str:
 
 
 async def _nav_row(lang: str, back_callback: str) -> list[InlineKeyboardButton]:
-    back = await t("nav.back", lang)
-    main = await t("nav.main", lang)
-    return [InlineKeyboardButton(back, callback_data=back_callback), InlineKeyboardButton(main, callback_data="menu:main")]
+    return await build_nav_row(lang, back_callback)
 
 
 async def _render_spells_list(query, context: ContextTypes.DEFAULT_TYPE, page: int) -> None:
@@ -249,7 +248,8 @@ async def spell_random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         + f"{('Classes' if lang == 'en' else 'Классы')}: {classes_str}\n"
         + f"{('School' if lang == 'en' else 'Школа')}: {school_str}"
     )
-    await query.edit_message_text(text)
+    markup = InlineKeyboardMarkup([await _nav_row(lang, "menu:spells")])
+    await query.edit_message_text(text, reply_markup=markup)
 
 
 async def spell_search_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -258,7 +258,8 @@ async def spell_search_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE
     context.user_data["awaiting_spell_query"] = True
     logger.info("Spell search prompt shown", extra={"correlation_id": query.message.chat_id if query and query.message else None})
     lang = await _resolve_lang_by_user(query)
-    await query.edit_message_text(await t("spells.search.prompt", lang, default="Введите подстроку для поиска по названию заклинания:"))
+    markup = InlineKeyboardMarkup([await _nav_row(lang, "menu:spells")])
+    await query.edit_message_text(await t("spells.search.prompt", lang, default="Введите подстроку для поиска по названию заклинания:"), reply_markup=markup)
 
 
 async def spells_filter_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

@@ -7,6 +7,7 @@ from telegram.ext import ContextTypes
 
 from dnd_helper_bot.keyboards.main import build_main_menu_inline
 from dnd_helper_bot.utils.i18n import t  # noqa: E402
+from dnd_helper_bot.utils.nav import build_nav_row  # noqa: E402
 from dnd_helper_bot.handlers.menu import _build_language_keyboard  # noqa: E402
 from dnd_helper_bot.repositories.api_client import api_get, api_get_one
 
@@ -66,7 +67,10 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     if not items:
         logger.info("Search no results", extra={"correlation_id": update.effective_chat.id if update.effective_chat else None, "query": query_text})
-        await update.message.reply_text("No results." if lang == "en" else "Ничего не найдено.", reply_markup=build_main_menu_inline(lang))
+        back_cb = "menu:monsters" if awaiting_monster else "menu:spells"
+        nav = await build_nav_row(lang, back_cb)
+        markup = InlineKeyboardMarkup([nav])
+        await update.message.reply_text("No results." if lang == "en" else "Ничего не найдено.", reply_markup=markup)
         return
 
     rows: List[List[InlineKeyboardButton]] = []

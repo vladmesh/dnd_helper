@@ -5,6 +5,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 from dnd_helper_bot.utils.i18n import t
+from dnd_helper_bot.utils.nav import build_nav_row
 from dnd_helper_bot.repositories.api_client import api_get_one
 
 logger = logging.getLogger(__name__)
@@ -46,9 +47,7 @@ async def _resolve_lang_by_user(update_or_query) -> str:
 
 
 async def _nav_row(lang: str) -> list[InlineKeyboardButton]:
-    back = await t("nav.back", lang)
-    main = await t("nav.main", lang)
-    return [InlineKeyboardButton(back, callback_data="menu:main"), InlineKeyboardButton(main, callback_data="menu:main")]
+    return await build_nav_row(lang, back_callback="menu:main")
 
 
 async def show_dice_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
