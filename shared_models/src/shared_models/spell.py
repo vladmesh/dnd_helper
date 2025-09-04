@@ -12,8 +12,6 @@ class Spell(BaseModel, table=True):
     """Spell shared model."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(index=True)
-    description: str
     # Deprecated: single caster_class removed in favor of multi-class `classes`
     # caster_class: CasterClass = Field(index=True)
     school: SpellSchool = Field(sa_type=Text(), index=True)
@@ -49,8 +47,6 @@ class Spell(BaseModel, table=True):
     # Metadata and localization
     source: Optional[str] = Field(default=None, index=True)
     page: Optional[int] = Field(default=None)
-    name_ru: Optional[str] = Field(default=None, index=True)
-    name_en: Optional[str] = Field(default=None, index=True)
     slug: Optional[str] = Field(default=None, index=True)
 
 

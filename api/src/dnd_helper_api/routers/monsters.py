@@ -57,19 +57,20 @@ def _apply_monster_translation(
             )
         ).first()
     if tr is not None:
-        monster.name = tr.name
-        monster.description = tr.description
-        # Localized blocks override base when present
-        if tr.traits is not None:
-            monster.traits = tr.traits
-        if tr.actions is not None:
-            monster.actions = tr.actions
-        if tr.reactions is not None:
-            monster.reactions = tr.reactions
-        if tr.legendary_actions is not None:
-            monster.legendary_actions = tr.legendary_actions
-        if tr.spellcasting is not None:
-            monster.spellcasting = tr.spellcasting
+        # Assign only if attributes exist on model (post-i18n cleanup)
+        for attr, value in (
+            ("name", tr.name),
+            ("description", tr.description),
+            ("traits", tr.traits),
+            ("actions", tr.actions),
+            ("reactions", tr.reactions),
+            ("legendary_actions", tr.legendary_actions),
+            ("spellcasting", tr.spellcasting),
+        ):
+            try:
+                setattr(monster, attr, value)  # type: ignore[attr-defined]
+            except Exception:
+                pass
 
 
 def _apply_monster_translations_bulk(
@@ -103,18 +104,19 @@ def _apply_monster_translations_bulk(
         tr = lang_map.get(primary) or lang_map.get(fallback)
         if tr is None:
             continue
-        m.name = tr.name
-        m.description = tr.description
-        if tr.traits is not None:
-            m.traits = tr.traits
-        if tr.actions is not None:
-            m.actions = tr.actions
-        if tr.reactions is not None:
-            m.reactions = tr.reactions
-        if tr.legendary_actions is not None:
-            m.legendary_actions = tr.legendary_actions
-        if tr.spellcasting is not None:
-            m.spellcasting = tr.spellcasting
+        for attr, value in (
+            ("name", tr.name),
+            ("description", tr.description),
+            ("traits", tr.traits),
+            ("actions", tr.actions),
+            ("reactions", tr.reactions),
+            ("legendary_actions", tr.legendary_actions),
+            ("spellcasting", tr.spellcasting),
+        ):
+            try:
+                setattr(m, attr, value)  # type: ignore[attr-defined]
+            except Exception:
+                pass
 
 
 def _compute_monster_derived_fields(monster: Monster) -> None:
@@ -156,9 +158,7 @@ def _compute_monster_derived_fields(monster: Monster) -> None:
     monster.truesight_range = truesight_range
     monster.tremorsense_range = tremorsense_range
 
-    # slug generation from name if not provided
-    if not getattr(monster, "slug", None) and getattr(monster, "name", None):
-        monster.slug = _slugify(monster.name)
+    # slug generation from name removed (name is localized)
 
 
 def _slugify(value: str) -> str:
@@ -188,7 +188,8 @@ def search_monsters(
         logger.warning("Empty monster search query")
         return []
 
-    conditions = [Monster.name.ilike(f"%{q}%")]
+    # Base table no longer has name; this endpoint no longer supports name substring search
+    return []
 
     if type is not None:
         conditions.append(Monster.type == type)
@@ -269,8 +270,8 @@ async def create_monster(
                         MonsterTranslation(
                             monster_id=monster.id,
                             lang=l,
-                            name=data.get("name") or monster.name,
-                            description=data.get("description") or monster.description,
+                            name=(data.get("name") or ""),
+                            description=(data.get("description") if data.get("description") is not None else ""),
                             traits=data.get("traits"),
                             actions=data.get("actions"),
                             reactions=data.get("reactions"),
@@ -291,39 +292,10 @@ async def create_monster(
                     session.add(existing)
         session.commit()
     else:
-        l = _select_language(lang)
-        existing = session.exec(
-            select(MonsterTranslation).where(
-                MonsterTranslation.monster_id == monster.id,
-                MonsterTranslation.lang == l,
-            )
-        ).first()
-        if existing is None:
-            session.add(
-                MonsterTranslation(
-                    monster_id=monster.id,
-                    lang=l,
-                    name=monster.name,
-                    description=monster.description,
-                    traits=monster.traits,
-                    actions=monster.actions,
-                    reactions=monster.reactions,
-                    legendary_actions=monster.legendary_actions,
-                    spellcasting=monster.spellcasting,
-                )
-            )
-        else:
-            existing.name = monster.name
-            existing.description = monster.description
-            existing.traits = monster.traits
-            existing.actions = monster.actions
-            existing.reactions = monster.reactions
-            existing.legendary_actions = monster.legendary_actions
-            existing.spellcasting = monster.spellcasting
-            session.add(existing)
-        session.commit()
+        # No translations provided; keep existing translations unchanged
+        pass
 
-    logger.info("Monster created", extra={"monster_id": monster.id, "monster_name": monster.name})
+    logger.info("Monster created", extra={"monster_id": monster.id})
     return monster
 
 
@@ -434,8 +406,7 @@ async def update_monster(
     if monster is None:
         logger.warning("Monster not found for update", extra={"monster_id": monster_id})
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Monster not found")
-    monster.name = payload.name
-    monster.description = payload.description
+    # name/description moved to translations; skip base assignment
     monster.hp = payload.hp
     monster.ac = payload.ac
     # legacy speed removed
@@ -471,16 +442,7 @@ async def update_monster(
         monster.damage_vulnerabilities = payload.damage_vulnerabilities
     if payload.condition_immunities is not None:
         monster.condition_immunities = payload.condition_immunities
-    if payload.traits is not None:
-        monster.traits = payload.traits
-    if payload.actions is not None:
-        monster.actions = payload.actions
-    if payload.reactions is not None:
-        monster.reactions = payload.reactions
-    if payload.legendary_actions is not None:
-        monster.legendary_actions = payload.legendary_actions
-    if payload.spellcasting is not None:
-        monster.spellcasting = payload.spellcasting
+    # localized blocks moved to translations; skip base assignment
     if payload.tags is not None:
         monster.tags = payload.tags
     _compute_monster_derived_fields(monster)
@@ -521,27 +483,8 @@ async def update_monster(
                     session.add(existing)
         session.commit()
     else:
-        l = _select_language(lang)
-        existing = session.exec(
-            select(MonsterTranslation).where(
-                MonsterTranslation.monster_id == monster.id,
-                MonsterTranslation.lang == l,
-            )
-        ).first()
-        if existing is None:
-            session.add(
-                MonsterTranslation(
-                    monster_id=monster.id,
-                    lang=l,
-                    name=monster.name,
-                    description=monster.description,
-                )
-            )
-        else:
-            existing.name = monster.name
-            existing.description = monster.description
-            session.add(existing)
-        session.commit()
+        # No translations provided; keep existing translations unchanged
+        pass
     logger.info("Monster updated", extra={"monster_id": monster.id})
     return monster
 

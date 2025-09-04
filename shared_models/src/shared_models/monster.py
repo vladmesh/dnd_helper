@@ -12,8 +12,6 @@ class Monster(BaseModel, table=True):
     """Monster shared model."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(index=True)
-    description: str
     # Iteration 3: `cr` replaces dangerous_lvl and becomes enum-string
     hp: int
     ac: int
@@ -35,17 +33,10 @@ class Monster(BaseModel, table=True):
     damage_resistances: Optional[List[str]] = Field(default=None, sa_type=ARRAY(String()))
     damage_vulnerabilities: Optional[List[str]] = Field(default=None, sa_type=ARRAY(String()))
     condition_immunities: Optional[List[str]] = Field(default=None, sa_type=ARRAY(String()))
-    traits: Optional[List[Dict[str, str]]] = Field(default=None, sa_type=JSONB)
-    actions: Optional[List[Dict[str, str]]] = Field(default=None, sa_type=JSONB)
-    reactions: Optional[List[Dict[str, str]]] = Field(default=None, sa_type=JSONB)
-    legendary_actions: Optional[List[Dict[str, str]]] = Field(default=None, sa_type=JSONB)
-    spellcasting: Optional[Dict[str, Any]] = Field(default=None, sa_type=JSONB)
     tags: Optional[List[str]] = Field(default=None, sa_type=ARRAY(String()))
 
     # Iteration 1 — additive fields (nullable; keep legacy speed intact)
     # Localization
-    name_ru: Optional[str] = Field(default=None, index=True)
-    name_en: Optional[str] = Field(default=None, index=True)
     slug: Optional[str] = Field(default=None, index=True)
 
     # Taxonomy and context

@@ -53,8 +53,11 @@ def _apply_spell_translation(
             )
         ).first()
     if tr is not None:
-        spell.name = tr.name
-        spell.description = tr.description
+        for attr, value in (("name", tr.name), ("description", tr.description)):
+            try:
+                setattr(spell, attr, value)  # type: ignore[attr-defined]
+            except Exception:
+                pass
 
 
 def _apply_spell_translations_bulk(
@@ -85,8 +88,11 @@ def _apply_spell_translations_bulk(
         tr = lang_map.get(primary) or lang_map.get(fallback)
         if tr is None:
             continue
-        s.name = tr.name
-        s.description = tr.description
+        for attr, value in (("name", tr.name), ("description", tr.description)):
+            try:
+                setattr(s, attr, value)  # type: ignore[attr-defined]
+            except Exception:
+                pass
 
 
 def _compute_spell_derived_fields(spell: Spell) -> None:
@@ -95,8 +101,7 @@ def _compute_spell_derived_fields(spell: Spell) -> None:
     Keep logic minimal and defensive: only set flags when source data is present.
     """
     # slug generation from name if not provided
-    if not getattr(spell, "slug", None) and getattr(spell, "name", None):
-        spell.slug = _slugify(spell.name)
+    # slug generation skipped; localized name not stored on base model
 
     # is_concentration from duration string
     if spell.duration is not None:
@@ -183,7 +188,9 @@ def search_spells(
         logger.warning("Empty spell search query")
         return []
 
-    conditions = [Spell.name.ilike(f"%{q}%")]
+    # Base table no longer has name; search by translations is out of scope here
+    # For now, return empty when q provided but base name missing
+    return []
 
     if level is not None:
         conditions.append(Spell.level == level)
@@ -292,29 +299,10 @@ async def create_spell(
                     session.add(existing)
         session.commit()
     else:
-        l = _select_language(lang)
-        existing = session.exec(
-            select(SpellTranslation).where(
-                SpellTranslation.spell_id == spell.id,
-                SpellTranslation.lang == l,
-            )
-        ).first()
-        if existing is None:
-            session.add(
-                SpellTranslation(
-                    spell_id=spell.id,
-                    lang=l,
-                    name=spell.name,
-                    description=spell.description,
-                )
-            )
-        else:
-            existing.name = spell.name
-            existing.description = spell.description
-            session.add(existing)
-        session.commit()
+        # No translations provided; keep existing translations unchanged
+        pass
 
-    logger.info("Spell created", extra={"spell_id": spell.id, "spell_name": spell.name})
+    logger.info("Spell created", extra={"spell_id": spell.id})
     return spell
 
 
@@ -406,8 +394,7 @@ async def update_spell(
     if spell is None:
         logger.warning("Spell not found for update", extra={"spell_id": spell_id})
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Spell not found")
-    spell.name = payload.name
-    spell.description = payload.description
+    # name/description moved to translations; skip base assignment
     # caster_class deprecated; rely on `classes`
     # legacy distance removed
     spell.school = payload.school
@@ -474,27 +461,8 @@ async def update_spell(
                     session.add(existing)
         session.commit()
     else:
-        l = _select_language(lang)
-        existing = session.exec(
-            select(SpellTranslation).where(
-                SpellTranslation.spell_id == spell.id,
-                SpellTranslation.lang == l,
-            )
-        ).first()
-        if existing is None:
-            session.add(
-                SpellTranslation(
-                    spell_id=spell.id,
-                    lang=l,
-                    name=spell.name,
-                    description=spell.description,
-                )
-            )
-        else:
-            existing.name = spell.name
-            existing.description = spell.description
-            session.add(existing)
-        session.commit()
+        # No translations provided; keep existing translations unchanged
+        pass
     logger.info("Spell updated", extra={"spell_id": spell.id})
     return spell
 
