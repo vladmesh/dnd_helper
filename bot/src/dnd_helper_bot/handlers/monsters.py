@@ -143,6 +143,12 @@ async def _detect_lang(update_or_query) -> str:
         return "ru"
 
 
+async def _nav_row(lang: str) -> list[InlineKeyboardButton]:
+    back = await t("nav.back", lang)
+    main = await t("nav.main", lang)
+    return [InlineKeyboardButton(back, callback_data="menu:main"), InlineKeyboardButton(main, callback_data="menu:main")]
+
+
 async def _render_monsters_list(query, context: ContextTypes.DEFAULT_TYPE, page: int) -> None:
     context.user_data["monsters_current_page"] = page
     pending, applied = _get_filter_state(context)
@@ -167,6 +173,7 @@ async def _render_monsters_list(query, context: ContextTypes.DEFAULT_TYPE, page:
         nav.append(InlineKeyboardButton((await t("nav.next", lang, default=("➡️ Next" if lang == "en" else "➡️ Далее"))), callback_data=f"monster:list:page:{page+1}"))
     if nav:
         rows.append(nav)
+    rows.append(await _nav_row(lang))
     markup = InlineKeyboardMarkup(rows)
     await query.edit_message_text((f"Monsters list (p. {page})" if lang == "en" else f"Список монстров (стр. {page})"), reply_markup=markup)
 
@@ -194,8 +201,7 @@ async def monster_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         f"CR: {danger_text}\n"
         f"HP: {m.get('hp','-')}, AC: {m.get('ac','-')}, Speed: {m.get('speed','-')}"
     )
-    back = (await t("nav.back", lang, default=("Back to list" if lang == "en" else "К списку")))
-    markup = InlineKeyboardMarkup([[InlineKeyboardButton(back, callback_data="monster:list:page:1")]])
+    markup = InlineKeyboardMarkup([await _nav_row(lang)])
     await query.edit_message_text(text, reply_markup=markup)
 
 
