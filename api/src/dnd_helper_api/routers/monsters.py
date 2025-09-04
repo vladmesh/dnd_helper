@@ -169,7 +169,7 @@ def _slugify(value: str) -> str:
     return text.strip("-")
 
 
-@router.get("/search", response_model=List[Monster])
+# @router.get("/search", response_model=List[Monster])
 def search_monsters(
     q: str,
     type: Optional[str] = None,
@@ -299,7 +299,7 @@ async def create_monster(
     return monster
 
 
-@router.get("", response_model=List[Monster])
+# @router.get("", response_model=List[Monster])
 def list_monsters(
     lang: Optional[str] = None,
     session: Session = Depends(get_session),  # noqa: B008
@@ -339,7 +339,7 @@ def _with_labels(monster: Monster, labels: Dict[tuple[str, str], str]) -> Dict[s
     return body
 
 
-@router.get("/labeled", response_model=List[Dict[str, Any]])
+# @router.get("/labeled", response_model=List[Dict[str, Any]])
 def list_monsters_labeled(
     lang: Optional[str] = None,
     session: Session = Depends(get_session),  # noqa: B008
@@ -359,7 +359,7 @@ def list_monsters_labeled(
     return [_with_labels(m, labels) for m in monsters]
 
 
-@router.get("/{monster_id}", response_model=Monster)
+# @router.get("/{monster_id}", response_model=Monster)
 def get_monster(
     monster_id: int,
     lang: Optional[str] = None,
@@ -377,7 +377,7 @@ def get_monster(
     logger.info("Monster fetched", extra={"monster_id": monster_id})
     return monster
 
-@router.get("/{monster_id}/labeled", response_model=Dict[str, Any])
+# @router.get("/{monster_id}/labeled", response_model=Dict[str, Any])
 def get_monster_labeled(
     monster_id: int,
     lang: Optional[str] = None,
@@ -561,5 +561,112 @@ def upsert_monster_translation(
     )
     return None
 
+
+# ---------------------------- Wrapped responses ----------------------------
+
+
+def _effective_monster_translation_dict(
+    session: Session, monster_id: int, lang: Optional[str]
+) -> Optional[Dict[str, Any]]:
+    primary = _select_language(lang)
+    fallback = _fallback_language(primary)
+    tr = session.exec(
+        select(MonsterTranslation).where(
+            MonsterTranslation.monster_id == monster_id,
+            MonsterTranslation.lang == primary,
+        )
+    ).first()
+    if tr is None:
+        tr = session.exec(
+            select(MonsterTranslation).where(
+                MonsterTranslation.monster_id == monster_id,
+                MonsterTranslation.lang == fallback,
+            )
+        ).first()
+    if tr is None:
+        return None
+    # Convert to plain dict, exclude None values for compactness
+    data = tr.model_dump()
+    # Drop identifiers and timestamps that are not needed by bot
+    for k in ("id", "monster_id", "created_at", "updated_at"):
+        data.pop(k, None)
+    return data
+
+
+def _labels_for_monster(
+    labels: Dict[tuple[str, str], str], m: Monster
+) -> Dict[str, Any]:
+    out: Dict[str, Any] = {}
+    if m.type:
+        code = str(m.type).lower()
+        out["type"] = {"code": code, "label": labels.get(("monster_type", code), code)}
+    if m.size:
+        code = str(m.size).lower()
+        out["size"] = {"code": code, "label": labels.get(("monster_size", code), code)}
+    if m.cr:
+        code = str(m.cr)
+        out["cr"] = {"code": code, "label": labels.get(("danger_level", code), code)}
+    return out
+
+
+@router.get("/wrapped-list", response_model=List[Dict[str, Any]])
+def list_monsters_wrapped(
+    lang: Optional[str] = None,
+    session: Session = Depends(get_session),  # noqa: B008
+    response: Response = None,
+) -> List[Dict[str, Any]]:
+    monsters = session.exec(select(Monster)).all()
+    requested_lang = _select_language(lang)
+    if response is not None:
+        response.headers["Content-Language"] = requested_lang.value
+    # Resolve labels in bulk
+    codes = {
+        "monster_type": {str(m.type).lower() for m in monsters if m.type},
+        "monster_size": {str(m.size).lower() for m in monsters if m.size},
+        "danger_level": {str(m.cr) for m in monsters if m.cr},
+    }
+    labels = resolve_enum_labels(session, requested_lang, codes)
+    result: List[Dict[str, Any]] = []
+    for m in monsters:
+        result.append(
+            {
+                "entity": m.model_dump(),
+                "translation": _effective_monster_translation_dict(session, int(m.id), lang)
+                if m.id is not None
+                else None,
+                "labels": _labels_for_monster(labels, m),
+            }
+        )
+    logger.info("Monsters wrapped listed", extra={"count": len(result)})
+    return result
+
+
+@router.get("/{monster_id}/wrapped", response_model=Dict[str, Any])
+def get_monster_wrapped(
+    monster_id: int,
+    lang: Optional[str] = None,
+    session: Session = Depends(get_session),  # noqa: B008
+    response: Response = None,
+) -> Dict[str, Any]:
+    m = session.get(Monster, monster_id)
+    if m is None:
+        logger.warning("Monster not found (wrapped)", extra={"monster_id": monster_id})
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Monster not found")
+    requested_lang = _select_language(lang)
+    if response is not None:
+        response.headers["Content-Language"] = requested_lang.value
+    codes = {
+        "monster_type": {str(m.type).lower()} if m.type else set(),
+        "monster_size": {str(m.size).lower()} if m.size else set(),
+        "danger_level": {str(m.cr)} if m.cr else set(),
+    }
+    labels = resolve_enum_labels(session, requested_lang, codes)
+    body = {
+        "entity": m.model_dump(),
+        "translation": _effective_monster_translation_dict(session, monster_id, lang),
+        "labels": _labels_for_monster(labels, m),
+    }
+    logger.info("Monster wrapped fetched", extra={"monster_id": monster_id})
+    return body
 
 
