@@ -169,7 +169,7 @@ def _slugify(value: str) -> str:
     return text.strip("-")
 
 
-# @router.get("/search", response_model=List[Monster])
+@router.get("/search", response_model=List[Monster])
 def search_monsters(
     q: str,
     type: Optional[str] = None,
@@ -187,9 +187,8 @@ def search_monsters(
     if not q:
         logger.warning("Empty monster search query")
         return []
-
-    # Base table no longer has name; this endpoint no longer supports name substring search
-    return []
+    # Build conditions on base table
+    conditions: List[Any] = []
 
     if type is not None:
         conditions.append(Monster.type == type)
@@ -208,7 +207,20 @@ def search_monsters(
     if environments:
         conditions.append(Monster.environments.contains(environments))
 
-    monsters = session.exec(select(Monster).where(*conditions)).all()
+    # Match only translations in the requested language; no fallback for matching
+    requested_lang = _select_language(lang)
+    pattern = f"%{q.strip()}%"
+    stmt = (
+        select(Monster)
+        .join(MonsterTranslation, MonsterTranslation.monster_id == Monster.id)
+        .where(
+            MonsterTranslation.lang == requested_lang,
+            MonsterTranslation.name.ilike(pattern),
+            *conditions,
+        )
+        .distinct()
+    )
+    monsters = session.exec(stmt).all()
     # Apply translations and expose effective language
     _apply_monster_translations_bulk(session, monsters, lang)
     requested_lang = _select_language(lang)

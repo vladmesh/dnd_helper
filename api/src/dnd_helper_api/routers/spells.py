@@ -167,7 +167,7 @@ def _normalize_casting_time(value: str) -> str:
     return v
 
 
-# @router.get("/search", response_model=List[Spell])
+@router.get("/search", response_model=List[Spell])
 def search_spells(
     q: str,
     level: Optional[int] = None,
@@ -187,10 +187,8 @@ def search_spells(
     if not q:
         logger.warning("Empty spell search query")
         return []
-
-    # Base table no longer has name; search by translations is out of scope here
-    # For now, return empty when q provided but base name missing
-    return []
+    # Build conditions on base table
+    conditions: List[Any] = []
 
     if level is not None:
         conditions.append(Spell.level == level)
@@ -212,10 +210,21 @@ def search_spells(
         conditions.append(Spell.targeting == targeting)
     if tags:
         conditions.append(Spell.tags.contains(tags))
-
-    spells = session.exec(select(Spell).where(*conditions)).all()
-    _apply_spell_translations_bulk(session, spells, lang)
+    # Match only translations in the requested language; no fallback for matching
     requested_lang = _select_language(lang)
+    pattern = f"%{q.strip()}%"
+    stmt = (
+        select(Spell)
+        .join(SpellTranslation, SpellTranslation.spell_id == Spell.id)
+        .where(
+            SpellTranslation.lang == requested_lang,
+            SpellTranslation.name.ilike(pattern),
+            *conditions,
+        )
+        .distinct()
+    )
+    spells = session.exec(stmt).all()
+    _apply_spell_translations_bulk(session, spells, lang)
     if response is not None:
         response.headers["Content-Language"] = requested_lang.value
     logger.info(
