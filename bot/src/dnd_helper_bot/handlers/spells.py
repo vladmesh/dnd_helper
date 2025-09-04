@@ -165,7 +165,25 @@ async def _render_spells_list(query, context: ContextTypes.DEFAULT_TYPE, page: i
     context.user_data["spells_current_page"] = page
     pending, applied = _get_filter_state(context)
     lang = await _resolve_lang_by_user(query)
-    all_spells: List[Dict[str, Any]] = await api_get("/spells/labeled", params={"lang": lang})
+    wrapped_list: List[Dict[str, Any]] = await api_get("/spells/wrapped", params={"lang": lang})
+
+    # Flatten for filtering/listing
+    all_spells: List[Dict[str, Any]] = []
+    for w in wrapped_list:
+        e = (w.get("entity") or {})
+        t = (w.get("translation") or {})
+        all_spells.append(
+            {
+                "id": e.get("id"),
+                "name": t.get("name") or "",
+                "description": t.get("description") or "",
+                "ritual": e.get("ritual"),
+                "is_concentration": e.get("is_concentration"),
+                "casting_time": e.get("casting_time"),
+                "level": e.get("level"),
+            }
+        )
+
     filtered = _filter_spells(all_spells, applied)
     total = len(filtered)
     if total == 0:
@@ -205,17 +223,17 @@ async def spell_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     spell_id = int(query.data.split(":")[-1])
     logger.info("Spell detail requested", extra={"correlation_id": query.message.chat_id if query and query.message else None, "spell_id": spell_id})
     lang = await _resolve_lang_by_user(query)
-    s = await api_get_one(f"/spells/{spell_id}/labeled", params={"lang": lang})
-    classes_raw = s.get("classes") or []
-    if classes_raw and isinstance(classes_raw[0], dict):
-        classes_str = ", ".join([c.get("label") or c.get("code") for c in classes_raw])
-    else:
-        classes_str = ", ".join(classes_raw) if isinstance(classes_raw, list) else str(classes_raw or "-")
-    school_raw = s.get("school")
-    school_str = school_raw.get("label") if isinstance(school_raw, dict) else (school_raw or "-")
+    w = await api_get_one(f"/spells/{spell_id}/wrapped", params={"lang": lang})
+    e = w.get("entity") or {}
+    t = w.get("translation") or {}
+    labels = w.get("labels") or {}
+    classes_l = labels.get("classes") or []
+    classes_str = ", ".join([(c.get("label") or c.get("code")) for c in classes_l]) if classes_l else "-"
+    school_l = labels.get("school") or {}
+    school_str = school_l.get("label") if isinstance(school_l, dict) else (e.get("school") or "-")
     text = (
-        f"{s.get('name','-')}\n"
-        f"{s.get('description','')}\n"
+        f"{t.get('name','-')}\n"
+        f"{t.get('description','')}\n"
         f"{('Classes' if lang == 'en' else 'Классы')}: {classes_str}\n"
         f"{('School' if lang == 'en' else 'Школа')}: {school_str}"
     )
@@ -229,21 +247,21 @@ async def spell_random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await query.answer()
     logger.info("Spell random requested", extra={"correlation_id": query.message.chat_id if query and query.message else None})
     lang = await _resolve_lang_by_user(query)
-    all_spells = await api_get("/spells/labeled", params={"lang": lang})
-    if not all_spells:
+    wrapped_list = await api_get("/spells/wrapped", params={"lang": lang})
+    if not wrapped_list:
         logger.warning("No spells available for random", extra={"correlation_id": query.message.chat_id if query and query.message else None})
         await query.edit_message_text(await t("list.empty.spells", lang, default="Заклинаний нет."))
         return
-    s = random.choice(all_spells)
-    classes_raw = s.get("classes") or []
-    if classes_raw and isinstance(classes_raw[0], dict):
-        classes_str = ", ".join([c.get("label") or c.get("code") for c in classes_raw])
-    else:
-        classes_str = ", ".join(classes_raw) if isinstance(classes_raw, list) else str(classes_raw or "-")
-    school_raw = s.get("school")
-    school_str = school_raw.get("label") if isinstance(school_raw, dict) else (school_raw or "-")
+    w = random.choice(wrapped_list)
+    e = w.get("entity") or {}
+    t = w.get("translation") or {}
+    labels = w.get("labels") or {}
+    classes_l = labels.get("classes") or []
+    classes_str = ", ".join([(c.get("label") or c.get("code")) for c in classes_l]) if classes_l else "-"
+    school_l = labels.get("school") or {}
+    school_str = school_l.get("label") if isinstance(school_l, dict) else (e.get("school") or "-")
     text = (
-        f"{s.get('description','')}"
+        f"{t.get('description','')}"
         + (" (random)\n" if lang == "en" else " (случайно)\n")
         + f"{('Classes' if lang == 'en' else 'Классы')}: {classes_str}\n"
         + f"{('School' if lang == 'en' else 'Школа')}: {school_str}"
