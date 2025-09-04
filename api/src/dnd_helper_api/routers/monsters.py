@@ -682,3 +682,82 @@ def get_monster_wrapped(
     return body
 
 
+@router.get("/search-wrapped", response_model=List[Dict[str, Any]])
+def search_monsters_wrapped(
+    q: str,
+    type: Optional[str] = None,
+    size: Optional[str] = None,
+    cr_min: Optional[float] = None,
+    cr_max: Optional[float] = None,
+    is_flying: Optional[bool] = None,
+    is_legendary: Optional[bool] = None,
+    roles: Optional[List[str]] = None,
+    environments: Optional[List[str]] = None,
+    lang: Optional[str] = None,
+    session: Session = Depends(get_session),  # noqa: B008
+    response: Response = None,
+) -> List[Dict[str, Any]]:
+    if not q:
+        logger.warning("Empty monster search (wrapped) query")
+        return []
+
+    # Base filters
+    conditions: List[Any] = []
+    if type is not None:
+        conditions.append(Monster.type == type)
+    if size is not None:
+        conditions.append(Monster.size == size)
+    if cr_min is not None:
+        conditions.append(Monster.cr >= cr_min)
+    if cr_max is not None:
+        conditions.append(Monster.cr <= cr_max)
+    if is_flying is not None:
+        conditions.append(Monster.is_flying == is_flying)
+    if is_legendary is not None:
+        conditions.append(Monster.is_legendary == is_legendary)
+    if roles:
+        conditions.append(Monster.roles.contains(roles))
+    if environments:
+        conditions.append(Monster.environments.contains(environments))
+
+    # Match only requested language for substring
+    requested_lang = _select_language(lang)
+    pattern = f"%{q.strip()}%"
+    stmt = (
+        select(Monster)
+        .join(MonsterTranslation, MonsterTranslation.monster_id == Monster.id)
+        .where(
+            MonsterTranslation.lang == requested_lang,
+            MonsterTranslation.name.ilike(pattern),
+            *conditions,
+        )
+        .distinct()
+    )
+    monsters = session.exec(stmt).all()
+
+    # Labels resolution
+    codes = {
+        "monster_type": {str(m.type).lower() for m in monsters if m.type},
+        "monster_size": {str(m.size).lower() for m in monsters if m.size},
+        "danger_level": {str(m.cr) for m in monsters if m.cr},
+    }
+    labels = resolve_enum_labels(session, requested_lang, codes)
+
+    # Build wrapped structure
+    result: List[Dict[str, Any]] = []
+    for m in monsters:
+        result.append(
+            {
+                "entity": m.model_dump(),
+                "translation": _effective_monster_translation_dict(session, int(m.id), lang)
+                if m.id is not None
+                else None,
+                "labels": _labels_for_monster(labels, m),
+            }
+        )
+    if response is not None:
+        response.headers["Content-Language"] = requested_lang.value
+    logger.info("Monsters search-wrapped completed", extra={"query": q, "count": len(result)})
+    return result
+
+

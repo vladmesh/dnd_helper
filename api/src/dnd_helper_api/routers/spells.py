@@ -649,3 +649,87 @@ def get_spell_wrapped(
     return body
 
 
+@router.get("/search-wrapped", response_model=List[Dict[str, Any]])
+def search_spells_wrapped(
+    q: str,
+    level: Optional[int] = None,
+    school: Optional[str] = None,
+    klass: Optional[str] = Query(None, alias="class"),
+    damage_type: Optional[str] = None,
+    save_ability: Optional[str] = None,
+    attack_roll: Optional[bool] = None,
+    ritual: Optional[bool] = None,
+    is_concentration: Optional[bool] = None,
+    targeting: Optional[str] = None,
+    tags: Optional[List[str]] = None,
+    lang: Optional[str] = None,
+    session: Session = Depends(get_session),  # noqa: B008
+    response: Response = None,
+) -> List[Dict[str, Any]]:
+    if not q:
+        logger.warning("Empty spell search (wrapped) query")
+        return []
+
+    # Base filters
+    conditions: List[Any] = []
+    if level is not None:
+        conditions.append(Spell.level == level)
+    if school is not None:
+        conditions.append(Spell.school == school)
+    if klass is not None:
+        conditions.append(Spell.classes.contains([klass]))
+    if damage_type is not None:
+        conditions.append(Spell.damage_type == damage_type)
+    if save_ability is not None:
+        conditions.append(Spell.save_ability == save_ability)
+    if attack_roll is not None:
+        conditions.append(Spell.attack_roll == attack_roll)
+    if ritual is not None:
+        conditions.append(Spell.ritual == ritual)
+    if is_concentration is not None:
+        conditions.append(Spell.is_concentration == is_concentration)
+    if targeting is not None:
+        conditions.append(Spell.targeting == targeting)
+    if tags:
+        conditions.append(Spell.tags.contains(tags))
+
+    # Match only requested language for substring
+    requested_lang = _select_language(lang)
+    pattern = f"%{q.strip()}%"
+    stmt = (
+        select(Spell)
+        .join(SpellTranslation, SpellTranslation.spell_id == Spell.id)
+        .where(
+            SpellTranslation.lang == requested_lang,
+            SpellTranslation.name.ilike(pattern),
+            *conditions,
+        )
+        .distinct()
+    )
+    spells = session.exec(stmt).all()
+
+    # Labels resolution
+    codes = {
+        "spell_school": {str(s.school) for s in spells if s.school},
+        "caster_class": {c for s in spells for c in (s.classes or [])},
+    }
+    labels = resolve_enum_labels(session, requested_lang, codes)
+
+    # Build wrapped structure
+    result: List[Dict[str, Any]] = []
+    for s in spells:
+        result.append(
+            {
+                "entity": s.model_dump(),
+                "translation": _effective_spell_translation_dict(session, int(s.id), lang)
+                if s.id is not None
+                else None,
+                "labels": _labels_for_spell(labels, s),
+            }
+        )
+    if response is not None:
+        response.headers["Content-Language"] = requested_lang.value
+    logger.info("Spells search-wrapped completed", extra={"query": q, "count": len(result)})
+    return result
+
+
