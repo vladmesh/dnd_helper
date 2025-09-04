@@ -152,7 +152,43 @@ async def _render_monsters_list(query, context: ContextTypes.DEFAULT_TYPE, page:
     context.user_data["monsters_current_page"] = page
     pending, applied = _get_filter_state(context)
     lang = await _resolve_lang_by_user(query)
-    all_monsters: List[Dict[str, Any]] = await api_get("/monsters/labeled", params={"lang": lang})
+    wrapped_list: List[Dict[str, Any]] = await api_get("/monsters/wrapped-list", params={"lang": lang})
+
+    # Flatten for filtering and listing
+    def _cr_to_float(value: Any) -> Optional[float]:
+        try:
+            if value is None:
+                return None
+            if isinstance(value, (int, float)):
+                return float(value)
+            s = str(value)
+            if "/" in s:
+                a, b = s.split("/", 1)
+                return float(a) / float(b)
+            return float(s)
+        except Exception:
+            return None
+
+    def _size_letter(code: Optional[str]) -> Optional[str]:
+        m = {"tiny": "S", "small": "S", "medium": "M", "large": "L", "huge": "L", "gargantuan": "L"}
+        return m.get(str(code).lower()) if code else None
+
+    all_monsters: List[Dict[str, Any]] = []
+    for w in wrapped_list:
+        e = w.get("entity") or {}
+        t = w.get("translation") or {}
+        all_monsters.append(
+            {
+                "id": e.get("id"),
+                "name": t.get("name") or "",
+                "description": t.get("description") or "",
+                "is_legendary": e.get("is_legendary"),
+                "is_flying": e.get("is_flying"),
+                "cr": _cr_to_float(e.get("cr")),
+                "size": _size_letter(e.get("size")),
+            }
+        )
+
     filtered = _filter_monsters(all_monsters, applied)
     total = len(filtered)
     if total == 0:
@@ -191,14 +227,17 @@ async def monster_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     monster_id = int(query.data.split(":")[-1])
     logger.info("Monster detail requested", extra={"correlation_id": query.message.chat_id if query and query.message else None, "monster_id": monster_id})
     lang = await _resolve_lang_by_user(query)
-    m = await api_get_one(f"/monsters/{monster_id}/labeled", params={"lang": lang})
-    cr_raw = m.get('cr')
-    danger_text = (cr_raw.get('label') if isinstance(cr_raw, dict) else cr_raw) or '-'
+    w = await api_get_one(f"/monsters/{monster_id}/wrapped", params={"lang": lang})
+    e = w.get("entity") or {}
+    t = w.get("translation") or {}
+    labels = (w.get("labels") or {})
+    cr_l = labels.get("cr")
+    danger_text = (cr_l.get("label") if isinstance(cr_l, dict) else e.get("cr")) or '-'
     text = (
-        f"{m.get('name','-')}\n"
-        f"{m.get('description','')}\n"
+        f"{t.get('name','-')}\n"
+        f"{t.get('description','')}\n"
         f"CR: {danger_text}\n"
-        f"HP: {m.get('hp','-')}, AC: {m.get('ac','-')}, Speed: {m.get('speed','-')}"
+        f"HP: {e.get('hp','-')}, AC: {e.get('ac','-')}"
     )
     page = int(context.user_data.get("monsters_current_page", 1))
     markup = InlineKeyboardMarkup([await _nav_row(lang, f"monster:list:page:{page}")])
@@ -210,18 +249,21 @@ async def monster_random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await query.answer()
     logger.info("Monster random requested", extra={"correlation_id": query.message.chat_id if query and query.message else None})
     lang = await _resolve_lang_by_user(query)
-    all_monsters = await api_get("/monsters/labeled", params={"lang": lang})
-    if not all_monsters:
+    wrapped_list = await api_get("/monsters/wrapped-list", params={"lang": lang})
+    if not wrapped_list:
         logger.warning("No monsters available for random", extra={"correlation_id": query.message.chat_id if query and query.message else None})
         await query.edit_message_text(await t("list.empty.monsters", lang, default="Монстров нет."))
         return
-    m = random.choice(all_monsters)
-    cr_raw = m.get('cr')
-    danger_text = (cr_raw.get('label') if isinstance(cr_raw, dict) else cr_raw) or '-'
+    w = random.choice(wrapped_list)
+    e = w.get("entity") or {}
+    t = w.get("translation") or {}
+    labels = (w.get("labels") or {})
+    cr_l = labels.get("cr")
+    danger_text = (cr_l.get("label") if isinstance(cr_l, dict) else e.get("cr")) or '-'
     text = (
-        f"{m.get('description','')}" + " (random)\n"
+        f"{t.get('description','')}" + " (random)\n"
         f"CR: {danger_text}\n"
-        f"HP: {m.get('hp','-')}, AC: {m.get('ac','-')}, Speed: {m.get('speed','-')}"
+        f"HP: {e.get('hp','-')}, AC: {e.get('ac','-')}"
     )
     markup = InlineKeyboardMarkup([await _nav_row(lang, "menu:monsters")])
     await query.edit_message_text(text, reply_markup=markup)
