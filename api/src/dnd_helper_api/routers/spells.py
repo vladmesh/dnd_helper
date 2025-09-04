@@ -167,7 +167,7 @@ def _normalize_casting_time(value: str) -> str:
     return v
 
 
-@router.get("/search", response_model=List[Spell])
+# @router.get("/search", response_model=List[Spell])
 def search_spells(
     q: str,
     level: Optional[int] = None,
@@ -313,7 +313,7 @@ async def create_spell(
     return spell
 
 
-@router.get("", response_model=List[Spell])
+# @router.get("", response_model=List[Spell])
 def list_spells(
     lang: Optional[str] = None,
     session: Session = Depends(get_session),  # noqa: B008
@@ -328,7 +328,7 @@ def list_spells(
     return spells
 
 
-@router.get("/labeled", response_model=List[Dict[str, Any]])
+# @router.get("/labeled", response_model=List[Dict[str, Any]])
 def list_spells_labeled(
     lang: Optional[str] = None,
     session: Session = Depends(get_session),  # noqa: B008
@@ -347,7 +347,7 @@ def list_spells_labeled(
     return [_with_labels(s, labels) for s in spells]
 
 
-@router.get("/{spell_id}", response_model=Spell)
+# @router.get("/{spell_id}", response_model=Spell)
 def get_spell(
     spell_id: int,
     lang: Optional[str] = None,
@@ -366,7 +366,7 @@ def get_spell(
     return spell
 
 
-@router.get("/{spell_id}/labeled", response_model=Dict[str, Any])
+# @router.get("/{spell_id}/labeled", response_model=Dict[str, Any])
 def get_spell_labeled(
     spell_id: int,
     lang: Optional[str] = None,
@@ -539,5 +539,104 @@ def upsert_spell_translation(
     )
     return None
 
+
+# ---------------------------- Wrapped responses ----------------------------
+
+
+def _effective_spell_translation_dict(
+    session: Session, spell_id: int, lang: Optional[str]
+) -> Optional[Dict[str, Any]]:
+    primary = _select_language(lang)
+    fallback = _fallback_language(primary)
+    tr = session.exec(
+        select(SpellTranslation).where(
+            SpellTranslation.spell_id == spell_id,
+            SpellTranslation.lang == primary,
+        )
+    ).first()
+    if tr is None:
+        tr = session.exec(
+            select(SpellTranslation).where(
+                SpellTranslation.spell_id == spell_id,
+                SpellTranslation.lang == fallback,
+            )
+        ).first()
+    if tr is None:
+        return None
+    data = tr.model_dump()
+    for k in ("id", "spell_id", "created_at", "updated_at"):
+        data.pop(k, None)
+    return data
+
+
+def _labels_for_spell(labels: Dict[tuple[str, str], str], s: Spell) -> Dict[str, Any]:
+    out: Dict[str, Any] = {}
+    if s.school:
+        code = str(s.school)
+        out["school"] = {"code": code, "label": labels.get(("spell_school", code), code)}
+    if s.classes:
+        out["classes"] = [
+            {"code": c, "label": labels.get(("caster_class", str(c)), str(c))}
+            for c in s.classes
+        ]
+    return out
+
+
+@router.get("/wrapped", response_model=List[Dict[str, Any]])
+def list_spells_wrapped(
+    lang: Optional[str] = None,
+    session: Session = Depends(get_session),  # noqa: B008
+    response: Response = None,
+) -> List[Dict[str, Any]]:
+    spells = session.exec(select(Spell)).all()
+    requested_lang = _select_language(lang)
+    if response is not None:
+        response.headers["Content-Language"] = requested_lang.value
+    codes = {
+        "spell_school": {str(s.school) for s in spells if s.school},
+        "caster_class": {c for s in spells for c in (s.classes or [])},
+    }
+    labels = resolve_enum_labels(session, requested_lang, codes)
+    result: List[Dict[str, Any]] = []
+    for s in spells:
+        result.append(
+            {
+                "entity": s.model_dump(),
+                "translation": _effective_spell_translation_dict(session, int(s.id), lang)
+                if s.id is not None
+                else None,
+                "labels": _labels_for_spell(labels, s),
+            }
+        )
+    logger.info("Spells wrapped listed", extra={"count": len(result)})
+    return result
+
+
+@router.get("/{spell_id}/wrapped", response_model=Dict[str, Any])
+def get_spell_wrapped(
+    spell_id: int,
+    lang: Optional[str] = None,
+    session: Session = Depends(get_session),  # noqa: B008
+    response: Response = None,
+) -> Dict[str, Any]:
+    s = session.get(Spell, spell_id)
+    if s is None:
+        logger.warning("Spell not found (wrapped)", extra={"spell_id": spell_id})
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Spell not found")
+    requested_lang = _select_language(lang)
+    if response is not None:
+        response.headers["Content-Language"] = requested_lang.value
+    codes = {
+        "spell_school": {str(s.school)} if s.school else set(),
+        "caster_class": set(s.classes or []),
+    }
+    labels = resolve_enum_labels(session, requested_lang, codes)
+    body = {
+        "entity": s.model_dump(),
+        "translation": _effective_spell_translation_dict(session, spell_id, lang),
+        "labels": _labels_for_spell(labels, s),
+    }
+    logger.info("Spell wrapped fetched", extra={"spell_id": spell_id})
+    return body
 
 
