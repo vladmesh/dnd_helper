@@ -30,6 +30,19 @@ async def _resolve_lang_by_user(update: Update) -> str:
         return "ru"
 
 
+async def _build_main_menu_inline_i18n(lang: str) -> InlineKeyboardMarkup:
+    dice = "Roll dice" if lang == "en" else "Бросить кубики"
+    best = await t("menu.main.bestiary", lang, default=("Bestiary" if lang == "en" else "Бестиарий"))
+    spells = "Spells" if lang == "en" else "Заклинания"
+    settings = "Settings" if lang == "en" else "Настройки"
+    rows = [
+        [InlineKeyboardButton(dice, callback_data="menu:dice")],
+        [InlineKeyboardButton(best, callback_data="menu:monsters"), InlineKeyboardButton(spells, callback_data="menu:spells")],
+        [InlineKeyboardButton(settings, callback_data="menu:settings")],
+    ]
+    return InlineKeyboardMarkup(rows)
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id if update.effective_user else None
     chat_id = update.effective_chat.id if update.effective_chat else None
@@ -52,7 +65,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     lang = user.get("lang") or ((update.effective_user.language_code or "ru").lower().startswith("en") and "en" or "ru")
     await update.message.reply_text(
         "Choose an action:" if lang == "en" else "Выберите действие:",
-        reply_markup=build_main_menu_inline(lang),
+        reply_markup=await _build_main_menu_inline_i18n(lang),
     )
 
 
@@ -90,7 +103,7 @@ async def show_main_menu_from_callback(update: Update, context: ContextTypes.DEF
         def __init__(self, q):
             self.effective_user = q.from_user if q and getattr(q, "from_user", None) else None
     lang = await _resolve_lang_by_user(_QWrap(query))
-    await query.message.edit_text("Main menu:" if lang == "en" else "Главное меню:", reply_markup=build_main_menu_inline(lang))
+    await query.message.edit_text("Main menu:" if lang == "en" else "Главное меню:", reply_markup=await _build_main_menu_inline_i18n(lang))
 
 
 async def show_bestiarie_menu_from_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -199,6 +212,6 @@ async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     # Show main menu in selected language
     await query.edit_message_text(
         "Main menu:" if lang == "en" else "Главное меню:",
-        reply_markup=build_main_menu_inline(lang),
+        reply_markup=await _build_main_menu_inline_i18n(lang),
     )
 
