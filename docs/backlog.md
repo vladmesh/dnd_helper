@@ -180,3 +180,50 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
   - Running `alembic revision --autogenerate` after a no-op model change yields only the intended column diffs, no FK churn.
   - FK constraints for `monster_translations` and `spell_translations` no longer flap (drop/create) without intentional change.
 
+### 17) Expand logging structure and context propagation
+- Goal: Extend structured logging fields and ensure correlation/context propagation across services.
+- Scope:
+  - Services: `api`, `bot`.
+  - Build on `docs/tasks/unified_logging_configuration.md` without breaking current JSON/human-readable outputs.
+- Acceptance:
+  - Logs include contextual fields where available: `request_id/correlation_id`, `user_id`/`chat_id` (bot), `route`, `method`, `status_code`, `duration_ms`.
+  - Correlation IDs propagate between `api` and `bot` for a single user action.
+  - Behavior gated via env flags; defaults remain backward compatible.
+
+### 18) Fix broken filters (Bot and API integration)
+- Goal: Make existing inline filters reliably affect list/search results for Monsters and Spells.
+- Scope:
+  - Bot: inline filter state, Apply/Reset behavior, pagination over filtered sets.
+  - API: ensure query parameters used by the bot are honored and validated.
+- Acceptance:
+  - Toggling filters updates results deterministically; Reset restores defaults.
+  - Pagination remains consistent when filters are applied.
+  - Manual tests green; automated tests added/updated where feasible.
+
+### 19) Seed database with canonical content
+- Goal: Provide reproducible seed data for Monsters and Spells for local/dev and tests.
+- Scope:
+  - Define/curate seed dataset; use `seed.py` or fixtures; run inside containers via `manage.py`.
+  - Idempotent execution and clear re-run semantics.
+- Acceptance:
+  - A single command populates baseline data; re-running does not duplicate rows.
+  - Documented counts (approximate) after seeding; basic sanity queries return data.
+
+### 20) Test suite warnings cleanup
+- Goal: Run test suites and eliminate runtime/deprecation warnings to keep signal high.
+- Scope:
+  - Services: `api`, `bot`.
+  - Address `pytest` warnings, Python deprecations, and library deprecations; configure filters intentionally when fixing is not viable.
+- Acceptance:
+  - `pytest` output shows zero warnings locally and in CI for touched modules.
+  - No new warnings introduced in subsequent runs (guard via CI settings if available).
+
+### 21) Decompose large files into <= 200-line modules
+- Goal: Improve maintainability by splitting overly large modules into focused units.
+- Scope:
+  - Prioritize `api` routers and `bot` handlers where files exceed 200 lines.
+  - Non-functional change only; keep public behavior stable and imports updated.
+- Acceptance:
+  - No single targeted module remains over ~200 lines, except explicitly justified exceptions list (e.g., generated code).
+  - All tests pass; lints/formatters remain green after the split.
+
