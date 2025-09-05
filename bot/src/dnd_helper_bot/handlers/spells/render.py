@@ -75,6 +75,7 @@ async def render_spells_list(query, context: ContextTypes.DEFAULT_TYPE, page: in
     title = await t("list.title.spells", lang)
     # Keep suffix localized without i18n key, since it's numeric formatting
     suffix = f" (p. {page})" if lang == "en" else f" (стр. {page})"
+    markup = InlineKeyboardMarkup(rows)
     await query.edit_message_text(title + suffix, reply_markup=markup)
 
 

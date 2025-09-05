@@ -1,11 +1,13 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
+from dnd_helper_bot.utils.i18n import t
 
-def build_main_menu_inline(lang: str = "ru") -> InlineKeyboardMarkup:
-    dice = "Roll dice" if lang == "en" else "Бросить кубики"
-    best = "Bestiary" if lang == "en" else "Бестиарий"
-    spells = "Spells" if lang == "en" else "Заклинания"
-    settings = "Settings" if lang == "en" else "Настройки"
+
+async def build_main_menu_inline(lang: str = "ru") -> InlineKeyboardMarkup:
+    dice = await t("dice.menu.title", lang)
+    best = await t("menu.bestiary.title", lang)
+    spells = await t("menu.spells.title", lang)
+    settings = await t("menu.settings.title", lang)
     rows = [
         [InlineKeyboardButton(dice, callback_data="menu:dice")],
         [

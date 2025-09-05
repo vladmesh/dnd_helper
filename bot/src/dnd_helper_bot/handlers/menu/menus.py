@@ -21,7 +21,7 @@ async def show_bestiarie_menu(update, context: ContextTypes.DEFAULT_TYPE) -> Non
     lang = await _resolve_lang_by_user(update)
     await update.message.reply_text(
         await t("menu.bestiary.title", lang) + ":",
-        reply_markup=build_monsters_root_keyboard(lang),
+        reply_markup=await build_monsters_root_keyboard(lang),
     )
 
 
@@ -32,7 +32,7 @@ async def show_spells_menu(update, context: ContextTypes.DEFAULT_TYPE) -> None:
     lang = await _resolve_lang_by_user(update)
     await update.message.reply_text(
         await t("menu.spells.title", lang) + ":",
-        reply_markup=build_spells_root_keyboard(lang),
+        reply_markup=await build_spells_root_keyboard(lang),
     )
 
 
@@ -61,7 +61,7 @@ async def show_bestiarie_menu_from_callback(update, context: ContextTypes.DEFAUL
         def __init__(self, q):
             self.effective_user = q.from_user if q and getattr(q, "from_user", None) else None
     lang = await _resolve_lang_by_user(_QWrap(query))
-    kb = build_monsters_root_keyboard(lang)
+    kb = await build_monsters_root_keyboard(lang)
     rows = list(kb.inline_keyboard)
     back = await t("nav.back", lang)
     main = await t("nav.main", lang)
@@ -80,7 +80,7 @@ async def show_spells_menu_from_callback(update, context: ContextTypes.DEFAULT_T
         def __init__(self, q):
             self.effective_user = q.from_user if q and getattr(q, "from_user", None) else None
     lang = await _resolve_lang_by_user(_QWrap(query))
-    kb = build_spells_root_keyboard(lang)
+    kb = await build_spells_root_keyboard(lang)
     rows = list(kb.inline_keyboard)
     back = await t("nav.back", lang)
     main = await t("nav.main", lang)

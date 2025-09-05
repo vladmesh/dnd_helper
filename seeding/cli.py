@@ -128,6 +128,21 @@ def _default_ui_pairs() -> List[tuple[str, str, str]]:
         ("search.results_title", "en", "Search results:"),
         ("settings.choose_language_prompt", "ru", "Выберите язык для начала"),
         ("settings.choose_language_prompt", "en", "Choose language first"),
+        ("settings.error.save", "ru", "Ошибка сохранения настроек. Попробуйте ещё раз."),
+        ("settings.error.save", "en", "Failed to save settings. Please try again."),
+        # Root keyboards
+        ("monsters.menu.list", "ru", "Список монстров"),
+        ("monsters.menu.list", "en", "Monsters list"),
+        ("monsters.menu.random", "ru", "Случайный монстр"),
+        ("monsters.menu.random", "en", "Random monster"),
+        ("monsters.menu.search", "ru", "Поиск монстра"),
+        ("monsters.menu.search", "en", "Search monster"),
+        ("spells.menu.list", "ru", "Список заклинаний"),
+        ("spells.menu.list", "en", "Spells list"),
+        ("spells.menu.random", "ru", "Случайное заклинание"),
+        ("spells.menu.random", "en", "Random spell"),
+        ("spells.menu.search", "ru", "Поиск заклинания"),
+        ("spells.menu.search", "en", "Search spell"),
     ]
 
 

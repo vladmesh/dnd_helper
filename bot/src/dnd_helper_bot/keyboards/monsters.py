@@ -1,10 +1,12 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
+from dnd_helper_bot.utils.i18n import t
 
-def build_monsters_root_keyboard(lang: str = "ru") -> InlineKeyboardMarkup:
-    t_list = "Monsters list" if lang == "en" else "Список монстров"
-    t_rand = "Random monster" if lang == "en" else "Случайный монстр"
-    t_search = "Search monster" if lang == "en" else "Поиск монстра"
+
+async def build_monsters_root_keyboard(lang: str = "ru") -> InlineKeyboardMarkup:
+    t_list = await t("monsters.menu.list", lang)
+    t_rand = await t("monsters.menu.random", lang)
+    t_search = await t("monsters.menu.search", lang)
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(t_list, callback_data="monster:list:page:1")],
         [InlineKeyboardButton(t_rand, callback_data="monster:random")],
