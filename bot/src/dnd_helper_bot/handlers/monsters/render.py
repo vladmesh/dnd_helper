@@ -40,7 +40,7 @@ async def render_monsters_list(query, context: ContextTypes.DEFAULT_TYPE, page: 
     context.user_data["monsters_current_page"] = page
     pending, applied = _get_filter_state(context)
     lang = await _resolve_lang_by_user(query)
-    wrapped_list: List[Dict[str, Any]] = await api_get("/monsters/wrapped-list", params={"lang": lang})
+    wrapped_list: List[Dict[str, Any]] = await api_get("/monsters/list/wrapped", params={"lang": lang})
 
     all_monsters: List[Dict[str, Any]] = []
     for w in wrapped_list:

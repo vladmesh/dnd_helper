@@ -21,7 +21,7 @@ async def render_spells_list(query, context: ContextTypes.DEFAULT_TYPE, page: in
     context.user_data["spells_current_page"] = page
     pending, applied = _get_filter_state(context)
     lang = await _resolve_lang_by_user(query)
-    wrapped_list: List[Dict[str, Any]] = await api_get("/spells/wrapped", params={"lang": lang})
+    wrapped_list: List[Dict[str, Any]] = await api_get("/spells/list/wrapped", params={"lang": lang})
 
     all_spells: List[Dict[str, Any]] = []
     for w in wrapped_list:

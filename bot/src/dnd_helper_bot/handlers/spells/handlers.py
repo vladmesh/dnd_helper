@@ -78,7 +78,7 @@ async def spell_random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         extra={"correlation_id": query.message.chat_id if query and query.message else None},
     )
     lang = await _resolve_lang_by_user(query)
-    wrapped_list = await api_get("/spells/wrapped", params={"lang": lang})
+    wrapped_list = await api_get("/spells/list/wrapped", params={"lang": lang})
     if not wrapped_list:
         logger.warning(
             "No spells available for random",

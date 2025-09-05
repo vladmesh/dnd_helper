@@ -193,7 +193,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 body = _json.dumps(sample, ensure_ascii=False)
                 print(body[:500] + ("..." if len(body) > 500 else ""))
         else:
-            existing = curl_get_json(args.api_base_url, "/monsters") or []
+            existing = curl_get_json(args.api_base_url, "/monsters/list/raw") or []
             if existing:
                 print(f"Monsters already present: {len(existing)}. Skipping import.")
             else:

@@ -80,9 +80,9 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
             },
         )
         if awaiting_monster:
-            items: List[Dict[str, Any]] = await api_get("/monsters/search-wrapped", params=params)
+            items: List[Dict[str, Any]] = await api_get("/monsters/search/wrapped", params=params)
         else:
-            items = await api_get("/spells/search-wrapped", params=params)
+            items = await api_get("/spells/search/wrapped", params=params)
         logger.info(
             "Search response",
             extra={

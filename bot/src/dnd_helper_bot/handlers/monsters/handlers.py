@@ -76,7 +76,7 @@ async def monster_random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         extra={"correlation_id": query.message.chat_id if query and query.message else None},
     )
     lang = await _resolve_lang_by_user(query)
-    wrapped_list = await api_get("/monsters/wrapped-list", params={"lang": lang})
+    wrapped_list = await api_get("/monsters/list/wrapped", params={"lang": lang})
     if not wrapped_list:
         logger.warning(
             "No monsters available for random",
