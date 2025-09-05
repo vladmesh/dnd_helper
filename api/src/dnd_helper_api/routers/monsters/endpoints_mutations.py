@@ -91,6 +91,17 @@ async def update_monster(
     request: Request = None,
     session: Session = Depends(get_session),  # noqa: B008
 ) -> Monster:
+    # Strict extra-fields validation against Monster model + "translations"
+    try:
+        body = await request.json() if request is not None else {}
+    except Exception:
+        body = {}
+    if isinstance(body, dict):
+        allowed_keys = set(Monster.model_fields.keys()) | {"translations"}
+        extra_keys = set(body.keys()) - allowed_keys
+        if extra_keys:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unexpected fields: {sorted(extra_keys)}")
+
     monster = session.get(Monster, monster_id)
     if monster is None:
         logger.warning("Monster not found for update", extra={"monster_id": monster_id})

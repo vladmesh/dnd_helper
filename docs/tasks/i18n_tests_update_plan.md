@@ -24,12 +24,13 @@ References:
 - Backlog: separate e2e environment (dedicated compose) with a script driving the bot as a user.
 
 ## Current status
-- API: unit-тесты хендлеров Monsters/Spells (create/list/detail/update/delete, валидации входов) — DONE
-- API: базовые тесты wrapped-list/detail с i18n и labels для Monsters/Spells — DONE
-- API: интеграционные CRUD-флоу (raw и wrapped) — TODO (следующим шагом)
-- Bot: интеракционные тесты (сообщения/кнопки) с мокнутым бэком — TODO
-- Pre-commit селективный раннер тестов — TODO
-- Backlog e2e (отдельный compose, драйвер пользователя) — TODO
+- API: unit tests for Monsters/Spells handlers (create/list/detail/update/delete, input validation) — DONE
+- API: basic wrapped-list/detail tests with i18n and labels for Monsters/Spells — DONE
+- API: integration CRUD flows (raw and wrapped) — DONE
+- API: strict input validation — DONE (extra fields rejected with 422 on POST/PUT; invalid spell school/classes rejected)
+- Bot: interaction tests (messages/buttons) with mocked backend — TODO
+- Pre-commit selective test runner — TODO
+- Backlog e2e (separate compose, user driver) — TODO
 
 ## Project topology (relevant parts)
 - API handlers: `api/src/dnd_helper_api/routers/`
