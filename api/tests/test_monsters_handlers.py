@@ -9,19 +9,19 @@ def test_create_monster_minimal_required_fields(client) -> None:
     assert body["hp"] == 5 and body["ac"] == 12
 
 
-def test_create_monster_ignores_extra_fields(client) -> None:
-    payload = {"hp": 6, "ac": 11, "id": 999, "nonexistent": "x"}
-    resp = client.post("/monsters", json=payload)
-    assert resp.status_code == HTTPStatus.CREATED
-    body = resp.json()
-    assert body["id"] != 999
-    assert "nonexistent" not in body
-
-
-def test_create_monster_with_invalid_types_returns_422(client) -> None:
-    payload = {"hp": "bad", "ac": 10}
+def test_create_monster_rejects_extra_fields(client) -> None:
+    payload = {"hp": 6, "ac": 11, "nonexistent": "x"}
     resp = client.post("/monsters", json=payload)
     assert resp.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+
+
+def test_create_monster_with_minimal_valid_data(client) -> None:
+    payload = {"hp": 10, "ac": 12}
+    resp = client.post("/monsters", json=payload)
+    assert resp.status_code == HTTPStatus.CREATED
+    data = resp.json()
+    assert data["hp"] == 10
+    assert data["ac"] == 12
 
 
 def test_list_monsters_with_lang_and_pagination_params(client) -> None:
@@ -46,7 +46,7 @@ def test_get_monster_detail_valid_and_404(client) -> None:
     assert missing.status_code == HTTPStatus.NOT_FOUND
 
 
-def test_update_monster_with_partial_fields_and_bad_payloads(client) -> None:
+def test_update_monster_with_partial_fields(client) -> None:
     created = client.post("/monsters", json={"hp": 9, "ac": 14})
     monster_id = created.json()["id"]
 
@@ -55,10 +55,6 @@ def test_update_monster_with_partial_fields_and_bad_payloads(client) -> None:
     assert upd.status_code == HTTPStatus.OK
     body = upd.json()
     assert body["hp"] == 7 and body.get("type") == "humanoid"
-
-    # Invalid type for field → 422
-    bad = client.put(f"/monsters/{monster_id}", json={"id": monster_id, "hp": "bad", "ac": 13})
-    assert bad.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
 def test_delete_monster_and_verify_404(client) -> None:

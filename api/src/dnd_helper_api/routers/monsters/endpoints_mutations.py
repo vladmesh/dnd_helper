@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 
 from dnd_helper_api.db import get_session
 from dnd_helper_api.routers.monsters import router, logger
+from fastapi import Depends, Request, status
 from shared_models import Monster
 from shared_models.monster_translation import MonsterTranslation
 
@@ -21,15 +22,23 @@ async def create_monster(
     request: Request = None,
     session: Session = Depends(get_session),  # noqa: B008
 ) -> Monster:
+    # Strict extra-fields validation against Monster model + "translations"
+    try:
+        body = await request.json() if request is not None else {}
+    except Exception:
+        body = {}
+    if isinstance(body, dict):
+        allowed_keys = set(Monster.model_fields.keys()) | {"translations"}
+        extra_keys = set(body.keys()) - allowed_keys
+        if extra_keys:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unexpected fields: {sorted(extra_keys)}")
+
     monster.id = None
     _compute_monster_derived_fields(monster)
     session.add(monster)
     session.commit()
     session.refresh(monster)
-    try:
-        body = await request.json() if request is not None else {}
-    except Exception:
-        body = {}
+    # `body` already loaded above
     translations = body.get("translations") if isinstance(body, dict) else None
 
     if isinstance(translations, dict):

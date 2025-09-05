@@ -21,7 +21,7 @@ services:
       - POSTGRES_HOST=postgres-test
       - POSTGRES_PORT=5432
     # Install pytest and httpx at runtime, apply real migrations, then run tests
-    command: sh -lc "pip install -q pytest httpx && alembic upgrade head && pytest -q"
+    command: sh -lc "pip install -q pytest pytest-asyncio && alembic upgrade head && pytest -q"
     volumes:
       - ./tests:/app/tests:ro
 

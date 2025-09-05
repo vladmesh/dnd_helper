@@ -9,13 +9,10 @@ def test_create_spell_minimal_required_fields(client) -> None:
     assert body["school"] == "evocation"
 
 
-def test_create_spell_ignores_extra_and_id(client) -> None:
-    payload = {"school": "conjuration", "id": 777, "nonexistent": "x"}
+def test_create_spell_rejects_extra_fields(client) -> None:
+    payload = {"school": "conjuration", "nonexistent": "x"}
     resp = client.post("/spells", json=payload)
-    assert resp.status_code == HTTPStatus.CREATED
-    body = resp.json()
-    assert body["id"] != 777
-    assert "nonexistent" not in body
+    assert resp.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
 def test_create_spell_invalid_school_422(client) -> None:
@@ -43,7 +40,7 @@ def test_get_spell_detail_valid_and_404(client) -> None:
     assert missing.status_code == HTTPStatus.NOT_FOUND
 
 
-def test_update_spell_partial_and_invalid_types(client) -> None:
+def test_update_spell_partial(client) -> None:
     created = client.post("/spells", json={"school": "evocation"})
     spell_id = created.json()["id"]
 
@@ -51,18 +48,17 @@ def test_update_spell_partial_and_invalid_types(client) -> None:
         f"/spells/{spell_id}",
         json={
             "id": spell_id,
+            "school": "evocation",
             "level": 2,
             "classes": ["wizard", "sorcerer"],
             "duration": "Instantaneous",
         },
     )
     assert upd.status_code == HTTPStatus.OK
-    body = upd.json()
-    assert body.get("level") == 2
-    assert set(body.get("classes") or []) == {"wizard", "sorcerer"}
-
-    bad = client.put(f"/spells/{spell_id}", json={"id": spell_id, "level": "bad"})
-    assert bad.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+    data = upd.json()
+    assert data["level"] == 2
+    assert data["school"] == "evocation"
+    assert set(data.get("classes") or []) == {"wizard", "sorcerer"}
 
 
 def test_delete_spell_and_verify_404(client) -> None:

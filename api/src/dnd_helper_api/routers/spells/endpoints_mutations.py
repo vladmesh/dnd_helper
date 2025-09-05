@@ -8,6 +8,7 @@ from sqlmodel import Session, select
 from dnd_helper_api.db import get_session
 from dnd_helper_api.routers.spells import router, logger
 from shared_models import Spell
+from shared_models.enums import SpellSchool, CasterClass
 from shared_models.spell_translation import SpellTranslation
 
 from .derived import _compute_spell_derived_fields
@@ -21,15 +22,39 @@ async def create_spell(
     request: Request = None,
     session: Session = Depends(get_session),  # noqa: B008
 ) -> Spell:
+    # Strict extra-fields validation against Spell model + "translations"
+    try:
+        body = await request.json() if request is not None else {}
+    except Exception:
+        body = {}
+    if isinstance(body, dict):
+        allowed_keys = set(Spell.model_fields.keys()) | {"translations"}
+        extra_keys = set(body.keys()) - allowed_keys
+        if extra_keys:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unexpected fields: {sorted(extra_keys)}")
+        # Validate enum-like fields strictly
+        school_value = body.get("school")
+        if school_value is not None:
+            try:
+                SpellSchool(str(school_value))
+            except Exception:
+                raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid value for 'school'")
+        classes_value = body.get("classes")
+        if classes_value is not None:
+            if not isinstance(classes_value, list):
+                classes_value = [classes_value]
+            for cls in classes_value:
+                try:
+                    CasterClass(str(cls))
+                except Exception:
+                    raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid value in 'classes'")
+
     spell.id = None
     _compute_spell_derived_fields(spell)
     session.add(spell)
     session.commit()
     session.refresh(spell)
-    try:
-        body = await request.json() if request is not None else {}
-    except Exception:
-        body = {}
+    # `body` already loaded above
     translations = body.get("translations") if isinstance(body, dict) else None
 
     if isinstance(translations, dict):

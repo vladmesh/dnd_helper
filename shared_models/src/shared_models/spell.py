@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Optional
-from pydantic import field_validator
+from pydantic import BaseModel as PydanticBaseModel, field_validator
+from pydantic import ConfigDict
 
 from sqlalchemy import Enum, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -9,8 +10,49 @@ from .base import BaseModel
 from .enums import CasterClass, SpellSchool
 
 
+class SpellCreate(PydanticBaseModel):
+    """Pydantic model for spell creation with validation."""
+    school: str  # Will be validated against SpellSchool enum
+    level: Optional[int] = None
+    ritual: Optional[bool] = None
+    casting_time: Optional[str] = None
+    range: Optional[str] = None
+    duration: Optional[str] = None
+    components: Optional[Dict[str, Any]] = None
+    classes: Optional[List[str]] = None  # Will be validated against CasterClass enum
+    higher_level: Optional[str] = None
+    material: Optional[str] = None
+    tags: Optional[List[str]] = None
+    slug: Optional[str] = None
+    translations: Optional[Dict[str, Dict[str, Any]]] = None
+
+    @field_validator('school')
+    @classmethod
+    def validate_school(cls, v):
+        """Validate that school is a valid SpellSchool enum value."""
+        try:
+            SpellSchool(v)
+            return v
+        except ValueError:
+            raise ValueError(f'Invalid school: {v}. Must be one of: {[e.value for e in SpellSchool]}')
+
+    @field_validator('classes')
+    @classmethod
+    def validate_classes(cls, v):
+        """Validate that all classes are valid CasterClass enum values."""
+        if v is None:
+            return v
+        valid_classes = [e.value for e in CasterClass]
+        for class_name in v:
+            if class_name not in valid_classes:
+                raise ValueError(f'Invalid class: {class_name}. Must be one of: {valid_classes}')
+        return v
+
+
 class Spell(BaseModel, table=True):
     """Spell shared model."""
+
+    model_config = ConfigDict(extra="forbid")
 
     id: Optional[int] = Field(default=None, primary_key=True)
     # Deprecated: single caster_class removed in favor of multi-class `classes`

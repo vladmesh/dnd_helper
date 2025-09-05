@@ -1,4 +1,5 @@
 from typing import Any, Dict, List, Optional
+from pydantic import ConfigDict
 
 from sqlalchemy import SmallInteger, String
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -10,6 +11,8 @@ from .enums import DangerLevel
 
 class Monster(BaseModel, table=True):
     """Monster shared model."""
+
+    model_config = ConfigDict(extra="forbid")
 
     id: Optional[int] = Field(default=None, primary_key=True)
     # Iteration 3: `cr` replaces dangerous_lvl and becomes enum-string

@@ -14,6 +14,27 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
 
 ## Backlog
 
+### NEW) Shared DTO strategy between API and Bot [Needs Decision]
+- Context: We want strict schema validation on both client (bot) and server (API) while avoiding heavy ORM dependencies in the bot. Today `shared_models` contain SQLModel ORM models that are not ideal as transport contracts.
+- Approaches:
+  1) Keep SQLModel for ORM. Add Pydantic v2 DTOs in `shared_models/dto/*` (Create/Update/Public/Wrapped). Use `ConfigDict(extra='forbid')` for strictness.
+     - API: endpoints accept DTOs; convert to SQLModel via `Model.model_validate(dto)` and `sqlmodel_update`.
+     - Bot: import the same DTOs to validate request payloads and parse responses.
+     - Pros: strict contracts on both sides; no SQLAlchemy in bot; minimal changes in existing ORM.
+     - Cons: two model layers (DTO+ORM), requires discipline.
+  2) Use pure SQLAlchemy for ORM and Pydantic DTOs for transport (no SQLModel).
+     - Pros: maximal control over ORM; one fewer dependency.
+     - Cons: more boilerplate; sizable refactor from current SQLModel.
+  3) Reuse SQLModel classes as transport (single model for all).
+     - Pros: least duplication.
+     - Cons: mixes DB and transport concerns; hard to express Create/Update/Public variants; harder strictness per endpoint; pulls ORM into bot.
+- Recommendation: Adopt (1). It preserves current ORM usage and delivers strict validation in bot and API with minimal disruption.
+- Next steps:
+  - Define DTOs for Monsters and Spells (Create/Update/Public/Wrapped).
+  - Migrate API endpoints to accept DTOs; keep responses conforming to Public/Wrapped DTOs.
+  - Update bot to use DTOs for request/response validation.
+  - Document mapping rules and forbid extra fields in all DTOs.
+
 ### 0) Async consistency audit across services (api, bot)
 - Goal: Ensure code paths that are expected to be asynchronous are consistently async across both services; avoid blocking calls in async contexts.
 - Scope:
