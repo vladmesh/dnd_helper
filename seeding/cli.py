@@ -210,9 +210,10 @@ def main(argv: Optional[List[str]] = None) -> int:
                 body = _json.dumps(sample, ensure_ascii=False)
                 print(body[:500] + ("..." if len(body) > 500 else ""))
         else:
-            existing = curl_get_json(args.api_base_url, "/spells") or []
-            if existing:
-                print(f"Spells already present: {len(existing)}. Skipping import.")
+            existing = curl_get_json(args.api_base_url, "/spells/list/raw") or []
+            existing_count = len(existing) if isinstance(existing, list) else 0
+            if existing_count > 0:
+                print(f"Spells already present: {existing_count}. Skipping import.")
             else:
                 for idx, p in enumerate(spell_payloads, 1):
                     created = curl_post_json(args.api_base_url, "/spells", p)
