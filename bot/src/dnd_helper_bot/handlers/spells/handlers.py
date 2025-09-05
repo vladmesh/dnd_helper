@@ -52,8 +52,8 @@ async def spell_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     text = (
         f"{tdata.get('name','-')}\n"
         f"{tdata.get('description','')}\n"
-        f"{('Classes' if lang == 'en' else 'Классы')}: {classes_str}\n"
-        f"{('School' if lang == 'en' else 'Школа')}: {school_str}"
+        f"{await t('spells.detail.classes', lang)}: {classes_str}\n"
+        f"{await t('spells.detail.school', lang)}: {school_str}"
     )
     page = int(context.user_data.get("spells_current_page", 1))
     markup = InlineKeyboardMarkup([await _nav_row(lang, f"spell:list:page:{page}")])
@@ -92,9 +92,10 @@ async def spell_random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     school_str = school_l.get("label") if isinstance(school_l, dict) else (e.get("school") or "-")
     text = (
         f"{tdata.get('description','')}"
-        + (" (random)\n" if lang == "en" else " (случайно)\n")
-        + f"{('Classes' if lang == 'en' else 'Классы')}: {classes_str}\n"
-        + f"{('School' if lang == 'en' else 'Школа')}: {school_str}"
+        + await t("label.random_suffix", lang)
+        + "\n"
+        + f"{await t('spells.detail.classes', lang)}: {classes_str}\n"
+        + f"{await t('spells.detail.school', lang)}: {school_str}"
     )
     markup = InlineKeyboardMarkup([await _nav_row(lang, "menu:spells")])
     await query.edit_message_text(text, reply_markup=markup)

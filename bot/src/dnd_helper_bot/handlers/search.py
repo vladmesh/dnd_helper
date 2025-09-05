@@ -32,8 +32,8 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
         logger.exception("Failed to fetch user by telegram id")
         # Not registered: show only language selection keyboard (no back)
         await update.message.reply_text(
-            "Выберите язык для начала / Choose language first:",
-            reply_markup=_build_language_keyboard(include_back=False),
+            await t("settings.choose_language_prompt", "ru", default="Выберите язык для начала") + " / " + await t("settings.choose_language_prompt", "en", default="Choose language first"),
+            reply_markup=await _build_language_keyboard(include_back=False),
         )
         return
 
@@ -41,7 +41,7 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
     awaiting_spell = bool(context.user_data.get("awaiting_spell_query"))
     if not (awaiting_monster or awaiting_spell):
         # Not in search mode: show inline main menu directly
-        await update.message.reply_text("Choose an action:" if lang == "en" else "Выберите действие:", reply_markup=build_main_menu_inline(lang))
+        await update.message.reply_text(await t("search.select_action", lang, default=("Choose an action:" if lang == "en" else "Выберите действие:")), reply_markup=build_main_menu_inline(lang))
         return
 
     if awaiting_monster:
@@ -52,7 +52,7 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
     query_text = (update.message.text or "").strip()
     if not query_text:
         logger.warning("Empty search query", extra={"correlation_id": update.effective_chat.id if update.effective_chat else None})
-        await update.message.reply_text("Empty query. Repeat." if lang == "en" else "Пустой запрос. Повторите.", reply_markup=build_main_menu_inline(lang))
+        await update.message.reply_text(await t("search.empty_query", lang, default=("Empty query. Repeat." if lang == "en" else "Пустой запрос. Повторите.")), reply_markup=build_main_menu_inline(lang))
         return
 
     try:
@@ -80,7 +80,7 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
     except Exception as exc:
         logger.exception("API search request failed")
-        await update.message.reply_text("API request error." if lang == "en" else "Ошибка при запросе к API.")
+        await update.message.reply_text(await t("search.api_error", lang, default=("API request error." if lang == "en" else "Ошибка при запросе к API.")))
         return
 
     if not items:
@@ -88,7 +88,7 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
         back_cb = "menu:monsters" if awaiting_monster else "menu:spells"
         nav = await build_nav_row(lang, back_cb)
         markup = InlineKeyboardMarkup([nav])
-        await update.message.reply_text("No results." if lang == "en" else "Ничего не найдено.", reply_markup=markup)
+        await update.message.reply_text(await t("search.no_results", lang, default=("No results." if lang == "en" else "Ничего не найдено.")), reply_markup=markup)
         return
 
     rows: List[List[InlineKeyboardButton]] = []
@@ -127,6 +127,6 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
     logger.info("Search results shown", extra={"correlation_id": update.effective_chat.id if update.effective_chat else None, "count": len(rows) - 1})
 
     markup = InlineKeyboardMarkup(rows)
-    await update.message.reply_text("Search results:" if lang == "en" else "Результаты поиска:", reply_markup=markup)
+    await update.message.reply_text(await t("search.results_title", lang, default=("Search results:" if lang == "en" else "Результаты поиска:")), reply_markup=markup)
 
 

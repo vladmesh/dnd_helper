@@ -41,7 +41,7 @@ async def render_spells_list(query, context: ContextTypes.DEFAULT_TYPE, page: in
 
     filtered = _filter_spells(all_spells, applied)
     total = len(filtered)
-    rows: List[List[InlineKeyboardButton]] = _build_filters_keyboard(pending, lang)
+    rows: List[List[InlineKeyboardButton]] = await _build_filters_keyboard(pending, lang)
     if total == 0:
         markup = InlineKeyboardMarkup(rows)
         await query.edit_message_text(
@@ -51,48 +51,44 @@ async def render_spells_list(query, context: ContextTypes.DEFAULT_TYPE, page: in
         return
     page_items = paginate(filtered, page)
     for s in page_items:
-        more = ("More:" if lang == "en" else "Подробнее:")
+        more = await t("label.more", lang)
         label = f"{more} {s.get('name','')} (#{s.get('id')})"
         rows.append([InlineKeyboardButton(label, callback_data=f"spell:detail:{s['id']}")])
     nav: List[InlineKeyboardButton] = []
     if (page - 1) * 5 > 0:
         nav.append(
             InlineKeyboardButton(
-                await t("nav.back", lang, default=("⬅️ Back" if lang == "en" else "⬅️ Назад")),
+                await t("nav.back", lang),
                 callback_data=f"spell:list:page:{page-1}",
             )
         )
     if page * 5 < total:
         nav.append(
             InlineKeyboardButton(
-                await t("nav.next", lang, default=("➡️ Next" if lang == "en" else "➡️ Далее")),
+                await t("nav.next", lang),
                 callback_data=f"spell:list:page:{page+1}",
             )
         )
     if nav:
         rows.append(nav)
     rows.append(await _nav_row(lang, "menu:spells"))
-    markup = InlineKeyboardMarkup(rows)
-    await query.edit_message_text(
-        (f"Spells list (p. {page})" if lang == "en" else f"Список заклинаний (стр. {page})"),
-        reply_markup=markup,
-    )
+    title = await t("list.title.spells", lang)
+    # Keep suffix localized without i18n key, since it's numeric formatting
+    suffix = f" (p. {page})" if lang == "en" else f" (стр. {page})"
+    await query.edit_message_text(title + suffix, reply_markup=markup)
 
 
-def _build_filters_keyboard(pending: Dict[str, Any], lang: str) -> List[List[InlineKeyboardButton]]:
-    def _tt(en: str, ru: str) -> str:
-        return en if lang == "en" else ru
-
-    rit = ("✅ " if pending.get("ritual") else "") + _tt("Ritual", "Ритуал")
-    conc = ("✅ " if pending.get("is_concentration") else "") + _tt("Concentration", "Концентрация")
-    bonus = ("✅ " if pending.get("cast", {}).get("bonus") else "") + _tt("Bonus", "Бонус")
-    react = ("✅ " if pending.get("cast", {}).get("reaction") else "") + _tt("Reaction", "Реакция")
+async def _build_filters_keyboard(pending: Dict[str, Any], lang: str) -> List[List[InlineKeyboardButton]]:
+    rit = ("✅ " if pending.get("ritual") else "") + await t("filters.ritual", lang)
+    conc = ("✅ " if pending.get("is_concentration") else "") + await t("filters.concentration", lang)
+    bonus = ("✅ " if pending.get("cast", {}).get("bonus") else "") + await t("filters.cast.bonus", lang)
+    react = ("✅ " if pending.get("cast", {}).get("reaction") else "") + await t("filters.cast.reaction", lang)
     lv = pending.get("level_range")
-    lv13 = ("✅ " if lv == "13" else "") + _tt("Lv 1-3", "Ур 1-3")
-    lv45 = ("✅ " if lv == "45" else "") + _tt("Lv 4-5", "Ур 4-5")
-    lv69 = ("✅ " if lv == "69" else "") + _tt("Lv 6-9", "Ур 6-9")
-    apply = _tt("Apply", "Применить")
-    reset = _tt("Reset", "Сброс")
+    lv13 = ("✅ " if lv == "13" else "") + await t("filters.level.13", lang)
+    lv45 = ("✅ " if lv == "45" else "") + await t("filters.level.45", lang)
+    lv69 = ("✅ " if lv == "69" else "") + await t("filters.level.69", lang)
+    apply = await t("filters.apply", lang)
+    reset = await t("filters.reset", lang)
     return [
         [InlineKeyboardButton(rit, callback_data="sflt:rit"), InlineKeyboardButton(conc, callback_data="sflt:conc")],
         [InlineKeyboardButton(bonus, callback_data="sflt:ct:ba"), InlineKeyboardButton(react, callback_data="sflt:ct:re")],

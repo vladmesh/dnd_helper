@@ -45,12 +45,12 @@ async def render_monsters_list(query, context: ContextTypes.DEFAULT_TYPE, page: 
     all_monsters: List[Dict[str, Any]] = []
     for w in wrapped_list:
         e = w.get("entity") or {}
-        t = w.get("translation") or {}
+        t_tr = w.get("translation") or {}
         all_monsters.append(
             {
                 "id": e.get("id"),
-                "name": t.get("name") or "",
-                "description": t.get("description") or "",
+                "name": t_tr.get("name") or "",
+                "description": t_tr.get("description") or "",
                 "is_legendary": e.get("is_legendary"),
                 "is_flying": e.get("is_flying"),
                 "cr": _cr_to_float(e.get("cr")),
@@ -61,7 +61,7 @@ async def render_monsters_list(query, context: ContextTypes.DEFAULT_TYPE, page: 
     filtered = _filter_monsters(all_monsters, applied)
     total = len(filtered)
     if total == 0:
-        rows: List[List[InlineKeyboardButton]] = _build_filters_keyboard(pending, lang)
+        rows: List[List[InlineKeyboardButton]] = await _build_filters_keyboard(pending, lang)
         markup = InlineKeyboardMarkup(rows)
         await query.edit_message_text(
             await t("list.empty.monsters", lang, default=("No monsters." if lang == "en" else "Монстров нет.")),
@@ -69,38 +69,37 @@ async def render_monsters_list(query, context: ContextTypes.DEFAULT_TYPE, page: 
         )
         return
     page_items = paginate(filtered, page)
-    rows: List[List[InlineKeyboardButton]] = _build_filters_keyboard(pending, lang)
+    rows: List[List[InlineKeyboardButton]] = await _build_filters_keyboard(pending, lang)
     for m in page_items:
         label = f"{m.get('name','')} (#{m.get('id')})"
         rows.append([InlineKeyboardButton(label, callback_data=f"monster:detail:{m['id']}")])
     nav: List[InlineKeyboardButton] = []
     if (page - 1) * 5 > 0:
-        nav.append(InlineKeyboardButton((await t("nav.back", lang, default=("⬅️ Back" if lang == "en" else "⬅️ Назад"))), callback_data=f"monster:list:page:{page-1}"))
+        nav.append(InlineKeyboardButton((await t("nav.back", lang)), callback_data=f"monster:list:page:{page-1}"))
     if page * 5 < total:
-        nav.append(InlineKeyboardButton((await t("nav.next", lang, default=("➡️ Next" if lang == "en" else "➡️ Далее"))), callback_data=f"monster:list:page:{page+1}"))
+        nav.append(InlineKeyboardButton((await t("nav.next", lang)), callback_data=f"monster:list:page:{page+1}"))
     if nav:
         rows.append(nav)
     rows.append(await _nav_row(lang, "menu:monsters"))
     markup = InlineKeyboardMarkup(rows)
-    await query.edit_message_text((f"Monsters list (p. {page})" if lang == "en" else f"Список монстров (стр. {page})"), reply_markup=markup)
+    title = await t("list.title.monsters", lang)
+    suffix = f" (p. {page})" if lang == "en" else f" (стр. {page})"
+    await query.edit_message_text(title + suffix, reply_markup=markup)
 
 
-def _build_filters_keyboard(pending: Dict[str, Any], lang: str) -> List[List[InlineKeyboardButton]]:
-    def _tt(en: str, ru: str) -> str:
-        return en if lang == "en" else ru
-
-    leg = ("✅ " if pending.get("legendary") else "") + _tt("Legendary", "Легендарный")
-    fly = ("✅ " if pending.get("flying") else "") + _tt("Flying", "Летающий")
+async def _build_filters_keyboard(pending: Dict[str, Any], lang: str) -> List[List[InlineKeyboardButton]]:
+    leg = ("✅ " if pending.get("legendary") else "") + await t("filters.legendary", lang)
+    fly = ("✅ " if pending.get("flying") else "") + await t("filters.flying", lang)
     cr = pending.get("cr_range")
-    cr03 = ("✅ " if cr == "03" else "") + _tt("CR 0-3", "ОВ 0-3")
-    cr48 = ("✅ " if cr == "48" else "") + _tt("CR 4-8", "ОВ 4-8")
-    cr9p = ("✅ " if cr == "9p" else "") + _tt("CR 9+", "ОВ 9+")
+    cr03 = ("✅ " if cr == "03" else "") + await t("filters.cr.03", lang)
+    cr48 = ("✅ " if cr == "48" else "") + await t("filters.cr.48", lang)
+    cr9p = ("✅ " if cr == "9p" else "") + await t("filters.cr.9p", lang)
     sz = pending.get("size")
-    szS = ("✅ " if sz == "S" else "") + _tt("Size S", "Размер S")
-    szM = ("✅ " if sz == "M" else "") + _tt("Size M", "Размер M")
-    szL = ("✅ " if sz == "L" else "") + _tt("Size L", "Размер L")
-    apply = _tt("Apply", "Применить")
-    reset = _tt("Reset", "Сброс")
+    szS = ("✅ " if sz == "S" else "") + await t("filters.size.S", lang)
+    szM = ("✅ " if sz == "M" else "") + await t("filters.size.M", lang)
+    szL = ("✅ " if sz == "L" else "") + await t("filters.size.L", lang)
+    apply = await t("filters.apply", lang)
+    reset = await t("filters.reset", lang)
     return [
         [InlineKeyboardButton(leg, callback_data="mflt:leg"), InlineKeyboardButton(fly, callback_data="mflt:fly")],
         [InlineKeyboardButton(cr03, callback_data="mflt:cr:03"), InlineKeyboardButton(cr48, callback_data="mflt:cr:48"), InlineKeyboardButton(cr9p, callback_data="mflt:cr:9p")],

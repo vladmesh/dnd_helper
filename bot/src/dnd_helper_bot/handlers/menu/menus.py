@@ -20,7 +20,7 @@ async def show_bestiarie_menu(update, context: ContextTypes.DEFAULT_TYPE) -> Non
     logger.info("Show bestiary menu", extra={"correlation_id": chat_id, "user_id": user_id})
     lang = await _resolve_lang_by_user(update)
     await update.message.reply_text(
-        "Bestiary:" if lang == "en" else "Бестиарий:",
+        await t("menu.bestiary.title", lang) + ":",
         reply_markup=build_monsters_root_keyboard(lang),
     )
 
@@ -31,7 +31,7 @@ async def show_spells_menu(update, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.info("Show spells menu", extra={"correlation_id": chat_id, "user_id": user_id})
     lang = await _resolve_lang_by_user(update)
     await update.message.reply_text(
-        "Spells:" if lang == "en" else "Заклинания:",
+        await t("menu.spells.title", lang) + ":",
         reply_markup=build_spells_root_keyboard(lang),
     )
 
@@ -47,7 +47,7 @@ async def show_main_menu_from_callback(update, context: ContextTypes.DEFAULT_TYP
         def __init__(self, q):
             self.effective_user = q.from_user if q and getattr(q, "from_user", None) else None
     lang = await _resolve_lang_by_user(_QWrap(query))
-    await query.message.edit_text("Main menu:" if lang == "en" else "Главное меню:", reply_markup=await _build_main_menu_inline_i18n(lang))
+    await query.message.edit_text((await t("menu.main.title", lang)) + ":", reply_markup=await _build_main_menu_inline_i18n(lang))
 
 
 async def show_bestiarie_menu_from_callback(update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -66,7 +66,7 @@ async def show_bestiarie_menu_from_callback(update, context: ContextTypes.DEFAUL
     back = await t("nav.back", lang)
     main = await t("nav.main", lang)
     rows.append([InlineKeyboardButton(back, callback_data="menu:main"), InlineKeyboardButton(main, callback_data="menu:main")])
-    await query.message.edit_text("Bestiary:" if lang == "en" else "Бестиарий:", reply_markup=InlineKeyboardMarkup(rows))
+    await query.message.edit_text((await t("menu.bestiary.title", lang)) + ":", reply_markup=InlineKeyboardMarkup(rows))
 
 
 async def show_spells_menu_from_callback(update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -85,6 +85,6 @@ async def show_spells_menu_from_callback(update, context: ContextTypes.DEFAULT_T
     back = await t("nav.back", lang)
     main = await t("nav.main", lang)
     rows.append([InlineKeyboardButton(back, callback_data="menu:main"), InlineKeyboardButton(main, callback_data="menu:main")])
-    await query.message.edit_text("Spells:" if lang == "en" else "Заклинания:", reply_markup=InlineKeyboardMarkup(rows))
+    await query.message.edit_text((await t("menu.spells.title", lang)) + ":", reply_markup=InlineKeyboardMarkup(rows))
 
 

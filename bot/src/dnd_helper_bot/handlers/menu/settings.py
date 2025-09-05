@@ -37,18 +37,18 @@ async def show_settings_from_callback(update, context) -> None:
         def __init__(self, q):
             self.effective_user = q.from_user if q and getattr(q, "from_user", None) else None
     lang = await _resolve_lang_by_user(_QWrap(query))
-    await query.message.edit_text(await t("menu.settings.title", lang, default="Settings:"), reply_markup=_build_language_keyboard(include_back=True))
+    await query.message.edit_text(await t("menu.settings.title", lang), reply_markup=await _build_language_keyboard(include_back=True, lang=lang))
 
 
-def _build_language_keyboard(include_back: bool = True) -> InlineKeyboardMarkup:
+async def _build_language_keyboard(include_back: bool = True, *, lang: str = "ru") -> InlineKeyboardMarkup:
     rows = [
         [
-            InlineKeyboardButton("Русский", callback_data="lang:set:ru"),
-            InlineKeyboardButton("English", callback_data="lang:set:en"),
+            InlineKeyboardButton(await t("settings.lang.ru", lang), callback_data="lang:set:ru"),
+            InlineKeyboardButton(await t("settings.lang.en", lang), callback_data="lang:set:en"),
         ],
     ]
     if include_back:
-        rows.append([InlineKeyboardButton("⬅️", callback_data="menu:main")])
+        rows.append([InlineKeyboardButton(await t("nav.back", lang), callback_data="menu:main")])
     return InlineKeyboardMarkup(rows)
 
 
@@ -87,7 +87,7 @@ async def set_language(update, context) -> None:
         return
 
     await query.edit_message_text(
-        "Main menu:" if lang == "en" else "Главное меню:",
+        (await t("menu.main.title", lang)) + ":",
         reply_markup=await _build_main_menu_inline_i18n(lang),
     )
 

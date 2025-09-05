@@ -50,8 +50,8 @@ async def monster_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     text = (
         f"{tdata.get('name','-')}\n"
         f"{tdata.get('description','')}\n"
-        f"CR: {danger_text}\n"
-        f"HP: {e.get('hp','-')}, AC: {e.get('ac','-')}"
+        f"{await t('label.cr', lang)}: {danger_text}\n"
+        f"{await t('label.hp', lang)}: {e.get('hp','-')}, {await t('label.ac', lang)}: {e.get('ac','-')}"
     )
     page = int(context.user_data.get("monsters_current_page", 1))
     markup = InlineKeyboardMarkup([await _nav_row(lang, f"monster:list:page:{page}")])
@@ -87,9 +87,9 @@ async def monster_random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     cr_l = labels.get("cr")
     danger_text = (cr_l.get("label") if isinstance(cr_l, dict) else e.get("cr")) or "-"
     text = (
-        f"{tdata.get('description','')}" + " (random)\n"
-        f"CR: {danger_text}\n"
-        f"HP: {e.get('hp','-')}, AC: {e.get('ac','-')}"
+        f"{tdata.get('description','')}" + await t("label.random_suffix", lang) + "\n"
+        f"{await t('label.cr', lang)}: {danger_text}\n"
+        f"{await t('label.hp', lang)}: {e.get('hp','-')}, {await t('label.ac', lang)}: {e.get('ac','-')}"
     )
     markup = InlineKeyboardMarkup([await _nav_row(lang, "menu:monsters")])
     await query.edit_message_text(text, reply_markup=markup)
