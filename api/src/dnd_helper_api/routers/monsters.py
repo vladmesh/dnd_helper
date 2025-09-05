@@ -311,7 +311,7 @@ async def create_monster(
     return monster
 
 
-# @router.get("", response_model=List[Monster])
+@router.get("", response_model=List[Monster])
 def list_monsters(
     lang: Optional[str] = None,
     session: Session = Depends(get_session),  # noqa: B008

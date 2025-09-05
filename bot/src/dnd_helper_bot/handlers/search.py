@@ -29,6 +29,7 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
         user = await api_get_one(f"/users/by-telegram/{tg_id}")
         lang = user.get("lang", "ru")
     except Exception:
+        logger.exception("Failed to fetch user by telegram id")
         # Not registered: show only language selection keyboard (no back)
         await update.message.reply_text(
             "Выберите язык для начала / Choose language first:",
@@ -56,12 +57,29 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     try:
         params = {"q": query_text, "lang": lang}
+        logger.info(
+            "Search request",
+            extra={
+                "correlation_id": update.effective_chat.id if update.effective_chat else None,
+                "q": query_text,
+                "lang": lang,
+                "target": "monsters" if awaiting_monster else "spells",
+            },
+        )
         if awaiting_monster:
-            items: List[Dict[str, Any]] = await api_get("/monsters/search", params=params)
+            items: List[Dict[str, Any]] = await api_get("/monsters/search-wrapped", params=params)
         else:
-            items = await api_get("/spells/search", params=params)
+            items = await api_get("/spells/search-wrapped", params=params)
+        logger.info(
+            "Search response",
+            extra={
+                "correlation_id": update.effective_chat.id if update.effective_chat else None,
+                "count": len(items) if isinstance(items, list) else None,
+                "sample_keys": (list(items[0].keys()) if isinstance(items, list) and items else []),
+            },
+        )
     except Exception as exc:
-        logger.error("API search request failed", extra={"correlation_id": update.effective_chat.id if update.effective_chat else None, "error": str(exc)})
+        logger.exception("API search request failed")
         await update.message.reply_text("API request error." if lang == "en" else "Ошибка при запросе к API.")
         return
 
@@ -76,12 +94,34 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
     rows: List[List[InlineKeyboardButton]] = []
     if awaiting_monster:
         for m in items[:10]:
-            label = m.get("name") or m.get("description", "<no name>")
-            rows.append([InlineKeyboardButton(label, callback_data=f"monster:detail:{m['id']}")])
+            try:
+                e = m.get("entity") or {}
+                tr = m.get("translation") or {}
+                mid = e.get("id")
+                if mid is None:
+                    logger.warning("Search item missing entity.id", extra={"item_keys": list(m.keys())})
+                    continue
+                label = tr.get("name") or tr.get("description") or "<no name>"
+                if not tr.get("name"):
+                    logger.info("Search item label from description", extra={"id": mid})
+                rows.append([InlineKeyboardButton(str(label), callback_data=f"monster:detail:{mid}")])
+            except Exception:
+                logger.exception("Failed to render monster search item")
     else:
         for s in items[:10]:
-            label = s.get("name") or s.get("description", "<no name>")
-            rows.append([InlineKeyboardButton(label, callback_data=f"spell:detail:{s['id']}")])
+            try:
+                e = s.get("entity") or {}
+                tr = s.get("translation") or {}
+                sid = e.get("id")
+                if sid is None:
+                    logger.warning("Search item missing entity.id", extra={"item_keys": list(s.keys())})
+                    continue
+                label = tr.get("name") or tr.get("description") or "<no name>"
+                if not tr.get("name"):
+                    logger.info("Search item label from description", extra={"id": sid})
+                rows.append([InlineKeyboardButton(str(label), callback_data=f"spell:detail:{sid}")])
+            except Exception:
+                logger.exception("Failed to render spell search item")
 
     rows.append([InlineKeyboardButton(await t("nav.main", lang, default=("Main menu" if lang == "en" else "К главному меню")), callback_data="menu:main")])
     logger.info("Search results shown", extra={"correlation_id": update.effective_chat.id if update.effective_chat else None, "count": len(rows) - 1})

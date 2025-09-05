@@ -18,6 +18,14 @@ class JsonFormatter(logging.Formatter):
         corr = getattr(record, "correlation_id", None)
         if corr:
             base["correlation_id"] = corr
+        # Include exception details if present
+        if record.exc_info:
+            try:
+                base["exception_type"] = record.exc_info[0].__name__ if record.exc_info and record.exc_info[0] else None
+                base["exception_message"] = str(record.exc_info[1]) if record.exc_info and record.exc_info[1] else None
+                base["traceback"] = self.formatException(record.exc_info)
+            except Exception:
+                pass
         return json.dumps(base, ensure_ascii=False)
 
 
@@ -26,10 +34,16 @@ class HumanFormatter(logging.Formatter):
         ts = datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat()
         service = getattr(record, "service", "-")
         corr = getattr(record, "correlation_id", "-")
-        return (
+        base = (
             f"{ts} | {record.levelname:<8} | {service} | {record.name} | "
             f"{record.getMessage()} | corr={corr}"
         )
+        if record.exc_info:
+            try:
+                base += "\n" + self.formatException(record.exc_info)
+            except Exception:
+                pass
+        return base
 
 
 class ServiceFilter(logging.Filter):

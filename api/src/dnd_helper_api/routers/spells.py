@@ -322,7 +322,7 @@ async def create_spell(
     return spell
 
 
-# @router.get("", response_model=List[Spell])
+@router.get("", response_model=List[Spell])
 def list_spells(
     lang: Optional[str] = None,
     session: Session = Depends(get_session),  # noqa: B008

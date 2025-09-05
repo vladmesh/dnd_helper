@@ -1,5 +1,6 @@
 import asyncio
 import os
+import logging
 
 from telegram.ext import (
     ApplicationBuilder,
@@ -36,6 +37,20 @@ from dnd_helper_bot.handlers.spells import (
 from dnd_helper_bot.logging_config import configure_logging
 
 
+async def _on_error(update, context) -> None:
+    """Global error handler: log full traceback without raising."""
+    log = logging.getLogger("dnd_helper_bot.errors")
+    try:
+        err = getattr(context, "error", None)
+        exc_info = (type(err), err, getattr(err, "__traceback__", None)) if err else True
+        log.error("Unhandled error in update handler", exc_info=exc_info)
+    except Exception:
+        try:
+            log.error("Unhandled error (fallback)")
+        except Exception:
+            pass
+
+
 def main() -> None:
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
@@ -44,6 +59,9 @@ def main() -> None:
     configure_logging(service_name=os.getenv("LOG_SERVICE_NAME", "bot"))
 
     application = ApplicationBuilder().token(token).build()
+
+    # Register global error handler
+    application.add_error_handler(_on_error)
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_search_text))
