@@ -17,48 +17,17 @@ if [[ -z "$CHANGED" ]]; then
   exit 0
 fi
 
-is_text_file() {
-  local f="$1"
-  [[ "$f" =~ \.md$ ]] || [[ "$f" == docs/* ]] || [[ "$f" == docs/tasks/* ]] || [[ "$f" =~ \.json$ ]]
-}
+# Derive non-text files list
+# Text includes: any *.md, *.json, and anything under docs/ or docs/tasks/
+NON_TEXT=$(printf '%s\n' "$CHANGED" | grep -Ev '(^docs/|^docs/tasks/|\.md$|\.json$)' || true)
 
-is_bot_file() {
-  local f="$1"
-  [[ "$f" == bot/* ]]
-}
-
-is_api_or_shared_file() {
-  local f="$1"
-  [[ "$f" == api/* ]] || [[ "$f" == shared_models/* ]]
-}
-
-all_text=true
-any_api_or_shared=false
-all_under_bot=true
-
-while IFS= read -r file; do
-  # Empty lines guard
-  [[ -z "$file" ]] && continue
-
-  if ! is_text_file "$file"; then
-    all_text=false
-  fi
-
-  if is_api_or_shared_file "$file"; then
-    any_api_or_shared=true
-  fi
-
-  if ! is_bot_file "$file"; then
-    all_under_bot=false
-  fi
-done <<< "$CHANGED"
-
-if [[ "$all_text" == true ]]; then
+if [[ -z "$NON_TEXT" ]]; then
   echo "[selective-tests] Only text/docs/json changed -> skip tests"
   exit 0
 fi
 
-if [[ "$any_api_or_shared" == true ]]; then
+# If any api/ or shared_models/ present among non-text -> FULL
+if printf '%s\n' "$NON_TEXT" | grep -Eq '^(api/|shared_models/)'; then
   echo "[selective-tests] API or shared_models changed -> run FULL tests"
   echo "[API] Running tests..."
   cd "$ROOT_DIR/api"
@@ -74,13 +43,16 @@ if [[ "$any_api_or_shared" == true ]]; then
   exit 0
 fi
 
-if [[ "$all_under_bot" == true ]]; then
-  echo "[selective-tests] Only bot code changed -> run BOT tests"
-  cd "$ROOT_DIR/bot"
-  docker compose -f docker_compose_tests.yml build | cat
-  docker compose -f docker_compose_tests.yml run --rm bot-tests | cat
-  docker compose -f docker_compose_tests.yml down -v | cat
-  exit 0
+# If all non-text under bot/ -> BOT only
+if printf '%s\n' "$NON_TEXT" | grep -Eq '^(bot/)'; then
+  if ! printf '%s\n' "$NON_TEXT" | grep -Ev '^(bot/)' | grep -q .; then
+    echo "[selective-tests] Only bot code changed -> run BOT tests"
+    cd "$ROOT_DIR/bot"
+    docker compose -f docker_compose_tests.yml build | cat
+    docker compose -f docker_compose_tests.yml run --rm bot-tests | cat
+    docker compose -f docker_compose_tests.yml down -v | cat
+    exit 0
+  fi
 fi
 
 # Fallback: treat as full
