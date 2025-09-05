@@ -6,7 +6,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app/src
-    command: sh -lc "pip install -q pytest && pytest -q"
+    command: sh -lc "pip install -q pytest pytest-asyncio && pytest -q -p pytest_asyncio"
     volumes:
       - ./tests:/app/tests:ro
 
