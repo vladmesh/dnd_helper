@@ -92,6 +92,26 @@ def cmd_lint(args: argparse.Namespace) -> None:
     run_command(command)
 
 
+def cmd_format(_: argparse.Namespace) -> None:
+    """Format codebase using Ruff (import sorting + formatter)."""
+    base = [
+        "docker",
+        "run",
+        "--rm",
+        "-u",
+        f"{os.getuid()}:{os.getgid()}",
+        "-v",
+        f"{os.getcwd()}:/io",
+        "-w",
+        "/io",
+        "ghcr.io/astral-sh/ruff:latest",
+    ]
+    # 1) Apply all available auto-fixes from configured lint rules
+    run_command(base + ["check", "--fix", "."])
+    # 2) Apply Ruff formatter (Black-compatible)
+    run_command(base + ["format", "."])
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Project management utility")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -131,6 +151,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Apply automatic fixes where possible",
     )
     lint.set_defaults(func=cmd_lint)
+
+    fmt = subparsers.add_parser(
+        "format",
+        help="Format code using Ruff (imports + formatter)",
+    )
+    fmt.set_defaults(func=cmd_format)
 
     return parser
 

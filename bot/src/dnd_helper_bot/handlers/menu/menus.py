@@ -7,9 +7,8 @@ from dnd_helper_bot.keyboards.monsters import build_monsters_root_keyboard
 from dnd_helper_bot.keyboards.spells import build_spells_root_keyboard
 from dnd_helper_bot.utils.i18n import t
 
-from .settings import _resolve_lang_by_user
 from .i18n import _build_main_menu_inline_i18n
-
+from .settings import _resolve_lang_by_user
 
 logger = logging.getLogger(__name__)
 

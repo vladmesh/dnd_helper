@@ -1,11 +1,8 @@
-import asyncio
-import types
 import importlib
+import types
 
 import pytest
-
 from factories import make_message_update
-
 
 pytestmark = pytest.mark.asyncio
 

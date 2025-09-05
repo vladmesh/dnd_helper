@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
@@ -7,10 +7,14 @@ from telegram.ext import ContextTypes
 from dnd_helper_bot.repositories.api_client import api_get, api_get_one
 from dnd_helper_bot.utils.i18n import t
 
-from .filters import _default_spells_filters, _get_filter_state, _set_filter_state, _toggle_or_set_filters
+from .filters import (
+    _default_spells_filters,
+    _get_filter_state,
+    _set_filter_state,
+    _toggle_or_set_filters,
+)
 from .lang import _resolve_lang_by_user
 from .render import render_spells_list
-
 
 logger = logging.getLogger(__name__)
 

@@ -1,11 +1,11 @@
 import logging
 
 from .handlers import (
-    spells_list,
     spell_detail,
     spell_random,
-    spells_filter_action,
     spell_search_prompt,
+    spells_filter_action,
+    spells_list,
 )
 
 logger = logging.getLogger(__name__)

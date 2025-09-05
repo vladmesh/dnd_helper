@@ -4,9 +4,9 @@ import random
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
+from dnd_helper_bot.repositories.api_client import api_get_one
 from dnd_helper_bot.utils.i18n import t
 from dnd_helper_bot.utils.nav import build_nav_row
-from dnd_helper_bot.repositories.api_client import api_get_one
 
 logger = logging.getLogger(__name__)
 

@@ -3,16 +3,16 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from typing import Any, List, Optional
+from typing import List, Optional
 
-from .http import curl_get_json, curl_post_json
-from .container import upsert_enum_and_ui_translations_in_container
 from .builders import (
+    build_enum_rows_from_seed,
     build_monster_payloads_from_seed,
     build_spell_payloads_from_seed,
-    build_enum_rows_from_seed,
     build_ui_rows_from_seed,
 )
+from .container import upsert_enum_and_ui_translations_in_container
+from .http import curl_get_json, curl_post_json
 
 
 def _default_ui_pairs() -> List[tuple[str, str, str]]:

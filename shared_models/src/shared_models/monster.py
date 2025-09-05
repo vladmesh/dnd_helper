@@ -1,7 +1,7 @@
-from typing import Any, Dict, List, Optional
-from pydantic import ConfigDict
+from typing import Dict, List, Optional
 
-from sqlalchemy import SmallInteger, String
+from pydantic import ConfigDict
+from sqlalchemy import String
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlmodel import Field
 

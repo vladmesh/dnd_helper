@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import UniqueConstraint, String
-from sqlalchemy.dialects.postgresql import TEXT, JSONB
+from sqlalchemy import String, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB, TEXT
 from sqlmodel import Field
 
 from .base import BaseModel

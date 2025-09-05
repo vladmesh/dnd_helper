@@ -1,8 +1,8 @@
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel as PydanticBaseModel, field_validator
-from pydantic import ConfigDict
 
-from sqlalchemy import Enum, String, Text
+from pydantic import BaseModel as PydanticBaseModel
+from pydantic import ConfigDict, field_validator
+from sqlalchemy import String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlmodel import Field
 

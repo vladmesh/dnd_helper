@@ -5,7 +5,6 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from dnd_helper_bot.repositories.api_client import api_get_one, api_patch, api_post
 from dnd_helper_bot.utils.i18n import t
 
-
 logger = logging.getLogger(__name__)
 
 

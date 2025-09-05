@@ -1,18 +1,18 @@
 from typing import Optional
 
+from dnd_helper_api.db import get_session
+from dnd_helper_api.routers.spells import logger, router
 from fastapi import Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy import delete
 from sqlmodel import Session, select
 
-from dnd_helper_api.db import get_session
-from dnd_helper_api.routers.spells import router, logger
 from shared_models import Spell
-from shared_models.enums import SpellSchool, CasterClass
+from shared_models.enums import CasterClass, SpellSchool
 from shared_models.spell_translation import SpellTranslation
 
 from .derived import _compute_spell_derived_fields
-from .translations import _apply_spell_translation, _select_language
+from .translations import _select_language
 
 
 @router.post("", response_model=Spell, status_code=status.HTTP_201_CREATED)

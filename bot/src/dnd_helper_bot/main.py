@@ -1,6 +1,6 @@
 import asyncio
-import os
 import logging
+import os
 
 from telegram.ext import (
     ApplicationBuilder,
@@ -12,11 +12,11 @@ from telegram.ext import (
 
 from dnd_helper_bot.handlers.dice import dice_roll, show_dice_menu_from_callback
 from dnd_helper_bot.handlers.menu import (
+    set_language,
     show_bestiarie_menu_from_callback,
     show_main_menu_from_callback,
-    show_spells_menu_from_callback,
     show_settings_from_callback,
-    set_language,
+    show_spells_menu_from_callback,
     start,
 )
 from dnd_helper_bot.handlers.monsters import (

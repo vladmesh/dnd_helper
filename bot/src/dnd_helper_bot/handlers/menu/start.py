@@ -4,9 +4,9 @@ from telegram.ext import ContextTypes
 
 from dnd_helper_bot.repositories.api_client import api_get_one
 from dnd_helper_bot.utils.i18n import t
+
 from .i18n import _build_main_menu_inline_i18n
 from .settings import _build_language_keyboard
-
 
 logger = logging.getLogger(__name__)
 

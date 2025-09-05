@@ -1,6 +1,6 @@
 import logging
 
-from .start import start
+from .i18n import _build_main_menu_inline_i18n
 from .menus import (
     show_bestiarie_menu,
     show_bestiarie_menu_from_callback,
@@ -8,8 +8,8 @@ from .menus import (
     show_spells_menu,
     show_spells_menu_from_callback,
 )
-from .settings import show_settings_from_callback, set_language, _build_language_keyboard
-from .i18n import _build_main_menu_inline_i18n
+from .settings import _build_language_keyboard, set_language, show_settings_from_callback
+from .start import start
 
 logger = logging.getLogger(__name__)
 

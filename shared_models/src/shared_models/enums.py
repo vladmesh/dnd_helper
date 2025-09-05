@@ -1,26 +1,26 @@
 from enum import Enum
 
 from .enums_common import (
+    Ability,
+    Condition,
+    DamageType,
+    Environment,
+    Language,
     MovementMode,
     SpellComponent,
-    Environment,
-    Ability,
-    DamageType,
-    Condition,
-    Language,
 )
 from .enums_monsters import (
     DangerLevel,
+    MonsterRole,
     MonsterSize,
     MonsterType,
-    MonsterRole,
 )
 from .enums_spells import (
+    AreaShape,
     CasterClass,
+    CastingTimeNormalized,
     SpellSchool,
     Targeting,
-    AreaShape,
-    CastingTimeNormalized,
 )
 
 

@@ -1,14 +1,16 @@
 import logging
-import urllib.parse
 from typing import Any, Dict, List
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
+from dnd_helper_bot.handlers.menu import (  # noqa: E402
+    _build_language_keyboard,
+    _build_main_menu_inline_i18n,
+)
+from dnd_helper_bot.repositories.api_client import api_get, api_get_one
 from dnd_helper_bot.utils.i18n import t  # noqa: E402
 from dnd_helper_bot.utils.nav import build_nav_row  # noqa: E402
-from dnd_helper_bot.handlers.menu import _build_language_keyboard, _build_main_menu_inline_i18n  # noqa: E402
-from dnd_helper_bot.repositories.api_client import api_get, api_get_one
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +91,7 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 "sample_keys": (list(items[0].keys()) if isinstance(items, list) and items else []),
             },
         )
-    except Exception as exc:
+    except Exception:
         logger.exception("API search request failed")
         await update.message.reply_text(await t("search.api_error", lang))
         return

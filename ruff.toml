@@ -3,6 +3,14 @@
 line-length = 100
 target-version = "py311"
 
+# Shared excludes for all tools (formatter reads top-level excludes)
+exclude = [
+  "api/alembic/versions/**",
+  "**/__pycache__/**",
+  "**/.venv/**",
+  "**/.ruff_cache/**",
+]
+
 [lint]
 # Start minimally: core errors (E, F) and import sorting (I)
 select = ["E", "F", "I", "B"]
@@ -14,5 +22,14 @@ exclude = [
   "**/.venv/**",
   "**/.ruff_cache/**",
 ]
+
+
+[format]
+# Keep Black-compatible style but explicit settings for this repo
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
+docstring-code-format = false
 
 

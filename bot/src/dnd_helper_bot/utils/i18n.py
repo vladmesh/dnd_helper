@@ -14,7 +14,7 @@ async def _ensure_namespace(lang: str, namespace: str = "bot") -> Dict[str, str]
     if lang not in _cache:
         _cache[lang] = {}
     if ns not in _cache[lang]:
-        data = await api_get_one(f"/i18n/ui", params={"ns": ns, "lang": lang})
+        data = await api_get_one("/i18n/ui", params={"ns": ns, "lang": lang})
         if not isinstance(data, dict):
             data = {}
         _cache[lang][ns] = {str(k): str(v) for k, v in data.items()}

@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlalchemy import UniqueConstraint, String
+from sqlalchemy import String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, TEXT
 from sqlmodel import Field
 

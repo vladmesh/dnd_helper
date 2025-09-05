@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Iterable, Mapping, Set, Tuple
+from typing import Dict, Mapping, Set, Tuple
 
 from sqlmodel import Session, select
 
