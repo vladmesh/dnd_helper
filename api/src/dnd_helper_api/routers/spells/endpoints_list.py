@@ -97,3 +97,13 @@ def list_spells_wrapped(
     return result
 
 
+@router.get("/wrapped-list", response_model=List[Dict[str, Any]])
+def list_spells_wrapped_list(
+    lang: Optional[str] = None,
+    session: Session = Depends(get_session),  # noqa: B008
+    response: Response = None,
+) -> List[Dict[str, Any]]:
+    """Alias for /spells/wrapped for consistency with monsters endpoints."""
+    return list_spells_wrapped(lang=lang, session=session, response=response)
+
+
