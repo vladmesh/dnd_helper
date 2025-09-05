@@ -8,7 +8,7 @@ from dnd_helper_api.routers.spells import router, logger
 from dnd_helper_api.utils.enum_labels import resolve_enum_labels
 from shared_models import Spell
 
-from .translations import _apply_spell_translations_bulk, _effective_spell_translation_dict, _select_language
+from .translations import _effective_spell_translation_dict, _select_language
 
 
 def _with_labels(spell: Spell, labels: Dict[tuple[str, str], str]) -> Dict[str, Any]:
@@ -36,7 +36,6 @@ def list_spells(
     response: Response = None,
 ) -> List[Spell]:
     spells = session.exec(select(Spell)).all()
-    _apply_spell_translations_bulk(session, spells, lang)
     requested_lang = _select_language(lang)
     if response is not None:
         response.headers["Content-Language"] = requested_lang.value
@@ -51,7 +50,6 @@ def list_spells_labeled(
     response: Response = None,
 ) -> List[Dict[str, Any]]:
     spells = session.exec(select(Spell)).all()
-    _apply_spell_translations_bulk(session, spells, lang)
     requested_lang = _select_language(lang)
     if response is not None:
         response.headers["Content-Language"] = requested_lang.value

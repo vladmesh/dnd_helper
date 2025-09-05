@@ -8,7 +8,7 @@ from dnd_helper_api.routers.spells import router, logger
 from dnd_helper_api.utils.enum_labels import resolve_enum_labels
 from shared_models import Spell
 
-from .translations import _apply_spell_translation, _effective_spell_translation_dict, _select_language
+from .translations import _effective_spell_translation_dict, _select_language
 
 
 @router.get("/{spell_id}", response_model=Spell)
@@ -22,7 +22,6 @@ def get_spell(
     if spell is None:
         logger.warning("Spell not found", extra={"spell_id": spell_id})
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Spell not found")
-    _apply_spell_translation(session, spell, lang)
     requested_lang = _select_language(lang)
     if response is not None:
         response.headers["Content-Language"] = requested_lang.value

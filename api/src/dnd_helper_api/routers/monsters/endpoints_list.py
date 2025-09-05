@@ -10,7 +10,6 @@ from shared_models import Monster
 from shared_models.enums import Language
 
 from .translations import (
-    _apply_monster_translations_bulk,
     _select_language,
     _effective_monster_translation_dict,
 )
@@ -46,7 +45,6 @@ def list_monsters(
     response: Response = None,
 ) -> List[Monster]:
     monsters = session.exec(select(Monster)).all()
-    _apply_monster_translations_bulk(session, monsters, lang)
     requested_lang = _select_language(lang)
     if response is not None:
         response.headers["Content-Language"] = requested_lang.value

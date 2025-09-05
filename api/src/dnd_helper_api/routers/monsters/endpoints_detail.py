@@ -8,7 +8,7 @@ from dnd_helper_api.routers.monsters import router, logger
 from dnd_helper_api.utils.enum_labels import resolve_enum_labels
 from shared_models import Monster
 
-from .translations import _apply_monster_translation, _effective_monster_translation_dict, _select_language
+from .translations import _effective_monster_translation_dict, _select_language
 
 
 @router.get("/{monster_id}", response_model=Monster)
@@ -22,7 +22,6 @@ def get_monster(
     if monster is None:
         logger.warning("Monster not found", extra={"monster_id": monster_id})
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Monster not found")
-    _apply_monster_translation(session, monster, lang)
     requested_lang = _select_language(lang)
     if response is not None:
         response.headers["Content-Language"] = requested_lang.value

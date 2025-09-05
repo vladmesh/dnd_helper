@@ -139,3 +139,15 @@ services:
 Examples:
 - API service command: `uvicorn dnd_helper_api.main:app --host 0.0.0.0 --port 8000`
 - Bot service command: `python -m dnd_helper_bot.main`
+
+## i18n Policy (API)
+- Raw endpoints return pristine entities without applied translations.
+  - Examples: `GET /monsters`, `GET /monsters/{id}`, `GET /spells`, `GET /spells/{id}`.
+  - These endpoints set `Content-Language` based on `?lang=` but do not mutate the entity fields.
+- Wrapped endpoints carry translations and enum labels alongside the entity.
+  - Examples: `GET /monsters/wrapped-list`, `GET /monsters/{id}/wrapped`, `GET /spells/wrapped`, `GET /spells/{id}/wrapped` (and alias `/spells/wrapped-list`).
+  - Response shape: `{ entity, translation, labels }`.
+- Labeled list endpoints (`/spells/labeled`, `/monsters/labeled`) provide enum labels only and do not apply text translations to entities.
+- Client guidance:
+  - Bots/UI should consume wrapped endpoints when localized text is required.
+  - Admin/testing tools can use raw/labeled endpoints for base data without localization.
