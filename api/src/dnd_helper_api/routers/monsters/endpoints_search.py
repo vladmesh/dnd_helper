@@ -16,8 +16,15 @@ from .translations import (
 )
 
 
-@router.get("/search", response_model=List[Monster])
-def search_monsters(
+## Removed legacy search endpoint '/monsters/search'
+
+
+## Removed legacy search endpoint '/monsters/search-wrapped'
+
+
+
+@router.get("/search/raw", response_model=List[Monster])
+def search_monsters_raw(
     q: str,
     type: Optional[str] = None,
     size: Optional[str] = None,
@@ -65,7 +72,6 @@ def search_monsters(
         .distinct()
     )
     monsters = session.exec(stmt).all()
-    # For parity with legacy behavior, apply translations in-place for simple search
     _apply_monster_translations_bulk(session, monsters, lang)
     if response is not None:
         response.headers["Content-Language"] = requested_lang.value
@@ -89,7 +95,7 @@ def search_monsters(
     return monsters
 
 
-@router.get("/search-wrapped", response_model=List[Dict[str, Any]])
+@router.get("/search/wrapped", response_model=List[Dict[str, Any]])
 def search_monsters_wrapped(
     q: str,
     type: Optional[str] = None,
@@ -164,5 +170,4 @@ def search_monsters_wrapped(
         response.headers["Content-Language"] = requested_lang.value
     logger.info("Monsters search-wrapped completed", extra={"query": q, "count": len(result)})
     return result
-
 

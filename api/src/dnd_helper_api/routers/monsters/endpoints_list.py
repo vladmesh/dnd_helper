@@ -38,29 +38,30 @@ def _with_labels(monster: Monster, labels: Dict[tuple[str, str], str]) -> Dict[s
     return body
 
 
-@router.get("", response_model=List[Monster])
-def list_monsters(
+
+
+
+@router.get("/list/raw", response_model=List[Monster])
+def list_monsters_alias_raw(
     lang: Optional[str] = None,
     session: Session = Depends(get_session),  # noqa: B008
     response: Response = None,
 ) -> List[Monster]:
-    monsters = session.exec(select(Monster)).all()
     requested_lang = _select_language(lang)
+    monsters = session.exec(select(Monster)).all()
     if response is not None:
         response.headers["Content-Language"] = requested_lang.value
     logger.info("Monsters listed", extra={"count": len(monsters)})
     return monsters
 
 
-@router.get("/wrapped-list", response_model=List[Dict[str, Any]])
-def list_monsters_wrapped(
+@router.get("/list/wrapped", response_model=List[Dict[str, Any]])
+def list_monsters_alias_wrapped(
     lang: Optional[str] = None,
     session: Session = Depends(get_session),  # noqa: B008
     response: Response = None,
 ) -> List[Dict[str, Any]]:
     monsters = session.exec(select(Monster)).all()
-    # Keep output consistent with legacy behavior: include effective translation
-    # Do not mutate entities here to avoid double-work; compute translation payloads instead
     requested_lang: Language = _select_language(lang)
     if response is not None:
         response.headers["Content-Language"] = requested_lang.value

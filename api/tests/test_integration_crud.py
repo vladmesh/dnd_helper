@@ -283,7 +283,7 @@ def test_monsters_wrapped_list_integration(client) -> None:
     client.post(f"/monsters/{created_ids[1]}/translations", json={"lang": "en", "name": "Wolf", "description": "A wild wolf"})
 
     # Test wrapped list EN (should have fallbacks)
-    wrapped_list_en = client.get("/monsters/wrapped-list", params={"lang": "en"})
+    wrapped_list_en = client.get("/monsters/list/wrapped", params={"lang": "en"})
     assert wrapped_list_en.status_code == HTTPStatus.OK
     data_en = wrapped_list_en.json()
     assert isinstance(data_en, list)
@@ -304,7 +304,7 @@ def test_monsters_wrapped_list_integration(client) -> None:
             assert "label" in item["labels"]["type"]
 
     # Test wrapped list RU (should have fallbacks)
-    wrapped_list_ru = client.get("/monsters/wrapped-list", params={"lang": "ru"})
+    wrapped_list_ru = client.get("/monsters/list/wrapped", params={"lang": "ru"})
     assert wrapped_list_ru.status_code == HTTPStatus.OK
     data_ru = wrapped_list_ru.json()
     assert len(data_ru) >= 2
@@ -339,7 +339,7 @@ def test_spells_wrapped_list_integration(client) -> None:
     client.post(f"/spells/{created_ids[1]}/translations", json={"lang": "ru", "name": "Лечение ран", "description": "Исцеление"})
 
     # Test wrapped list EN
-    wrapped_list_en = client.get("/spells/wrapped-list", params={"lang": "en"})
+    wrapped_list_en = client.get("/spells/list/wrapped", params={"lang": "en"})
     assert wrapped_list_en.status_code == HTTPStatus.OK
     data_en = wrapped_list_en.json()
     assert isinstance(data_en, list)
@@ -357,7 +357,7 @@ def test_spells_wrapped_list_integration(client) -> None:
             assert "label" in item["labels"]["school"]
 
     # Test wrapped list RU
-    wrapped_list_ru = client.get("/spells/wrapped-list", params={"lang": "ru"})
+    wrapped_list_ru = client.get("/spells/list/wrapped", params={"lang": "ru"})
     assert wrapped_list_ru.status_code == HTTPStatus.OK
     data_ru = wrapped_list_ru.json()
     assert len(data_ru) >= 2

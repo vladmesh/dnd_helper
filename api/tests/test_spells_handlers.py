@@ -24,9 +24,36 @@ def test_create_spell_invalid_school_422(client) -> None:
 def test_list_spells_with_lang_and_pagination_params(client) -> None:
     for _ in range(2):
         client.post("/spells", json={"school": "evocation"})
-    resp = client.get("/spells", params={"lang": "en", "limit": 1, "offset": 0})
+    resp = client.get("/spells/list/raw", params={"lang": "en", "limit": 1, "offset": 0})
     assert resp.status_code == HTTPStatus.OK
     assert isinstance(resp.json(), list)
+
+
+def test_list_spells_list_aliases(client) -> None:
+    for _ in range(2):
+        client.post("/spells", json={"school": "evocation"})
+    # /list/raw alias
+    raw = client.get("/spells/list/raw", params={"lang": "en"})
+    assert raw.status_code == HTTPStatus.OK
+    assert isinstance(raw.json(), list)
+    # /list/wrapped alias
+    wrapped = client.get("/spells/list/wrapped", params={"lang": "ru"})
+    assert wrapped.status_code == HTTPStatus.OK
+    data = wrapped.json()
+    assert isinstance(data, list)
+
+
+def test_spells_list_headers(client) -> None:
+    client.post("/spells", json={"school": "evocation"})
+    resp_raw = client.get("/spells/list/raw", params={"lang": "ru"})
+    assert resp_raw.status_code == HTTPStatus.OK
+    # new canonical path should not carry deprecation headers
+    assert resp_raw.headers.get("Deprecation") in (None, "")
+
+    resp_wrapped = client.get("/spells/list/wrapped", params={"lang": "ru"})
+    assert resp_wrapped.status_code == HTTPStatus.OK
+    # new canonical path should not carry deprecation headers
+    assert resp_wrapped.headers.get("Deprecation") in (None, "")
 
 
 def test_get_spell_detail_valid_and_404(client) -> None:

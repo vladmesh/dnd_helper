@@ -145,9 +145,9 @@ Examples:
   - Examples: `GET /monsters`, `GET /monsters/{id}`, `GET /spells`, `GET /spells/{id}`.
   - These endpoints set `Content-Language` based on `?lang=` but do not mutate the entity fields.
 - Wrapped endpoints carry translations and enum labels alongside the entity.
-  - Examples: `GET /monsters/wrapped-list`, `GET /monsters/{id}/wrapped`, `GET /spells/wrapped`, `GET /spells/{id}/wrapped` (and alias `/spells/wrapped-list`).
+  - Examples: `GET /monsters/list/wrapped` (alias for legacy `/monsters/wrapped-list`), `GET /monsters/{id}/wrapped`, `GET /spells/list/wrapped` (alias for legacy `/spells/wrapped` and `/spells/wrapped-list`), `GET /spells/{id}/wrapped`.
   - Response shape: `{ entity, translation, labels }`.
-- Labeled list endpoints (`/spells/labeled`, `/monsters/labeled`) provide enum labels only and do not apply text translations to entities.
+- Labeled list endpoints (`/spells/labeled`, `/monsters/labeled`) provide enum labels only and do not apply text translations to entities. These are considered legacy for collections; prefer `wrapped` responses.
 - Client guidance:
   - Bots/UI should consume wrapped endpoints when localized text is required.
   - Admin/testing tools can use raw/labeled endpoints for base data without localization.

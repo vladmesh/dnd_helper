@@ -15,7 +15,7 @@ def test_spells_wrapped_list_and_detail_i18n_and_labels(client) -> None:
     spell_id = created.json()["id"]
 
     # Wrapped list EN: should have localized name and labels
-    wrapped_en = client.get("/spells/wrapped-list", params={"lang": "en"})
+    wrapped_en = client.get("/spells/list/wrapped", params={"lang": "en"})
     assert wrapped_en.status_code == HTTPStatus.OK
     data = wrapped_en.json()
     assert isinstance(data, list)

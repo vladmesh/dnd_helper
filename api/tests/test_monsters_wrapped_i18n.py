@@ -17,7 +17,7 @@ def test_monsters_wrapped_list_and_detail_i18n_and_labels(client) -> None:
     client.post(f"/monsters/{monster_id}/translations", json={"lang": "ru", "name": "Гоблин", "description": ""})
 
     # Wrapped list RU: should have localized name and labels
-    wrapped_ru = client.get("/monsters/wrapped-list", params={"lang": "ru"})
+    wrapped_ru = client.get("/monsters/list/wrapped", params={"lang": "ru"})
     assert wrapped_ru.status_code == HTTPStatus.OK
     data = wrapped_ru.json()
     assert isinstance(data, list)

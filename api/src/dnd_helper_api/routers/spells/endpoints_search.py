@@ -16,7 +16,8 @@ from .translations import (
 )
 
 
-@router.get("/search", response_model=List[Spell])
+## Removed legacy search endpoint '/spells/search'
+@router.get("/search/raw", response_model=List[Spell])
 def search_spells(
     q: str,
     level: Optional[int] = None,
@@ -96,7 +97,8 @@ def search_spells(
     return spells
 
 
-@router.get("/search-wrapped", response_model=List[Dict[str, Any]])
+## Removed legacy search endpoint '/spells/search-wrapped'
+@router.get("/search/wrapped", response_model=List[Dict[str, Any]])
 def search_spells_wrapped(
     q: str,
     level: Optional[int] = None,
@@ -179,4 +181,77 @@ def search_spells_wrapped(
     logger.info("Spells search-wrapped completed", extra={"query": q, "count": len(result)})
     return result
 
+
+
+## Removed alias indirection: '/search/raw' is primary now
+@router.get("/search/raw", response_model=List[Spell])
+def search_spells_alias_raw(
+    q: str,
+    level: Optional[int] = None,
+    school: Optional[str] = None,
+    klass: Optional[str] = Query(None, alias="class"),
+    damage_type: Optional[str] = None,
+    save_ability: Optional[str] = None,
+    attack_roll: Optional[bool] = None,
+    ritual: Optional[bool] = None,
+    is_concentration: Optional[bool] = None,
+    targeting: Optional[str] = None,
+    tags: Optional[List[str]] = None,
+    lang: Optional[str] = None,
+    session: Session = Depends(get_session),  # noqa: B008
+    response: Response = None,
+) -> List[Spell]:
+    return search_spells(
+        q=q,
+        level=level,
+        school=school,
+        klass=klass,
+        damage_type=damage_type,
+        save_ability=save_ability,
+        attack_roll=attack_roll,
+        ritual=ritual,
+        is_concentration=is_concentration,
+        targeting=targeting,
+        tags=tags,
+        lang=lang,
+        session=session,
+        response=response,
+    )
+
+
+## Removed alias indirection: '/search/wrapped' is primary now
+@router.get("/search/wrapped", response_model=List[Dict[str, Any]])
+def search_spells_alias_wrapped(
+    q: str,
+    level: Optional[int] = None,
+    school: Optional[str] = None,
+    klass: Optional[str] = Query(None, alias="class"),
+    damage_type: Optional[str] = None,
+    save_ability: Optional[str] = None,
+    attack_roll: Optional[bool] = None,
+    ritual: Optional[bool] = None,
+    is_concentration: Optional[bool] = None,
+    targeting: Optional[str] = None,
+    tags: Optional[List[str]] = None,
+    lang: Optional[str] = None,
+    session: Session = Depends(get_session),  # noqa: B008
+    response: Response = None,
+) -> List[Dict[str, Any]]:
+    """Alias for /spells/search-wrapped (wrapped search)."""
+    return search_spells_wrapped(
+        q=q,
+        level=level,
+        school=school,
+        klass=klass,
+        damage_type=damage_type,
+        save_ability=save_ability,
+        attack_roll=attack_roll,
+        ritual=ritual,
+        is_concentration=is_concentration,
+        targeting=targeting,
+        tags=tags,
+        lang=lang,
+        session=session,
+        response=response,
+    )
 
