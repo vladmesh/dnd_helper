@@ -1,95 +1,154 @@
-# i18n Tests Update Plan (API + Bot)
+# Unified Test Plan (API + Bot)
 
 ## Context
-- Multilingual text moved to translation tables: `monster_translations`, `spell_translations`, `enum_translations`.
-- Base entities `Monster` and `Spell` now hold only numeric/enum/technical fields (`slug`, meta), no localized text.
-- API endpoints accept translations via `translations` map and return localized fields by `lang` with fallback.
-- Bot must consume already-localized fields from API and avoid any hardcoded labels.
+- i18n is denormalized into `monster_translations`, `spell_translations`, `enum_translations`.
+- Base entities `Monster` and `Spell` keep only codes/nums/tech fields; localized text is resolved by `?lang=` and fallback.
+- Clients (bot) must consume already-localized fields from wrapped endpoints and must not hardcode labels.
 
 References:
-- See `docs/tasks/i18n_denormalization_cleanup_plan.md`
-- See `docs/tasks/i18n_bot_backend_sync_plan.md`
+- `docs/architecture.md`
+- `docs/tasks/i18n_bot_backend_sync_plan.md`
+- `docs/tasks/i18n_denormalization_cleanup_plan.md`
 
-## Goals
-- Align existing tests with i18n structure (no assumptions about base `name`/`description`).
-- Add tests covering `lang`-driven localization and fallback for Monsters/Spells.
-- Add tests covering enum label resolution (inline or via labeled endpoints).
-- Keep changes minimal: extend, don't rewrite working tests.
+## Goals (target state after completion)
+- API:
+  - Unit tests for every individual handler with all input variants (happy-path and edge/error cases).
+  - Integration tests for end-to-end flows (CRUD lifecycle) for raw and wrapped endpoints.
+- Bot:
+  - Simulated user interactions (messages and inline button clicks) with the Telegram layer, backend mocked.
+  - For each interaction, assert the exact backend requests and the exact user-facing messages/markups produced.
+- Pre-commit selective test runner:
+  - Only text changes (docs/plans/backlog/jsons) → skip tests.
+  - Only bot code changed → run bot tests only.
+  - Any API or `shared_models` code changed → run full test suite.
+- Backlog: separate e2e environment (dedicated compose) with a script driving the bot as a user.
 
-## Current Tests Snapshot
-- API: `api/tests/`
-  - `test_smoke.py`: health OK.
-  - `test_users.py`: CRUD, unaffected by i18n.
-  - `test_monsters.py`: CRUD + translations in create, list/detail, labeled endpoints.
-  - `test_spells.py`: CRUD + translations, extended fields, labeled list/detail.
-- Bot: `bot/tests/`
-  - `test_smoke.py`: import and application build.
-  - `test_dice.py`: utility behavior.
+## Current status
+- API: unit-тесты хендлеров Monsters/Spells (create/list/detail/update/delete, валидации входов) — DONE
+- API: базовые тесты wrapped-list/detail с i18n и labels для Monsters/Spells — DONE
+- API: интеграционные CRUD-флоу (raw и wrapped) — TODO (следующим шагом)
+- Bot: интеракционные тесты (сообщения/кнопки) с мокнутым бэком — TODO
+- Pre-commit селективный раннер тестов — TODO
+- Backlog e2e (отдельный compose, драйвер пользователя) — TODO
 
-These already partially reflect i18n (passing `translations` on create, lang params, and labeled endpoints).
+## Project topology (relevant parts)
+- API handlers: `api/src/dnd_helper_api/routers/`
+  - `monsters/`: `endpoints_list.py`, `endpoints_detail.py`, `endpoints_mutations.py`, `endpoints_search.py`, `derived.py`, `translations.py`
+  - `spells/`: same structure as monsters
+  - `users.py`
+- Bot handlers: `bot/src/dnd_helper_bot/handlers/`
+  - `menu/` (`start.py`, `menus.py`, `settings.py`, `i18n.py`), `monsters/`, `spells/`, `search.py`, `dice.py`, `text_menu.py`
+- Shared enums/models: `shared_models/src/shared_models/`
 
-## Gaps To Address
-1. API list/detail endpoints should assert localized `name`/`description` presence in both `ru` and `en` modes with fallback.
-2. API responses should optionally include `translations` block when requested (if design includes this; verify and cover).
-3. Enum labels coverage consistency for: `Monster.cr`, `Monster.size`, `Monster.type`, `Spell.school`, `Spell.classes` (choose inline `*_label` vs labeled endpoints consistently per routers).
-4. Negative cases and fallbacks: when EN missing, RU returned; when RU missing, EN returned.
-5. Bot formatting tests for RU/EN inputs: ensure correct usage of `name`/`description` and API-provided labels.
+## Test strategy
 
-## Step-by-Step Plan
+### A) API: handler-level unit tests (by router/module)
+Organize tests by router file to mirror code structure. Extend, don’t rewrite working tests.
 
-### 1) API: Monsters
-- Extend `test_monsters_create_and_list_with_translations`:
-  - After create, call `GET /monsters?lang=ru` and `GET /monsters?lang=en` and assert `name` is non-empty and language-appropriate.
-  - Add a case where only RU translation is provided; assert EN list/detail fall back to RU.
-- Add new test `test_monsters_detail_translations_and_fallback`:
-  - Create with `translations` only in EN; fetch RU detail, assert fallback.
-- Add new test `test_monsters_enum_labels_consistent`:
-  - Use `/monsters/labeled` and `/monsters/{id}/labeled` for RU/EN and assert presence of `{"code","label"}` for enum-coded fields we expose via labeled endpoints.
+- Monsters
+  - `endpoints_list`: pagination, sorting, filters, `?lang=ru|en` localization & fallback, invalid query handling.
+  - `endpoints_detail`: by id/slug, 404, localization & fallback.
+  - `endpoints_mutations`: create/update/patch/delete with `translations` payload variants; validation errors; idempotent delete.
+  - `endpoints_search`: query parsing, empty results, limits.
+  - `labeled/wrapped` (per current routers): enum labels present as `{code,label}`; wrapped response shape `{entity,translation,labels}`.
+- Spells (same matrix as Monsters; add school/classes labels and any range-related fields if present).
+- Users: basic CRUD/auth flows (unaffected by i18n) to keep smoke coverage stable.
 
-### 2) API: Spells
-- Extend `test_spells_crud_lifecycle`:
-  - After create, hit detail with `lang=ru` and `lang=en` and assert `name` resolution and fallback.
-- Extend `test_spells_accept_and_return_extended_fields`:
-  - Verify labeled endpoints for `school` and `classes` contain `{"code","label"}` in both RU/EN.
-- Add new test `test_spells_fallback_behavior`:
-  - Create spell with translations only in RU; assert EN list/detail fall back to RU.
+Notes:
+- Cover negative/fallback cases explicitly: EN missing → RU fallback; RU missing → EN fallback.
+- If `include_translations=true` is supported, add tests asserting `translations` block structure; otherwise skip.
 
-### 3) API: Optional `translations` block (if supported)
-- If routers support a `include_translations=true` query param:
-  - Add `test_monsters_include_translations_block` and `test_spells_include_translations_block` asserting structure:
-    - `translations: { ru: {name, description}, en: {name, description} }` with present keys only.
-- If not supported, skip this section.
+### B) API: integration flows (CRUD lifecycles)
+For each entity type (Monsters, Spells):
+- Raw flow: create → get → update/patch → get → delete → verify 404.
+- Wrapped flow: same as raw but via wrapped endpoints; verify `{entity, translation, labels}` shape and label correctness for `ru` and `en`.
 
-### 4) Bot: Formatting and i18n consumption
-- Add tests that mock API payloads (no network):
-  - `test_monster_card_format_ru_en`: ensure bot renderer uses `name`, `description`, and label fields correctly for RU and EN.
-  - `test_spell_card_format_ru_en`: same for spells.
-- Add fallback tests: when EN text missing in payload, renderer outputs RU text returned by API (no client-side extra fallback).
-- Ensure no hardcoded labels in code under test. Button captions should be sourced from UI translations mechanism.
+### C) Bot: interaction tests with backend mocked
 
-### 5) Smoke and integration
-- Keep existing smoke tests.
-- Optionally add a minimal compose-backed smoke (skipped by default) to hit `/monsters` and `/spells` with `lang` both RU and EN and assert non-empty `name` on at least one entity.
+Libraries/tools:
+- Use `pytest` + `pytest-asyncio` for async handlers, construct PTB `Update` objects (message and `CallbackQuery`) and feed them into `telegram.ext.Application` in-memory.
+- Mock backend HTTP via `respx` (httpx) or monkeypatch `dnd_helper_bot.repositories.api_client.ApiClient` methods to assert request shapes and return canned payloads.
 
-## Test Data and Fixtures
-- Continue using `conftest.py` cleaning logic; ensure it deletes translations first, then base entities.
-- Use minimal payloads to create entities within tests; avoid reliance on seed data for unit-level tests.
+Approach:
+- Build a small test helper (internal) to produce updates:
+  - `make_message_update(text=..., chat_id=...)`
+  - `make_callback_update(data=..., message_text=..., chat_id=...)`
+- For each handler path, simulate: incoming command/text/callback → assert:
+  - Which repository/API client methods were called (path, params, body).
+  - Outgoing bot messages and markups (text content, keyboard layout, callback data) match expectations; no hardcoded UI labels (keys must come from i18n mechanism or API).
 
-## Execution Notes
-- Run tests inside containers only, using project tooling.
-- After any migration changes, restart containers and wait briefly before requests.
+Coverage by handler groups:
+- `menu/start`: start text, main menu, settings, i18n switch.
+- `monsters`: list pagination buttons, filters, open detail, back navigation.
+- `spells`: list, filters, detail, back navigation.
+- `search`: free-text search request/response, empty result.
+- `dice`: deterministic formatting only.
+- `text_menu`: render static menus via i18n keys.
+
+Localization:
+- For RU/EN test vectors, rely on API-provided localized fields in canned responses; assert that fallback behavior in payload is reflected verbatim in the rendered text (bot does not add extra client-side fallback).
+
+### D) Selective tests in pre-commit (plan)
+
+Intent:
+- Implement a local pre-commit hook (or adapt existing CI step) that inspects staged changes and runs the minimal necessary test set.
+
+Rules:
+1) Only text files changed → skip tests.
+   - Extensions/paths: `**/*.md`, `docs/**`, `docs/tasks/**`, `docs/backlog.md`, `**/*.json` (e.g. `seed_data.json`, `spells.json`).
+2) Only bot service changed → run bot tests only.
+   - Paths under `bot/**` excluding docs/json.
+3) Otherwise (any changes in `api/**` or `shared_models/**`) → run full tests.
+
+Execution (inside containers):
+- Bot only: `docker compose exec bot pytest -q | cat`
+- API only or full: `docker compose exec api pytest -q | cat` and `docker compose exec bot pytest -q | cat`
+
+Implementation sketch:
+- A small script invoked by pre-commit/CI to collect `git diff --name-only --cached` and apply rules above; exit early to skip tests when allowed.
+## Step-by-step implementation plan (iterations)
+
+### Iteration 1: Stabilize API unit tests per handler
+- Restructure/extend tests under `api/tests/` to mirror routers:
+  - Add/extend modules for monsters and spells by endpoint group (list/detail/mutations/search/wrapped/labeled).
+  - Add RU/EN localization and fallback assertions to list/detail.
+  - Add label assertions for labeled/wrapped endpoints.
+
+### Iteration 2: Add API integration flows
+- Add CRUD lifecycle tests for Monsters and Spells (raw and wrapped), including negative 404 checks after deletion.
+
+### Iteration 3: Bot test harness and smoke coverage
+- Introduce `pytest-asyncio` scaffolding and Update factories.
+- Mock backend via `respx` or repository monkeypatching.
+- Cover `menu/start` + basic monsters/spells list interactions and one detail view each.
+
+### Iteration 4: Bot handlers full coverage
+- Add tests for filters/pagination, back navigation, search flows, and settings/i18n switching.
+- Ensure no hardcoded labels; assert usage of i18n keys/UI translations.
+
+### Iteration 5: Selective test runner for pre-commit/CI
+- Add a rule-based runner script and wire it into pre-commit/CI with the exact three rules above.
+
+### Iteration 6: Polish & docs
+- Review flakiness, stabilize fixtures, document how to run subsets locally.
+
+## Test data and fixtures
+- Keep using `api/tests/conftest.py` cleanup order (translations first, then base entities).
+- Use minimal per-test payloads; avoid dependency on global seed data.
+
+## Execution notes
+- Run tests strictly inside containers using project tooling.
+- After container restarts, wait briefly before requests to services.
 
 ## Deliverables
-- Extended API tests for RU/EN and fallback coverage for monsters and spells.
-- New API tests for enum labels consistency.
-- New bot unit tests for RU/EN render and fallback.
-- Optional tests for `translations` block if supported.
+- API: handler-level unit tests + CRUD integration flows for monsters and spells; users smoke kept.
+- Bot: interaction tests covering messages and buttons with backend mocked, RU/EN and fallback behavior asserted.
+- Pre-commit/CI: selective test execution logic as specified.
 
-## Out of Scope
-- Performance benchmarking.
-- Admin UI for translations.
+## Backlog (not in this iteration)
+- Full end-to-end tests with a dedicated compose file that spins up all services and a driver that emulates a Telegram user (e.g., via a userbot/Telethon or similar), asserting chat transcripts for predefined journeys.
 
-## Commands (for CI/local in containers)
+## Commands (local/CI, inside containers)
 ```bash
 # API tests
 docker compose exec api pytest -q | cat

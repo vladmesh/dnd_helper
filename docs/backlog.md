@@ -227,3 +227,14 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
   - No single targeted module remains over ~200 lines, except explicitly justified exceptions list (e.g., generated code).
   - All tests pass; lints/formatters remain green after the split.
 
+### 22) Remove dev/test dependencies from production images
+- Goal: Ensure prod containers do not contain pytest and other dev-only packages.
+- Scope: `api`, `bot` Dockerfiles and compose flows.
+- Proposal:
+  - Adjust Poetry installation in Dockerfiles to install only main deps (e.g., `--only main`).
+  - Provide separate test images/compose using `--with dev` or dedicated test Dockerfiles.
+  - Gate via build args/ENV to keep local DX simple; prod CI uses main-only.
+- Acceptance:
+  - `docker compose up` for prod profile yields images without pytest (verify by `pip show pytest` absent).
+  - Test profiles still run full test suites using test images.
+
