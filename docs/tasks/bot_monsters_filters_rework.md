@@ -175,7 +175,6 @@ No changes needed for existing keys (`filters.reset`, `filters.cr.*`, `filters.s
   - Users can add Size/Flying/Legendary and remove them. Filters apply instantly, list reflects selections.
 
 ### Iteration 3 — Polish and resilience
-- Persist discovered type options within the current session to avoid rebuilding from scratch on every render.
 - Ensure callback data stays within limits; if the types set is large, consider limiting to top-N by frequency or adding a paging submenu (out of scope unless needed).
 - Telemetry: structured logs on filter changes (field, action, sizes of result) using existing logger.
 
@@ -197,7 +196,7 @@ No changes needed for existing keys (`filters.reset`, `filters.cr.*`, `filters.s
 
 - `bot/src/dnd_helper_bot/handlers/monsters/render.py`
   - Replace `_build_filters_keyboard` with row-per-field rendering including `Any` and multi-select logic, plus Manage row.
-  - Use API labels for types from wrapped list; cache per session if needed.
+  - Use API labels for types from wrapped list.
 
 - `seeding/cli.py`
   - Add the new UI keys (`filters.any`, `filters.add`, `filters.remove` or `filters.hide`, `filters.yes`, `filters.no`).
