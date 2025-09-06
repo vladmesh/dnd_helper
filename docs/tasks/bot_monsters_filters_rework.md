@@ -36,7 +36,7 @@ Notes and constraints:
   - (Optional, later) Roles, Environments — multi-select; labels would require enum/i18n coverage.
 
 - Per-field row structure:
-  - First button: `Any`. Selecting it clears the field filter (no restriction applied for this field).
+  - First button: `Any` with explicit field context for clarity. Label format: `Any <field>` where `<field>` is the localized filter name (e.g., `Any monster type`, `Any danger level`, `Any size`). For boolean fields (`Flying`, `Legendary`) keep plain `Any` without the field suffix.
   - Next: options relevant for the field. If Any is not selected, allow multiple selections (except boolean fields where the choice is Any vs Yes vs No).
   - At the end of each active filter row, include a small "Hide"/"Remove" control to remove this filter from the visible set (does not affect already applied state beyond clearing that field when removed). This control is optional if we provide a dedicated Manage screen — see below.
 
@@ -113,9 +113,9 @@ Files touched: `handlers/monsters/render.py`, `handlers/monsters/filters.py`, `h
    - Uses i18n for button labels:
      - Common: `filters.any`, `filters.add`, `filters.reset`, `filters.hide` (or `filters.remove`).
      - For booleans: `filters.yes`, `filters.no`.
-     - For CR: reuse `filters.cr.03`, `filters.cr.48`, `filters.cr.9p`.
-     - For Size: reuse `filters.size.S`, `filters.size.M`, `filters.size.L`.
-     - For Type options: use labels from API response `labels` (no new UI keys required for each type).
+     - For CR: reuse `filters.cr.03`, `filters.cr.48`, `filters.cr.9p`. Any label uses `filters.field.cr` to compose `Any <field>`.
+     - For Size: reuse `filters.size.S`, `filters.size.M`, `filters.size.L`. Any label uses `filters.field.size` to compose `Any <field>`.
+     - For Type options: use labels from API response `labels` (no new UI keys required for each type). Any label uses `filters.field.type` to compose `Any <field>`.
 
 2) In `monsters_filter_action`:
    - Remove `apply` handling entirely.
@@ -134,7 +134,7 @@ Files touched: `handlers/monsters/render.py`, `handlers/monsters/filters.py`, `h
 
 ## i18n / Seeding Changes (minimal)
 Add only the keys that do not exist yet to `seeding/cli.py` `_default_ui_pairs()`:
-- `filters.any`: RU "Любой", EN "Any".
+- `filters.any`: RU "Любой", EN "Any". Any button will be composed with field name for non-boolean fields using: `filters.any` + space + the corresponding field label key (`filters.field.*`).
 - `filters.add`: RU "Добавить фильтр", EN "Add filter".
 - `filters.hide` (or `filters.remove`): RU "Убрать", EN "Hide" (choose one key, e.g., `filters.remove`).
 - `filters.yes`: RU "Да", EN "Yes".

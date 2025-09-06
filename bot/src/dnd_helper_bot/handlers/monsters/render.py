@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional, Tuple
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.error import BadRequest
 from telegram.ext import ContextTypes
 
 from dnd_helper_bot.repositories.api_client import api_get
@@ -81,10 +82,18 @@ async def render_monsters_list(query, context: ContextTypes.DEFAULT_TYPE, page: 
     if total == 0:
         rows: List[List[InlineKeyboardButton]] = await _build_filters_keyboard(pending, lang, type_options, add_menu_open)
         markup = InlineKeyboardMarkup(rows)
-        await query.edit_message_text(
-            await t("list.empty.monsters", lang, default=("No monsters." if lang == "en" else "Монстров нет.")),
-            reply_markup=markup,
-        )
+        try:
+            await query.edit_message_text(
+                await t("list.empty.monsters", lang, default=("No monsters." if lang == "en" else "Монстров нет.")),
+                reply_markup=markup,
+            )
+        except BadRequest as e:
+            if "Message is not modified" in str(e):
+                await query.answer()
+            else:
+                raise
+        else:
+            await query.answer()
         return
     page_items = paginate(filtered, page)
     rows: List[List[InlineKeyboardButton]] = await _build_filters_keyboard(pending, lang, type_options, add_menu_open)
@@ -102,7 +111,15 @@ async def render_monsters_list(query, context: ContextTypes.DEFAULT_TYPE, page: 
     markup = InlineKeyboardMarkup(rows)
     title = await t("list.title.monsters", lang)
     suffix = f" (p. {page})" if lang == "en" else f" (стр. {page})"
-    await query.edit_message_text(title + suffix, reply_markup=markup)
+    try:
+        await query.edit_message_text(title + suffix, reply_markup=markup)
+    except BadRequest as e:
+        if "Message is not modified" in str(e):
+            await query.answer()
+        else:
+            raise
+    else:
+        await query.answer()
 
 
 async def _build_filters_keyboard(pending: Dict[str, Any], lang: str, type_options: List[Tuple[str, str]], add_menu_open: bool) -> List[List[InlineKeyboardButton]]:
@@ -145,18 +162,27 @@ async def _build_filters_keyboard(pending: Dict[str, Any], lang: str, type_optio
     for field in visible_fields:
         if field == "cr_buckets":
             cr_sel = pending.get("cr_buckets")
-            row = [InlineKeyboardButton(any_lbl, callback_data="mflt:cr:any")]
+            any_base = any_lbl + " " + (await t("filters.field.cr", lang))
+            any_txt = ("✅ " if cr_sel is None else "") + any_base
+            # Row with Any only to avoid truncation
+            rows.append([InlineKeyboardButton(any_txt, callback_data="mflt:cr:any")])
+            # Row with bucket options
             cr03 = ("✅ " if isinstance(cr_sel, set) and "03" in cr_sel else "") + await t("filters.cr.03", lang)
             cr48 = ("✅ " if isinstance(cr_sel, set) and "48" in cr_sel else "") + await t("filters.cr.48", lang)
             cr9p = ("✅ " if isinstance(cr_sel, set) and "9p" in cr_sel else "") + await t("filters.cr.9p", lang)
-            row.extend([
+            bucket_row = [
                 InlineKeyboardButton(cr03, callback_data="mflt:cr:03"),
                 InlineKeyboardButton(cr48, callback_data="mflt:cr:48"),
                 InlineKeyboardButton(cr9p, callback_data="mflt:cr:9p"),
-            ])
-            row.append(InlineKeyboardButton(remove_lbl, callback_data="mflt:rm:cr_buckets"))
-            rows.append(row)
+            ]
+            rows.append(bucket_row)
+            # Append Remove at end of the CR section
+            if rows and len(rows[-1]) < 4:
+                rows[-1].append(InlineKeyboardButton(remove_lbl, callback_data="mflt:rm:cr_buckets"))
+            else:
+                rows.append([InlineKeyboardButton(remove_lbl, callback_data="mflt:rm:cr_buckets")])
         elif field == "types":
+            is_any_types = not isinstance(pending.get("types"), set)
             selected_types = pending.get("types") if isinstance(pending.get("types"), set) else None
             # Build buttons for each type with selection prefix
             type_buttons: List[InlineKeyboardButton] = []
@@ -164,14 +190,13 @@ async def _build_filters_keyboard(pending: Dict[str, Any], lang: str, type_optio
                 prefix = "✅ " if isinstance(selected_types, set) and code in selected_types else ""
                 type_buttons.append(InlineKeyboardButton(prefix + str(label), callback_data=f"mflt:type:{code}"))
 
-            # First row starts with Any, then up to 3 type buttons (to keep 4 per row)
-            first_row: List[InlineKeyboardButton] = [InlineKeyboardButton(any_lbl, callback_data="mflt:type:any")]
-            for btn in type_buttons[:3]:
-                first_row.append(btn)
-            rows.append(first_row)
+            # First row: Any only to avoid truncation
+            any_base = any_lbl + " " + (await t("filters.field.type", lang))
+            any_txt = ("✅ " if is_any_types else "") + any_base
+            rows.append([InlineKeyboardButton(any_txt, callback_data="mflt:type:any")])
 
-            # Remaining type buttons go in rows of up to 4
-            remaining = type_buttons[3:]
+            # Type buttons go in rows of up to 4
+            remaining = type_buttons
             while remaining:
                 rows.append(remaining[:4])
                 remaining = remaining[4:]
@@ -183,21 +208,29 @@ async def _build_filters_keyboard(pending: Dict[str, Any], lang: str, type_optio
                 rows.append([InlineKeyboardButton(remove_lbl, callback_data="mflt:rm:types")])
         elif field == "sizes":
             sz_sel = pending.get("sizes")
-            row = [InlineKeyboardButton(any_lbl, callback_data="mflt:sz:any")]
+            any_base = any_lbl + " " + (await t("filters.field.size", lang))
+            any_txt = ("✅ " if not isinstance(sz_sel, set) else "") + any_base
+            # Row with Any only
+            rows.append([InlineKeyboardButton(any_txt, callback_data="mflt:sz:any")])
+            # Row with size options
             szS = ("✅ " if isinstance(sz_sel, set) and "S" in sz_sel else "") + await t("filters.size.S", lang)
             szM = ("✅ " if isinstance(sz_sel, set) and "M" in sz_sel else "") + await t("filters.size.M", lang)
             szL = ("✅ " if isinstance(sz_sel, set) and "L" in sz_sel else "") + await t("filters.size.L", lang)
-            row.extend([
+            size_row = [
                 InlineKeyboardButton(szS, callback_data="mflt:sz:S"),
                 InlineKeyboardButton(szM, callback_data="mflt:sz:M"),
                 InlineKeyboardButton(szL, callback_data="mflt:sz:L"),
-            ])
-            row.append(InlineKeyboardButton(remove_lbl, callback_data="mflt:rm:sizes"))
-            rows.append(row)
+            ]
+            rows.append(size_row)
+            # Append Remove at end of the Sizes section
+            if rows and len(rows[-1]) < 4:
+                rows[-1].append(InlineKeyboardButton(remove_lbl, callback_data="mflt:rm:sizes"))
+            else:
+                rows.append([InlineKeyboardButton(remove_lbl, callback_data="mflt:rm:sizes")])
         elif field == "flying":
             sel = pending.get("flying")
             row = [
-                InlineKeyboardButton(any_lbl, callback_data="mflt:fly:any"),
+                InlineKeyboardButton(("✅ " if sel is None else "") + any_lbl, callback_data="mflt:fly:any"),
                 InlineKeyboardButton(("✅ " if sel is True else "") + yes_lbl, callback_data="mflt:fly:yes"),
                 InlineKeyboardButton(("✅ " if sel is False else "") + no_lbl, callback_data="mflt:fly:no"),
                 InlineKeyboardButton(remove_lbl, callback_data="mflt:rm:flying"),
@@ -206,7 +239,7 @@ async def _build_filters_keyboard(pending: Dict[str, Any], lang: str, type_optio
         elif field == "legendary":
             sel = pending.get("legendary")
             row = [
-                InlineKeyboardButton(any_lbl, callback_data="mflt:leg:any"),
+                InlineKeyboardButton(("✅ " if sel is None else "") + any_lbl, callback_data="mflt:leg:any"),
                 InlineKeyboardButton(("✅ " if sel is True else "") + yes_lbl, callback_data="mflt:leg:yes"),
                 InlineKeyboardButton(("✅ " if sel is False else "") + no_lbl, callback_data="mflt:leg:no"),
                 InlineKeyboardButton(remove_lbl, callback_data="mflt:rm:legendary"),

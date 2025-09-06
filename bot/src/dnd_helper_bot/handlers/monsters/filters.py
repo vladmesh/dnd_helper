@@ -56,7 +56,7 @@ def _toggle_or_set_filters(pending: Dict[str, Any], token: str) -> Dict[str, Any
     #  - legacy still supported: leg | fly | sz:S|M|L
     updated = dict(pending)
 
-    # CR buckets (multi-select)
+    # CR buckets (multi-select) — Any is mutually exclusive
     if token.startswith("cr:"):
         val = token.split(":", 1)[1]
         if val == "any":
@@ -70,12 +70,13 @@ def _toggle_or_set_filters(pending: Dict[str, Any], token: str) -> Dict[str, Any
                 current_set.remove(val)
             else:
                 current_set.add(val)
+            # If nothing left -> Any (None)
             updated["cr_buckets"] = current_set or None
             # keep legacy empty
             updated["cr_range"] = None
         return updated
 
-    # Types (multi-select)
+    # Types (multi-select) — Any is mutually exclusive
     if token.startswith("type:"):
         val = token.split(":", 1)[1]
         if val == "any":
@@ -90,7 +91,7 @@ def _toggle_or_set_filters(pending: Dict[str, Any], token: str) -> Dict[str, Any
             updated["types"] = current_set or None
         return updated
 
-    # Sizes (multi-select)
+    # Sizes (multi-select) — Any is mutually exclusive
     if token.startswith("sz:"):
         val = token.split(":", 1)[1]
         if val == "any":

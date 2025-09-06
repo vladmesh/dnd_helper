@@ -169,7 +169,7 @@ def _default_ui_pairs() -> List[tuple[str, str, str]]:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Seed data (monsters, spells, enums, ui) from seed JSON")
+    parser = argparse.ArgumentParser(description="Seed data (monsters, spells, enums, ui) from separate seed JSON files")
     parser.add_argument("--api-base-url", default=os.getenv("API_BASE_URL", "http://localhost:8000"))
     parser.add_argument("--monsters", action="store_true", help="Import monsters")
     parser.add_argument("--spells", action="store_true", help="Import spells")
@@ -200,14 +200,21 @@ def main(argv: Optional[List[str]] = None) -> int:
             print("API is not reachable at", args.api_base_url)
             return 1
 
-    # Load seed JSON once (fixed path next to this CLI module)
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    seed_path = os.path.join(os.path.dirname(script_dir), "seed_data_full.json")
-    with open(seed_path, "r", encoding="utf-8") as f:
-        seed = json.load(f)
+    # Load seed JSON files (separate files for enums, spells, monsters)
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    path_enums = os.path.join(project_root, "seed_data_enums.json")
+    path_spells = os.path.join(project_root, "seed_data_spells.json")
+    path_monsters = os.path.join(project_root, "seed_data_monsters.json")
+
+    with open(path_enums, "r", encoding="utf-8") as f:
+        seed_enums = json.load(f)
+    with open(path_spells, "r", encoding="utf-8") as f:
+        seed_spells = json.load(f)
+    with open(path_monsters, "r", encoding="utf-8") as f:
+        seed_monsters = json.load(f)
 
     if args.monsters:
-        monster_payloads = build_monster_payloads_from_seed(seed, limit=args.limit)
+        monster_payloads = build_monster_payloads_from_seed(seed_monsters, limit=args.limit)
         print(f"Monsters prepared: {len(monster_payloads)}")
         if args.dry_run:
             for sample in monster_payloads[: min(3, len(monster_payloads))]:
@@ -224,7 +231,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                     print(f"[{idx}/{len(monster_payloads)}] Created monster id={created.get('id')} name={created.get('name')}")
 
     if args.spells:
-        spell_payloads = build_spell_payloads_from_seed(seed, limit=args.limit)
+        spell_payloads = build_spell_payloads_from_seed(seed_spells, limit=args.limit)
         print(f"Spells prepared: {len(spell_payloads)}")
         if args.dry_run:
             for sample in spell_payloads[: min(3, len(spell_payloads))]:
@@ -242,8 +249,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                     print(f"[{idx}/{len(spell_payloads)}] Created spell id={created.get('id')} name={created.get('name')}")
 
     if args.enums or args.ui:
-        enum_rows = build_enum_rows_from_seed(seed) if args.enums else []
-        ui_rows = build_ui_rows_from_seed(seed, _default_ui_pairs()) if args.ui else []
+        enum_rows = build_enum_rows_from_seed(seed_enums) if args.enums else []
+        # UI translations are not provided in the new split files; use defaults unless provided later
+        ui_rows = build_ui_rows_from_seed({}, _default_ui_pairs()) if args.ui else []
         print(f"Enum translations: {len(enum_rows)} | UI translations: {len(ui_rows)}")
         if not args.dry_run:
             upsert_enum_and_ui_translations_in_container(enum_rows, ui_rows)
