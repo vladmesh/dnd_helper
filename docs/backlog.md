@@ -259,3 +259,23 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
   - `docker compose up` for prod profile yields images without pytest (verify by `pip show pytest` absent).
   - Test profiles still run full test suites using test images.
 
+### 23) Fix pre-commit hook (conditional tests)
+- Goal: The pre-commit hook must not run the full test suite unconditionally. It should decide whether to skip or run a subset of tests based on changed files.
+- Problem: Currently the pre-commit hook runs all tests regardless of what changed.
+- Scope: Root-level pre-commit configuration and the hook script that triggers tests.
+- Rules:
+  - If no code files changed → skip tests entirely.
+  - If only Bot code changed and neither Shared Models nor API changed → run only Bot tests.
+  - If only API code changed and neither Shared Models nor Bot changed → run only API tests.
+  - If Shared Models changed OR both services are affected → run the full test suite.
+- Implementation notes:
+  - Detect file changes against the staged set (preferred) or against the merge base with the target branch.
+  - Treat only code directories as signal (e.g., `api/`, `bot/`, `shared_models/`); ignore docs, configs that do not impact runtime unless they affect tests.
+  - Execute tests inside containers using dedicated test compose flows (non-interactive), keeping production containers clean.
+  - Ensure a fast path when skipping; print a concise summary of the decision for transparency.
+- Acceptance:
+  - Given only `bot/` files changed → only Bot tests run.
+  - Given only `api/` files changed → only API tests run.
+  - Given `shared_models/` changed → full test suite runs.
+  - Given only docs changed → tests are skipped.
+
