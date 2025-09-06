@@ -122,7 +122,7 @@ async def monster_search_prompt(update: Update, context: ContextTypes.DEFAULT_TY
 async def monsters_filter_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-    data = query.data  # e.g., mflt:leg, mflt:apply, mflt:reset
+    data = query.data  # e.g., mflt:cr:03, mflt:type:undead, mflt:reset
     logger.info(
         "Monsters filter action",
         extra={
@@ -132,10 +132,7 @@ async def monsters_filter_action(update: Update, context: ContextTypes.DEFAULT_T
     )
     pending, applied = _get_filter_state(context)
     token = data.split(":", 1)[1]
-    if token == "apply":
-        _set_filter_state(context, applied=dict(pending))
-        page = 1
-    elif token == "reset":
+    if token == "reset":
         _set_filter_state(
             context,
             pending=_default_monsters_filters(),
@@ -144,8 +141,10 @@ async def monsters_filter_action(update: Update, context: ContextTypes.DEFAULT_T
         page = 1
     else:
         new_pending = _toggle_or_set_filters(pending, token)
-        _set_filter_state(context, pending=new_pending)
-        page = int(context.user_data.get("monsters_current_page", 1))
+        # immediate apply
+        _set_filter_state(context, pending=new_pending, applied=new_pending)
+        # if structure changed significantly (e.g., Any from empty set), reset to page 1
+        page = 1 if token.endswith(":any") else int(context.user_data.get("monsters_current_page", 1))
 
     await render_monsters_list(query, context, page)
 
