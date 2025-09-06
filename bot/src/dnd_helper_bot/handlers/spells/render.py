@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
@@ -24,9 +24,17 @@ async def render_spells_list(query, context: ContextTypes.DEFAULT_TYPE, page: in
     wrapped_list: List[Dict[str, Any]] = await api_get("/spells/list/wrapped", params={"lang": lang})
 
     all_spells: List[Dict[str, Any]] = []
+    school_options: Dict[str, str] = {}
     for w in wrapped_list:
         e = (w.get("entity") or {})
         tdata = (w.get("translation") or {})
+        labels = (w.get("labels") or {})
+        # collect school label mapping if available
+        school_label_obj = labels.get("school") or {}
+        school_code = school_label_obj.get("code") if isinstance(school_label_obj, dict) else (e.get("school"))
+        school_label = school_label_obj.get("label") if isinstance(school_label_obj, dict) else (school_code or "")
+        if school_code:
+            school_options[str(school_code)] = str(school_label or school_code)
         all_spells.append(
             {
                 "id": e.get("id"),
@@ -36,12 +44,13 @@ async def render_spells_list(query, context: ContextTypes.DEFAULT_TYPE, page: in
                 "is_concentration": e.get("is_concentration"),
                 "casting_time": e.get("casting_time"),
                 "level": e.get("level"),
+                "school": e.get("school"),
             }
         )
 
     filtered = _filter_spells(all_spells, applied)
     total = len(filtered)
-    rows: List[List[InlineKeyboardButton]] = await _build_filters_keyboard(pending, lang)
+    rows: List[List[InlineKeyboardButton]] = await _build_filters_keyboard(pending, lang, sorted(school_options.items(), key=lambda x: x[1].lower()))
     if total == 0:
         markup = InlineKeyboardMarkup(rows)
         await query.edit_message_text(
@@ -79,22 +88,42 @@ async def render_spells_list(query, context: ContextTypes.DEFAULT_TYPE, page: in
     await query.edit_message_text(title + suffix, reply_markup=markup)
 
 
-async def _build_filters_keyboard(pending: Dict[str, Any], lang: str) -> List[List[InlineKeyboardButton]]:
-    rit = ("✅ " if pending.get("ritual") else "") + await t("filters.ritual", lang)
-    conc = ("✅ " if pending.get("is_concentration") else "") + await t("filters.concentration", lang)
-    bonus = ("✅ " if pending.get("cast", {}).get("bonus") else "") + await t("filters.cast.bonus", lang)
-    react = ("✅ " if pending.get("cast", {}).get("reaction") else "") + await t("filters.cast.reaction", lang)
-    lv = pending.get("level_range")
-    lv13 = ("✅ " if lv == "13" else "") + await t("filters.level.13", lang)
-    lv45 = ("✅ " if lv == "45" else "") + await t("filters.level.45", lang)
-    lv69 = ("✅ " if lv == "69" else "") + await t("filters.level.69", lang)
-    apply = await t("filters.apply", lang)
+async def _build_filters_keyboard(pending: Dict[str, Any], lang: str, school_items: List[Tuple[str, str]]) -> List[List[InlineKeyboardButton]]:
+    rows: List[List[InlineKeyboardButton]] = []
+    # Level row: Any + buckets 13/45/69 (multi-select)
+    level_selected = set(pending.get("level_buckets") or [])
+    any_label = await t("filters.any", lang)
+    level_field_label = await t("filters.field.level", lang, default="level")
+    any_level = ("✅ " if not level_selected and (pending.get("level_range") is None) else "") + f"{any_label} {level_field_label}"
+    lv13 = ("✅ " if "13" in level_selected else "") + await t("filters.level.13", lang)
+    lv45 = ("✅ " if "45" in level_selected else "") + await t("filters.level.45", lang)
+    lv69 = ("✅ " if "69" in level_selected else "") + await t("filters.level.69", lang)
+    rows.append([
+        InlineKeyboardButton(any_level, callback_data="sflt:lv:any"),
+        InlineKeyboardButton(lv13, callback_data="sflt:lv:13"),
+        InlineKeyboardButton(lv45, callback_data="sflt:lv:45"),
+        InlineKeyboardButton(lv69, callback_data="sflt:lv:69"),
+    ])
+
+    # School row: Any + list of schools (multi-select, chunk across rows if needed)
+    school_selected = set(pending.get("school") or [])
+    school_field_label = await t("filters.field.school", lang, default="school")
+    any_school = ("✅ " if not school_selected else "") + f"{any_label} {school_field_label}"
+    current_row: List[InlineKeyboardButton] = [InlineKeyboardButton(any_school, callback_data="sflt:sc:any")]
+    # put up to 3 per row after Any
+    per_row = 3
+    for idx, (code, label) in enumerate(school_items):
+        text = ("✅ " if code in school_selected else "") + str(label)
+        current_row.append(InlineKeyboardButton(text, callback_data=f"sflt:sc:{code}"))
+        if (idx + 1) % per_row == 0:
+            rows.append(current_row)
+            current_row = [InlineKeyboardButton(any_school, callback_data="sflt:sc:any")]
+    if current_row:
+        rows.append(current_row)
+
+    # Reset row only (Apply is removed in Iteration 1)
     reset = await t("filters.reset", lang)
-    return [
-        [InlineKeyboardButton(rit, callback_data="sflt:rit"), InlineKeyboardButton(conc, callback_data="sflt:conc")],
-        [InlineKeyboardButton(bonus, callback_data="sflt:ct:ba"), InlineKeyboardButton(react, callback_data="sflt:ct:re")],
-        [InlineKeyboardButton(lv13, callback_data="sflt:lv:13"), InlineKeyboardButton(lv45, callback_data="sflt:lv:45"), InlineKeyboardButton(lv69, callback_data="sflt:lv:69")],
-        [InlineKeyboardButton(apply, callback_data="sflt:apply"), InlineKeyboardButton(reset, callback_data="sflt:reset")],
-    ]
+    rows.append([InlineKeyboardButton(reset, callback_data="sflt:reset")])
+    return rows
 
 

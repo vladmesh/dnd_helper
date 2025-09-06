@@ -8,7 +8,10 @@ def _default_spells_filters() -> Dict[str, Any]:
         "ritual": None,  # None or True
         "is_concentration": None,  # None or True
         "cast": {"bonus": False, "reaction": False},
-        "level_range": None,  # "13" | "45" | "69" | None
+        "level_range": None,  # "13" | "45" | "69" | None (legacy single-choice)
+        # New set-based fields (Iteration 1)
+        "level_buckets": None,  # set[str] | None
+        "school": None,  # set[str] | None
     }
 
 
@@ -34,7 +37,8 @@ def _set_filter_state(
 
 
 def _toggle_or_set_filters(pending: Dict[str, Any], token: str) -> Dict[str, Any]:
-    # token formats: rit | conc | ct:ba | ct:re | lv:13 | lv:45 | lv:69
+    # Supported tokens:
+    # rit | conc | ct:ba | ct:re | lv:any | lv:13 | lv:45 | lv:69 | sc:any | sc:<code>
     updated = {**pending, "cast": {**pending.get("cast", {})}}
     if token == "rit":
         updated["ritual"] = None if pending.get("ritual") else True
@@ -46,7 +50,29 @@ def _toggle_or_set_filters(pending: Dict[str, Any], token: str) -> Dict[str, Any
         updated["cast"]["reaction"] = not pending.get("cast", {}).get("reaction", False)
     elif token.startswith("lv:"):
         val = token.split(":", 1)[1]
-        updated["level_range"] = None if pending.get("level_range") == val else val
+        if val == "any":
+            updated["level_buckets"] = None
+            updated["level_range"] = None
+        else:
+            current = set(updated.get("level_buckets") or [])
+            if val in current:
+                current.remove(val)
+            else:
+                current.add(val)
+            updated["level_buckets"] = current if current else None
+            # clear legacy single-range when multi-select used
+            updated["level_range"] = None
+    elif token.startswith("sc:"):
+        val = token.split(":", 1)[1]
+        if val == "any":
+            updated["school"] = None
+        else:
+            current = set(updated.get("school") or [])
+            if val in current:
+                current.remove(val)
+            else:
+                current.add(val)
+            updated["school"] = current if current else None
     return updated
 
 
@@ -66,18 +92,16 @@ def _filter_spells(items: List[Dict[str, Any]], filters: Dict[str, Any]) -> List
             conds.append(react_ok)
         return all(conds)
 
-    def level_in_range(level: Optional[int], rng: Optional[str]) -> bool:
-        if rng is None:
-            return True
+    def level_in_bucket(level: Optional[int], bucket: str) -> bool:
         if level is None:
             return False
-        if rng == "13":
+        if bucket == "13":
             return 1 <= level <= 3
-        if rng == "45":
+        if bucket == "45":
             return 4 <= level <= 5
-        if rng == "69":
+        if bucket == "69":
             return 6 <= level <= 9
-        return True
+        return False
 
     result: List[Dict[str, Any]] = []
     for s in items:
@@ -88,8 +112,21 @@ def _filter_spells(items: List[Dict[str, Any]], filters: Dict[str, Any]) -> List
         cast = filters.get("cast", {})
         if not match_casting_time(s.get("casting_time"), cast.get("bonus", False), cast.get("reaction", False)):
             continue
-        if not level_in_range(s.get("level"), filters.get("level_range")):
-            continue
+        # Level: new set-based field preferred; fallback to legacy single-range
+        level_buckets = filters.get("level_buckets")
+        if level_buckets:
+            if not any(level_in_bucket(s.get("level"), b) for b in level_buckets):
+                continue
+        else:
+            legacy = filters.get("level_range")
+            if legacy is not None and not level_in_bucket(s.get("level"), legacy):
+                continue
+        # School: OR within field
+        school_selected = filters.get("school")
+        if school_selected:
+            scode = s.get("school")
+            if scode is None or scode not in school_selected:
+                continue
         result.append(s)
     return result
 
