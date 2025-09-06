@@ -89,7 +89,7 @@ async def render_monsters_list(query, context: ContextTypes.DEFAULT_TYPE, page: 
     page_items = paginate(filtered, page)
     rows: List[List[InlineKeyboardButton]] = await _build_filters_keyboard(pending, lang, type_options, add_menu_open)
     for m in page_items:
-        label = f"{m.get('name','')} (#{m.get('id')})"
+        label = f"{m.get('name','')}"
         rows.append([InlineKeyboardButton(label, callback_data=f"monster:detail:{m['id']}")])
     nav: List[InlineKeyboardButton] = []
     if (page - 1) * 5 > 0:
