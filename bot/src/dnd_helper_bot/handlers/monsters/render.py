@@ -158,19 +158,29 @@ async def _build_filters_keyboard(pending: Dict[str, Any], lang: str, type_optio
             rows.append(row)
         elif field == "types":
             selected_types = pending.get("types") if isinstance(pending.get("types"), set) else None
-            first_row: List[InlineKeyboardButton] = [InlineKeyboardButton(any_lbl, callback_data="mflt:type:any")]
+            # Build buttons for each type with selection prefix
             type_buttons: List[InlineKeyboardButton] = []
             for code, label in type_options:
                 prefix = "✅ " if isinstance(selected_types, set) and code in selected_types else ""
                 type_buttons.append(InlineKeyboardButton(prefix + str(label), callback_data=f"mflt:type:{code}"))
+
+            # First row starts with Any, then up to 3 type buttons (to keep 4 per row)
+            first_row: List[InlineKeyboardButton] = [InlineKeyboardButton(any_lbl, callback_data="mflt:type:any")]
             for btn in type_buttons[:3]:
                 first_row.append(btn)
-            first_row.append(InlineKeyboardButton(remove_lbl, callback_data="mflt:rm:types"))
             rows.append(first_row)
+
+            # Remaining type buttons go in rows of up to 4
             remaining = type_buttons[3:]
             while remaining:
                 rows.append(remaining[:4])
                 remaining = remaining[4:]
+
+            # Append Remove button at the end of the entire Types section
+            if rows and len(rows[-1]) < 4:
+                rows[-1].append(InlineKeyboardButton(remove_lbl, callback_data="mflt:rm:types"))
+            else:
+                rows.append([InlineKeyboardButton(remove_lbl, callback_data="mflt:rm:types")])
         elif field == "sizes":
             sz_sel = pending.get("sizes")
             row = [InlineKeyboardButton(any_lbl, callback_data="mflt:sz:any")]
