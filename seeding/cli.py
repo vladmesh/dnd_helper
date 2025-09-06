@@ -121,6 +121,17 @@ def _default_ui_pairs() -> List[tuple[str, str, str]]:
         ("filters.yes", "en", "Yes"),
         ("filters.no", "ru", "Нет"),
         ("filters.no", "en", "No"),
+        # Field names for Add-filter submenu
+        ("filters.field.cr", "ru", "Уровень опасности"),
+        ("filters.field.cr", "en", "Danger level"),
+        ("filters.field.type", "ru", "Тип монстра"),
+        ("filters.field.type", "en", "Monster type"),
+        ("filters.field.size", "ru", "Размер"),
+        ("filters.field.size", "en", "Size"),
+        ("filters.field.flying", "ru", "Летающий"),
+        ("filters.field.flying", "en", "Flying"),
+        ("filters.field.legendary", "ru", "Легендарный"),
+        ("filters.field.legendary", "en", "Legendary"),
         ("list.title.monsters", "ru", "Список монстров"),
         ("list.title.monsters", "en", "Monsters list"),
         ("list.title.spells", "ru", "Список заклинаний"),
@@ -191,7 +202,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Load seed JSON once (fixed path next to this CLI module)
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    seed_path = os.path.join(os.path.dirname(script_dir), "seed_data.json")
+    seed_path = os.path.join(os.path.dirname(script_dir), "seed_data_full.json")
     with open(seed_path, "r", encoding="utf-8") as f:
         seed = json.load(f)
 

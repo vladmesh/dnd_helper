@@ -138,13 +138,21 @@ async def monsters_filter_action(update: Update, context: ContextTypes.DEFAULT_T
             pending=_default_monsters_filters(),
             applied=_default_monsters_filters(),
         )
+        context.user_data["monsters_add_menu_open"] = False
         page = 1
+    elif token == "add":
+        # toggle add submenu
+        context.user_data["monsters_add_menu_open"] = not bool(context.user_data.get("monsters_add_menu_open"))
+        page = int(context.user_data.get("monsters_current_page", 1))
     else:
         new_pending = _toggle_or_set_filters(pending, token)
+        # manage menu visibility: close after concrete add:field action
+        if token.startswith("add:"):
+            context.user_data["monsters_add_menu_open"] = False
         # immediate apply
         _set_filter_state(context, pending=new_pending, applied=new_pending)
         # if structure changed significantly (e.g., Any from empty set), reset to page 1
-        page = 1 if token.endswith(":any") else int(context.user_data.get("monsters_current_page", 1))
+        page = 1 if token.endswith(":any") or token.startswith("add:") or token.startswith("rm:") else int(context.user_data.get("monsters_current_page", 1))
 
     await render_monsters_list(query, context, page)
 
