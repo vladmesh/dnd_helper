@@ -166,24 +166,29 @@ async def _build_filters_keyboard(
             lv13 = ("✅ " if "13" in level_selected else "") + await t("filters.level.13", lang)
             lv45 = ("✅ " if "45" in level_selected else "") + await t("filters.level.45", lang)
             lv69 = ("✅ " if "69" in level_selected else "") + await t("filters.level.69", lang)
-            any_btn = InlineKeyboardButton(("✅ " if not level_selected and (pending.get("level_range") is None) else "") + any_label, callback_data="sflt:lv:any")
-            row = [any_btn, InlineKeyboardButton(lv13, callback_data="sflt:lv:13"), InlineKeyboardButton(lv45, callback_data="sflt:lv:45"), InlineKeyboardButton(lv69, callback_data="sflt:lv:69")]
-            row.append(InlineKeyboardButton(await t("filters.remove", lang), callback_data="sflt:rm:level_buckets"))
-            rows.append(row)
+            any_level_text = await t("filters.any.level", lang, default=f"{any_label} " + (await t("filters.field.level", lang, default="level")))
+            # Row with Any only
+            rows.append([InlineKeyboardButton(("✅ " if not level_selected and (pending.get("level_range") is None) else "") + any_level_text, callback_data="sflt:lv:any")])
+            # Row with buckets
+            rows.append([
+                InlineKeyboardButton(lv13, callback_data="sflt:lv:13"),
+                InlineKeyboardButton(lv45, callback_data="sflt:lv:45"),
+                InlineKeyboardButton(lv69, callback_data="sflt:lv:69"),
+                InlineKeyboardButton(await t("filters.remove", lang), callback_data="sflt:rm:level_buckets"),
+            ])
         elif field == "school":
             school_selected = set(pending.get("school") or [])
-            school_field_label = await t("filters.field.school", lang, default="school")
-            any_school_btn = InlineKeyboardButton(("✅ " if not school_selected else "") + f"{any_label} {school_field_label}", callback_data="sflt:sc:any")
+            any_school_text = await t("filters.any.school", lang, default=f"{any_label} " + (await t("filters.field.school", lang, default="school")))
+            any_school_btn = InlineKeyboardButton(("✅ " if not school_selected else "") + any_school_text, callback_data="sflt:sc:any")
             per_row = 3
             option_buttons: List[InlineKeyboardButton] = []
             for code, label in school_items:
                 text = ("✅ " if code in school_selected else "") + str(label)
                 option_buttons.append(InlineKeyboardButton(text, callback_data=f"sflt:sc:{code}"))
-            # First row: Any + first chunk of options
-            first_chunk = option_buttons[:per_row]
-            rows.append([any_school_btn] + first_chunk)
+            # First row: Any only
+            rows.append([any_school_btn])
             # Subsequent rows: only options
-            for i in range(per_row, len(option_buttons), per_row):
+            for i in range(0, len(option_buttons), per_row):
                 rows.append(option_buttons[i : i + per_row])
             # Append Hide to the last school row
             if rows:
@@ -204,8 +209,9 @@ async def _build_filters_keyboard(
             ])
         elif field == "is_concentration":
             state = pending.get("is_concentration")
+            any_conc_text = await t("filters.any.concentration", lang, default=(any_label + " " + (await t("filters.field.concentration", lang, default="concentration"))))
             rows.append([
-                InlineKeyboardButton(("✅ " if state is None else "") + any_label, callback_data="sflt:conc:any"),
+                InlineKeyboardButton(("✅ " if state is None else "") + any_conc_text, callback_data="sflt:conc:any"),
                 InlineKeyboardButton(("✅ " if state is True else "") + await t("filters.yes", lang), callback_data="sflt:conc:yes"),
                 InlineKeyboardButton(("✅ " if state is False else "") + await t("filters.no", lang), callback_data="sflt:conc:no"),
                 InlineKeyboardButton(await t("filters.remove", lang), callback_data="sflt:rm:is_concentration"),
