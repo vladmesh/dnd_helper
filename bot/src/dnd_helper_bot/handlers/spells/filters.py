@@ -12,6 +12,12 @@ def _default_spells_filters() -> Dict[str, Any]:
         # New set-based fields (Iteration 1)
         "level_buckets": None,  # set[str] | None
         "school": None,  # set[str] | None
+        # Iteration 2 additions
+        "casting_time": None,  # set[str] | None, values {"ba", "re"}
+        "classes": None,  # set[str] | None
+        # UI state for rendering
+        "visible_fields": ["level_buckets", "school"],
+        "add_menu_open": False,
     }
 
 
@@ -38,16 +44,50 @@ def _set_filter_state(
 
 def _toggle_or_set_filters(pending: Dict[str, Any], token: str) -> Dict[str, Any]:
     # Supported tokens:
-    # rit | conc | ct:ba | ct:re | lv:any | lv:13 | lv:45 | lv:69 | sc:any | sc:<code>
+    # rit | conc | rit:any|yes|no | conc:any|yes|no
+    # ct:any | ct:ba | ct:re
+    # lv:any | lv:13 | lv:45 | lv:69
+    # sc:any | sc:<code>
+    # cls:any | cls:<code>
+    # add | add:<field> | rm:<field>
     updated = {**pending, "cast": {**pending.get("cast", {})}}
     if token == "rit":
         updated["ritual"] = None if pending.get("ritual") else True
     elif token == "conc":
         updated["is_concentration"] = None if pending.get("is_concentration") else True
-    elif token == "ct:ba":
-        updated["cast"]["bonus"] = not pending.get("cast", {}).get("bonus", False)
-    elif token == "ct:re":
-        updated["cast"]["reaction"] = not pending.get("cast", {}).get("reaction", False)
+    elif token.startswith("rit:"):
+        val = token.split(":", 1)[1]
+        if val == "any":
+            updated["ritual"] = None
+        elif val == "yes":
+            updated["ritual"] = True
+        elif val == "no":
+            updated["ritual"] = False
+    elif token.startswith("conc:"):
+        val = token.split(":", 1)[1]
+        if val == "any":
+            updated["is_concentration"] = None
+        elif val == "yes":
+            updated["is_concentration"] = True
+        elif val == "no":
+            updated["is_concentration"] = False
+    elif token.startswith("ct:"):
+        val = token.split(":", 1)[1]
+        if val == "any":
+            updated["casting_time"] = None
+            # mirror legacy
+            updated["cast"]["bonus"] = False
+            updated["cast"]["reaction"] = False
+        else:
+            current = set(updated.get("casting_time") or [])
+            if val in current:
+                current.remove(val)
+            else:
+                current.add(val)
+            updated["casting_time"] = current if current else None
+            # mirror legacy flags
+            updated["cast"]["bonus"] = "ba" in (updated["casting_time"] or set())
+            updated["cast"]["reaction"] = "re" in (updated["casting_time"] or set())
     elif token.startswith("lv:"):
         val = token.split(":", 1)[1]
         if val == "any":
@@ -73,6 +113,38 @@ def _toggle_or_set_filters(pending: Dict[str, Any], token: str) -> Dict[str, Any
             else:
                 current.add(val)
             updated["school"] = current if current else None
+    elif token.startswith("cls:"):
+        val = token.split(":", 1)[1]
+        if val == "any":
+            updated["classes"] = None
+        else:
+            current = set(updated.get("classes") or [])
+            if val in current:
+                current.remove(val)
+            else:
+                current.add(val)
+            updated["classes"] = current if current else None
+    elif token == "add":
+        updated["add_menu_open"] = True
+    elif token.startswith("add:"):
+        field = token.split(":", 1)[1]
+        vf = list(updated.get("visible_fields") or [])
+        if field not in vf:
+            vf.append(field)
+        updated["visible_fields"] = vf
+        updated["add_menu_open"] = False
+        # clear the field value to Any
+        if field in ("level_buckets", "school", "casting_time", "classes"):
+            updated[field] = None
+        elif field in ("ritual", "is_concentration"):
+            updated[field] = None
+    elif token.startswith("rm:"):
+        field = token.split(":", 1)[1]
+        vf = [f for f in (updated.get("visible_fields") or []) if f != field]
+        updated["visible_fields"] = vf
+        # clear value when removing
+        if field in updated:
+            updated[field] = None
     return updated
 
 
@@ -109,8 +181,12 @@ def _filter_spells(items: List[Dict[str, Any]], filters: Dict[str, Any]) -> List
             continue
         if filters.get("is_concentration") is True and not s.get("is_concentration", False):
             continue
-        cast = filters.get("cast", {})
-        if not match_casting_time(s.get("casting_time"), cast.get("bonus", False), cast.get("reaction", False)):
+        # Casting time: prefer new set-based field, fallback to legacy booleans
+        ct_set = filters.get("casting_time")
+        legacy_cast = filters.get("cast", {})
+        want_bonus = (ct_set is not None and "ba" in ct_set) or (ct_set is None and legacy_cast.get("bonus", False))
+        want_react = (ct_set is not None and "re" in ct_set) or (ct_set is None and legacy_cast.get("reaction", False))
+        if not match_casting_time(s.get("casting_time"), want_bonus, want_react):
             continue
         # Level: new set-based field preferred; fallback to legacy single-range
         level_buckets = filters.get("level_buckets")
@@ -126,6 +202,12 @@ def _filter_spells(items: List[Dict[str, Any]], filters: Dict[str, Any]) -> List
         if school_selected:
             scode = s.get("school")
             if scode is None or scode not in school_selected:
+                continue
+        # Classes: intersection non-empty
+        classes_selected = filters.get("classes")
+        if classes_selected:
+            spell_classes = set(s.get("classes") or [])
+            if not (spell_classes & set(classes_selected)):
                 continue
         result.append(s)
     return result

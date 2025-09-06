@@ -129,14 +129,15 @@ async def spells_filter_action(update: Update, context: ContextTypes.DEFAULT_TYP
     query = update.callback_query
     await query.answer()
     data = query.data  # e.g., sflt:rit, sflt:lv:13, sflt:sc:any, sflt:reset
+    pending, applied = _get_filter_state(context)
     logger.info(
         "Spells filter action",
         extra={
             "correlation_id": query.message.chat_id if query and query.message else None,
             "action": data,
+            "visible_fields": list(pending.get("visible_fields") or []),
         },
     )
-    pending, applied = _get_filter_state(context)
     token = data.split(":", 1)[1]
     if token == "reset":
         _set_filter_state(
@@ -149,8 +150,8 @@ async def spells_filter_action(update: Update, context: ContextTypes.DEFAULT_TYP
         new_pending = _toggle_or_set_filters(pending, token)
         # Immediate apply
         _set_filter_state(context, pending=new_pending, applied={**new_pending, "cast": {**new_pending.get("cast", {})}})
-        # Reset to first page on structural changes (Any <-> some)
-        if token.startswith("lv:") or token.startswith("sc:"):
+        # Reset to first page on structural changes (Any <-> some, add/remove field, add menu open/close)
+        if token.startswith(("lv:", "sc:", "ct:", "cls:", "rit:", "conc:")) or token.startswith(("add", "rm:")):
             page = 1
         else:
             page = int(context.user_data.get("spells_current_page", 1))
