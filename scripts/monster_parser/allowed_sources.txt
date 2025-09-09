@@ -1,0 +1,11 @@
+# Allowed source codes for core parsing (one per line)
+# Empty line stands for Basic Rules (no explicit source)
+
+
+MM
+PHB
+DMG
+SRD
+MPMM
+
+

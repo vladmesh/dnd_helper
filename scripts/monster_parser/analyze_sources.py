@@ -1,25 +1,12 @@
 #!/usr/bin/env python3
 import json
 from collections import Counter
+import glob
+import argparse
+import os
 
-def analyze_sources():
+def analyze_sources(parsed_files):
     """Анализирует источники из уже спарсенных данных"""
-    
-    # Проверяем, какие источники уже есть в спарсенных данных
-    parsed_files = [
-        "/home/ubuntu/parsed_monsters_batch_1.json",
-        "/home/ubuntu/parsed_monsters_batch_2.json", 
-        "/home/ubuntu/parsed_monsters_batch_3.json",
-        "/home/ubuntu/parsed_monsters_batch_4.json",
-        "/home/ubuntu/parsed_monsters_batch_5.json",
-        "/home/ubuntu/parsed_monsters_batch_6.json",
-        "/home/ubuntu/parsed_monsters_batch_7.json",
-        "/home/ubuntu/parsed_monsters_batch_8.json",
-        "/home/ubuntu/parsed_monsters_batch_9.json",
-        "/home/ubuntu/parsed_monsters_batch_10.json",
-        "/home/ubuntu/parsed_monsters_batch_11.json",
-        "/home/ubuntu/parsed_monsters_batch_12.json"
-    ]
     
     all_sources = Counter()
     all_monsters = []
@@ -92,18 +79,30 @@ def create_core_filter():
 if __name__ == "__main__":
     print("🔍 Анализ источников монстров")
     print("=" * 40)
-    
-    # Анализируем уже спарсенные данные
-    core_sources, monsters = analyze_sources()
-    
+
+    parser = argparse.ArgumentParser(description="Analyze sources from parsed monsters batches")
+    parser.add_argument('--inputs', default='/app/scripts/monster_parser/output/parsed_monsters_filtered_batch_*.json', help='Glob pattern for parsed batch files')
+    parser.add_argument('--final', default='', help='Optional final parsed file to include')
+    parser.add_argument('--report-out', default='/app/scripts/monster_parser/output/reports/sources.json', help='Report output JSON path')
+    args = parser.parse_args()
+
+    files = sorted(glob.glob(args.inputs))
+    if args.final:
+        files.append(args.final)
+
+    os.makedirs(os.path.dirname(args.report_out), exist_ok=True)
+
+    core_sources, monsters = analyze_sources(files)
+
     print("\n" + "=" * 40)
-    
-    # Создаем фильтр
+
     filter_sources = create_core_filter()
-    
-    # Сохраняем список Core источников
-    with open('/home/ubuntu/core_sources.json', 'w', encoding='utf-8') as f:
-        json.dump(list(filter_sources), f, ensure_ascii=False, indent=2)
-    
-    print(f"\n💾 Список Core источников сохранен в core_sources.json")
+
+    with open(args.report_out, 'w', encoding='utf-8') as f:
+        json.dump({
+            'core_sources': list(filter_sources),
+            'total_monsters': len(monsters)
+        }, f, ensure_ascii=False, indent=2)
+
+    print(f"\n💾 Отчет об источниках сохранен: {args.report_out}")
 

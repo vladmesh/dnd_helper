@@ -5,11 +5,13 @@ import json
 import time
 import re
 from urllib.parse import urljoin, urlparse
+import argparse
+import os
 
 class DnDSuParserV3:
-    def __init__(self):
-        self.base_url = "https://dnd.su"
-        self.bestiary_url = "https://dnd.su/bestiary/"
+    def __init__(self, base_url: str = "https://dnd.su", bestiary_url: str = "https://dnd.su/bestiary/"):
+        self.base_url = base_url
+        self.bestiary_url = bestiary_url
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -217,15 +219,20 @@ class DnDSuParserV3:
             return None
 
 if __name__ == "__main__":
-    parser = DnDSuParserV3()
-    
-    # Тестируем на том же монстре
-    test_url = "https://dnd.su/bestiary/7813-alyxian-aboleth/"
-    result = parser.test_single_monster(test_url)
-    
+    argp = argparse.ArgumentParser(description="Test single monster parsing from dnd.su")
+    argp.add_argument('--url', default='https://dnd.su/bestiary/7813-alyxian-aboleth/', help='Monster page URL to test')
+    argp.add_argument('--base-url', default='https://dnd.su', help='Base site URL')
+    argp.add_argument('--bestiary-url', default='https://dnd.su/bestiary/', help='Bestiary root URL')
+    argp.add_argument('--out', default='/app/scripts/monster_parser/output/test_monster_data_v3.json', help='Where to write JSON output')
+    args = argp.parse_args()
+
+    os.makedirs(os.path.dirname(args.out), exist_ok=True)
+
+    parser = DnDSuParserV3(base_url=args.base_url, bestiary_url=args.bestiary_url)
+    result = parser.test_single_monster(args.url)
+
     if result:
-        # Сохраняем результат исправленного тестирования
-        with open('/home/ubuntu/test_monster_data_v3.json', 'w', encoding='utf-8') as f:
+        with open(args.out, 'w', encoding='utf-8') as f:
             json.dump(result, f, ensure_ascii=False, indent=2)
-        print("Исправленные данные сохранены в test_monster_data_v3.json")
+        print(f"Исправленные данные сохранены в {args.out}")
 

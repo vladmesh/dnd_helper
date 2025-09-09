@@ -49,6 +49,49 @@ def cmd_ultimate_restart(_: argparse.Namespace) -> None:
     run_command(["python3", seed_path, "--all"])  # includes enums & ui upserts
 
 
+def cmd_parce_core(args: argparse.Namespace) -> None:
+    """Run server-filtered core parsing inside parser image with correct UID/GID."""
+    project_root = os.path.dirname(os.path.abspath(__file__))
+    server_url = 'https://dnd.su/bestiary/?search=&source=102%7C101%7C103%7C158%7C111%7C109'
+    output_dir = os.path.join(project_root, args.output_dir)
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Build image to ensure it's available
+    run_command([
+        "docker", "build",
+        "-f", os.path.join(project_root, "scripts/monster_parser/Dockerfile"),
+        "-t", "dnd_helper/monster_parser:latest",
+        project_root,
+    ])
+
+    # Run parsing with host UID/GID so output is writable/deletable (force server-filtered mode)
+    run_command([
+        "docker", "run", "--rm",
+        "--user", f"{os.getuid()}:{os.getgid()}",
+        "-v", f"{project_root}:/app",
+        "-w", "/app/scripts/monster_parser",
+        "dnd_helper/monster_parser:latest",
+        "python3", "filtered_mass_parser.py",
+        "--server-filtered-url", server_url,
+        "--output-dir", "/app/" + args.output_dir,
+        "--final-file-name", args.final_file_name,
+        "--batch-size", str(args.batch_size),
+    ] + (["--test-limit", str(args.test_limit)] if args.test_limit and args.test_limit > 0 else []))
+
+    # Then update seed_data_monsters.json -> seed_data_monsters_updated.json
+    run_command([
+        "docker", "run", "--rm",
+        "--user", f"{os.getuid()}:{os.getgid()}",
+        "-v", f"{project_root}:/app",
+        "-w", "/app/scripts/monster_parser",
+        "dnd_helper/monster_parser:latest",
+        "python3", "update_monster_translations.py",
+        "--seed-in", "/app/seed_data_monsters.json",
+        "--seed-out", "/app/seed_data_monsters_updated.json",
+        "--parsed-in", f"/app/{args.output_dir}/" + args.final_file_name,
+    ])
+
+
 def cmd_makemigration(args: argparse.Namespace) -> None:
     """Create a new Alembic migration with autogenerate inside the API container.
 
@@ -157,6 +200,35 @@ def build_parser() -> argparse.ArgumentParser:
         help="Format code using Ruff (imports + formatter)",
     )
     fmt.set_defaults(func=cmd_format)
+
+    # Parser: fetch Core monsters via server-filtered URL into output files
+    parse_core = subparsers.add_parser(
+        "parce_core",
+        help="Fetch Core monsters from dnd.su (server-filtered) into scripts/monster_parser/output",
+    )
+    parse_core.add_argument(
+        "--test-limit",
+        type=int,
+        default=0,
+        help="Limit number of monsters to parse (0 = all)",
+    )
+    parse_core.add_argument(
+        "--batch-size",
+        type=int,
+        default=25,
+        help="Batch size for parsing",
+    )
+    parse_core.add_argument(
+        "--output-dir",
+        default="scripts/monster_parser/output",
+        help="Output directory for parser results (relative to project root)",
+    )
+    parse_core.add_argument(
+        "--final-file-name",
+        default="parsed_monsters_filtered_final.json",
+        help="Final aggregated JSON filename",
+    )
+    parse_core.set_defaults(func=cmd_parce_core)
 
     return parser
 

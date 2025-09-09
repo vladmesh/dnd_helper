@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import json
 import re
+import argparse
+import os
 
 def has_cyrillic(text):
     """Проверяет, содержит ли текст кириллические символы"""
@@ -45,9 +47,9 @@ def is_valid_russian_translation(text, field_name):
     
     return True, "OK"
 
-def analyze_translation_quality():
+def analyze_translation_quality(seed_in_path: str, lang: str, report_dir: str, english_ratio_threshold: float):
     """Анализирует качество русских переводов"""
-    with open('/home/ubuntu/dnd_helper/seed_data_monsters.json', 'r', encoding='utf-8') as f:
+    with open(seed_in_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
     
     translations = data.get('monster_translations', [])
@@ -55,8 +57,8 @@ def analyze_translation_quality():
     print(f"Анализ качества переводов для {len(translations)} записей")
     print("=" * 60)
     
-    # Фильтруем только русские переводы
-    russian_translations = [t for t in translations if t.get('lang') == 'ru']
+    # Фильтруем только целевой язык
+    russian_translations = [t for t in translations if t.get('lang') == lang]
     print(f"Русских переводов: {len(russian_translations)}")
     print()
     
@@ -120,7 +122,8 @@ def analyze_translation_quality():
         print()
     
     # Сохраняем полные списки проблем
-    with open('/home/ubuntu/problems_with_names_v2.txt', 'w', encoding='utf-8') as f:
+    os.makedirs(report_dir, exist_ok=True)
+    with open(os.path.join(report_dir, 'problems_with_names_v2.txt'), 'w', encoding='utf-8') as f:
         f.write("Проблемы с русскими названиями монстров:\n")
         f.write("=" * 50 + "\n\n")
         for problem in problems['name']:
@@ -129,7 +132,7 @@ def analyze_translation_quality():
             f.write(f"Содержимое: {problem['content']}\n")
             f.write("-" * 30 + "\n")
     
-    with open('/home/ubuntu/problems_with_descriptions_v2.txt', 'w', encoding='utf-8') as f:
+    with open(os.path.join(report_dir, 'problems_with_descriptions_v2.txt'), 'w', encoding='utf-8') as f:
         f.write("Проблемы с русскими описаниями монстров:\n")
         f.write("=" * 50 + "\n\n")
         for problem in problems['description']:
@@ -151,5 +154,12 @@ def analyze_translation_quality():
     print(f"Полей требующих исправления: {problem_fields} из {total_fields}")
 
 if __name__ == "__main__":
-    analyze_translation_quality()
+    parser = argparse.ArgumentParser(description="Analyze quality of translations in seed data")
+    parser.add_argument('--seed-in', default='/app/seed_data_monsters.json', help='Path to seed JSON')
+    parser.add_argument('--lang', default='ru', help='Language to analyze')
+    parser.add_argument('--report-dir', default='/app/scripts/monster_parser/output/reports', help='Directory to write reports')
+    parser.add_argument('--english-ratio-threshold', type=float, default=0.3, help='Max allowed share of Latin letters')
+    args = parser.parse_args()
+
+    analyze_translation_quality(args.seed_in, args.lang, args.report_dir, args.english_ratio_threshold)
 
