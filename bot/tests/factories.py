@@ -35,10 +35,15 @@ class DummyMessage:
         # Capture last reply for assertions
         self.last_text: Optional[str] = None
         self.last_kwargs: dict[str, Any] = {}
+        # Minimal message id emulation
+        self.message_id: int = 1
 
     async def reply_text(self, text: str, **kwargs: Any) -> None:
         self.last_text = text
         self.last_kwargs = kwargs
+        # Return self to mimic telegram.Message with message_id
+        self.message_id += 1
+        return self
 
 
 class DummyUpdate:

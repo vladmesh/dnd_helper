@@ -52,6 +52,26 @@ REDIS_URL=redis://redis:6379/0
    - `docker compose logs -f bot`
 4. When implemented, the API health should be available at `http://localhost:8000/health`.
 
+### Search scope examples
+
+API supports choosing search scope for monsters and spells. Default is name-only.
+
+Monsters (raw):
+
+```
+curl 'http://localhost:8000/monsters/search/raw?q=wolf&lang=en'
+curl 'http://localhost:8000/monsters/search/raw?q=shapechanger&search_scope=name_description&lang=en'
+```
+
+Spells (raw):
+
+```
+curl 'http://localhost:8000/spells/search/raw?q=fire&lang=en'
+curl 'http://localhost:8000/spells/search/raw?q=flammable&search_scope=name_description&lang=en'
+```
+
+Bot UI shows a toggle row with current scope and allows switching between modes. The active scope is displayed in prompts and results headers. You can continue typing new queries on the results page; the bot will refresh the same message with updated results.
+
 To stop everything:
 ```
 docker compose down
