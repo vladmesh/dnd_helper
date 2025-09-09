@@ -1,10 +1,12 @@
 from typing import Any, Dict, List, Optional
+from enum import Enum
 
 from dnd_helper_api.db import get_session
 from dnd_helper_api.routers.monsters import logger, router
 from dnd_helper_api.utils.enum_labels import resolve_enum_labels
-from fastapi import Depends, Response
+from fastapi import Depends, Response, Query
 from sqlmodel import Session, select
+from sqlalchemy import or_
 
 from shared_models import Monster
 from shared_models.monster_translation import MonsterTranslation
@@ -15,6 +17,10 @@ from .translations import (
     _select_language,
 )
 
+
+class SearchScope(str, Enum):
+    NAME = "name"
+    NAME_DESCRIPTION = "name_description"
 
 ## Removed legacy search endpoint '/monsters/search'
 
@@ -34,6 +40,7 @@ def search_monsters_raw(
     is_legendary: Optional[bool] = None,
     roles: Optional[List[str]] = None,
     environments: Optional[List[str]] = None,
+    search_scope: SearchScope = Query(SearchScope.NAME),
     lang: Optional[str] = None,
     session: Session = Depends(get_session),  # noqa: B008
     response: Response = None,
@@ -61,12 +68,20 @@ def search_monsters_raw(
 
     requested_lang = _select_language(lang)
     pattern = f"%{q.strip()}%"
+    search_condition = (
+        MonsterTranslation.name.ilike(pattern)
+        if search_scope == SearchScope.NAME
+        else or_(
+            MonsterTranslation.name.ilike(pattern),
+            MonsterTranslation.description.ilike(pattern),
+        )
+    )
     stmt = (
         select(Monster)
         .join(MonsterTranslation, MonsterTranslation.monster_id == Monster.id)
         .where(
             MonsterTranslation.lang == requested_lang,
-            MonsterTranslation.name.ilike(pattern),
+            search_condition,
             *conditions,
         )
         .distinct()
@@ -106,6 +121,7 @@ def search_monsters_wrapped(
     is_legendary: Optional[bool] = None,
     roles: Optional[List[str]] = None,
     environments: Optional[List[str]] = None,
+    search_scope: SearchScope = Query(SearchScope.NAME),
     lang: Optional[str] = None,
     session: Session = Depends(get_session),  # noqa: B008
     response: Response = None,
@@ -134,12 +150,20 @@ def search_monsters_wrapped(
 
     requested_lang = _select_language(lang)
     pattern = f"%{q.strip()}%"
+    search_condition = (
+        MonsterTranslation.name.ilike(pattern)
+        if search_scope == SearchScope.NAME
+        else or_(
+            MonsterTranslation.name.ilike(pattern),
+            MonsterTranslation.description.ilike(pattern),
+        )
+    )
     stmt = (
         select(Monster)
         .join(MonsterTranslation, MonsterTranslation.monster_id == Monster.id)
         .where(
             MonsterTranslation.lang == requested_lang,
-            MonsterTranslation.name.ilike(pattern),
+            search_condition,
             *conditions,
         )
         .distinct()

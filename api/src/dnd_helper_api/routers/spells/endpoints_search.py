@@ -1,10 +1,12 @@
 from typing import Any, Dict, List, Optional
+from enum import Enum
 
 from dnd_helper_api.db import get_session
 from dnd_helper_api.routers.spells import logger, router
 from dnd_helper_api.utils.enum_labels import resolve_enum_labels
 from fastapi import Depends, Query, Response
 from sqlmodel import Session, select
+from sqlalchemy import or_
 
 from shared_models import Spell
 from shared_models.spell_translation import SpellTranslation
@@ -15,6 +17,10 @@ from .translations import (
     _select_language,
 )
 
+
+class SearchScope(str, Enum):
+    NAME = "name"
+    NAME_DESCRIPTION = "name_description"
 
 ## Removed legacy search endpoint '/spells/search'
 @router.get("/search/raw", response_model=List[Spell])
@@ -30,6 +36,7 @@ def search_spells(
     is_concentration: Optional[bool] = None,
     targeting: Optional[str] = None,
     tags: Optional[List[str]] = None,
+    search_scope: SearchScope = Query(SearchScope.NAME),
     lang: Optional[str] = None,
     session: Session = Depends(get_session),  # noqa: B008
     response: Response = None,
@@ -61,12 +68,20 @@ def search_spells(
 
     requested_lang = _select_language(lang)
     pattern = f"%{q.strip()}%"
+    search_condition = (
+        SpellTranslation.name.ilike(pattern)
+        if search_scope == SearchScope.NAME
+        else or_(
+            SpellTranslation.name.ilike(pattern),
+            SpellTranslation.description.ilike(pattern),
+        )
+    )
     stmt = (
         select(Spell)
         .join(SpellTranslation, SpellTranslation.spell_id == Spell.id)
         .where(
             SpellTranslation.lang == requested_lang,
-            SpellTranslation.name.ilike(pattern),
+            search_condition,
             *conditions,
         )
         .distinct()
@@ -111,6 +126,7 @@ def search_spells_wrapped(
     is_concentration: Optional[bool] = None,
     targeting: Optional[str] = None,
     tags: Optional[List[str]] = None,
+    search_scope: SearchScope = Query(SearchScope.NAME),
     lang: Optional[str] = None,
     session: Session = Depends(get_session),  # noqa: B008
     response: Response = None,
@@ -143,12 +159,20 @@ def search_spells_wrapped(
 
     requested_lang = _select_language(lang)
     pattern = f"%{q.strip()}%"
+    search_condition = (
+        SpellTranslation.name.ilike(pattern)
+        if search_scope == SearchScope.NAME
+        else or_(
+            SpellTranslation.name.ilike(pattern),
+            SpellTranslation.description.ilike(pattern),
+        )
+    )
     stmt = (
         select(Spell)
         .join(SpellTranslation, SpellTranslation.spell_id == Spell.id)
         .where(
             SpellTranslation.lang == requested_lang,
-            SpellTranslation.name.ilike(pattern),
+            search_condition,
             *conditions,
         )
         .distinct()
