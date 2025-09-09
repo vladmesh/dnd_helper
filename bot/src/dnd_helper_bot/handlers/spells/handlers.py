@@ -128,14 +128,13 @@ async def spell_search_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE
     ]
     nav_row = await _nav_row(lang, "menu:spells")
     markup = InlineKeyboardMarkup([scope_row, nav_row])
-    await query.edit_message_text(
-        await t(
-            "spells.search.prompt",
-            lang,
-            default="Введите подстроку для поиска по названию заклинания:",
-        ),
-        reply_markup=markup,
+    scope_name = name_label if current == "name" else nd_label
+    prompt = await t(
+        "spells.search.prompt",
+        lang,
+        default="Введите подстроку для поиска по названию заклинания:",
     )
+    await query.edit_message_text(f"[{scope_name}]\n{prompt}", reply_markup=markup)
 
 
 async def spells_filter_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

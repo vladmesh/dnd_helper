@@ -47,7 +47,36 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     awaiting_monster = bool(context.user_data.get("awaiting_monster_query"))
     awaiting_spell = bool(context.user_data.get("awaiting_spell_query"))
-    if not (awaiting_monster or awaiting_spell):
+    # Allow continuing search from results page (edit in place)
+    active_target = context.user_data.get("search_mode_target")
+    active_msg_id = context.user_data.get("search_message_id")
+    search_active = bool(context.user_data.get("search_active"))
+    continuing = (not awaiting_monster and not awaiting_spell) and (
+        search_active or (active_target in {"monsters", "spells"} and bool(active_msg_id))
+    )
+    logger.info(
+        "Search state",
+        extra={
+            "awaiting_monster": awaiting_monster,
+            "awaiting_spell": awaiting_spell,
+            "continuing": continuing,
+            "active_target": active_target,
+            "active_msg_id": active_msg_id,
+            "search_active": search_active,
+        },
+    )
+    if not (awaiting_monster or awaiting_spell or continuing):
+        logger.info(
+            "Search fallback to main menu",
+            extra={
+                "awaiting_monster": awaiting_monster,
+                "awaiting_spell": awaiting_spell,
+                "continuing": continuing,
+                "active_target": active_target,
+                "active_msg_id": active_msg_id,
+                "search_active": search_active,
+            },
+        )
         # Not in search mode: show inline main menu directly
         await update.message.reply_text(
             await t("search.select_action", lang),
@@ -81,7 +110,10 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 "target": "monsters" if awaiting_monster else "spells",
             },
         )
-        if awaiting_monster:
+        target = (
+            "monsters" if awaiting_monster or (continuing and active_target == "monsters") else "spells"
+        )
+        if target == "monsters":
             items: List[Dict[str, Any]] = await api_get("/monsters/search/wrapped", params=params)
         else:
             items = await api_get("/spells/search/wrapped", params=params)
@@ -100,10 +132,32 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     if not items:
         logger.info("Search no results", extra={"correlation_id": update.effective_chat.id if update.effective_chat else None, "query": query_text})
-        back_cb = "menu:monsters" if awaiting_monster else "menu:spells"
+        # Build scope row (always visible) and nav row
+        current_scope = str(context.user_data.get("search_scope") or "name")
+        name_label_ = await t("search.scope.name", lang)
+        nd_label_ = await t("search.scope.name_description", lang)
+        scope_row_ = [
+            InlineKeyboardButton(("✅ " if current_scope == "name" else "") + name_label_, callback_data="scope:name"),
+            InlineKeyboardButton(("✅ " if current_scope == "name_description" else "") + nd_label_, callback_data="scope:name_description"),
+        ]
+        back_cb = "menu:monsters" if (awaiting_monster or (continuing and active_target == "monsters")) else "menu:spells"
         nav = await build_nav_row(lang, back_cb)
-        markup = InlineKeyboardMarkup([nav])
-        await update.message.reply_text(await t("search.no_results", lang), reply_markup=markup)
+        markup = InlineKeyboardMarkup([scope_row_, nav])
+        title = await t("search.no_results", lang)
+        # Edit in place if continuing, else send new message and start active session
+        if continuing and active_msg_id and update.effective_chat:
+            try:
+                await context.bot.edit_message_text(chat_id=update.effective_chat.id, message_id=active_msg_id, text=title, reply_markup=markup)
+                return
+            except Exception:
+                pass
+        msg = await update.message.reply_text(title, reply_markup=markup)
+        # Start/refresh active search session context
+        context.user_data["search_mode_target"] = (
+            "monsters" if awaiting_monster or (continuing and active_target == "monsters") else "spells"
+        )
+        context.user_data["search_message_id"] = msg.message_id
+        context.user_data["search_active"] = True
         return
 
     rows: List[List[InlineKeyboardButton]] = []
@@ -151,8 +205,24 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
     rows.append([InlineKeyboardButton(await t("nav.main", lang), callback_data="menu:main")])
     logger.info("Search results shown", extra={"correlation_id": update.effective_chat.id if update.effective_chat else None, "count": len(rows) - 1})
 
+    # Title with active scope label
+    current = str(context.user_data.get("search_scope") or "name")
+    name_label = await t("search.scope.name", lang)
+    nd_label = await t("search.scope.name_description", lang)
+    scope_name = name_label if current == "name" else nd_label
     markup = InlineKeyboardMarkup(rows)
-    await update.message.reply_text(await t("search.results_title", lang), reply_markup=markup)
+    text = f"[{scope_name}]\n" + await t("search.results_title", lang)
+    if continuing and active_msg_id and update.effective_chat:
+        try:
+            await context.bot.edit_message_text(chat_id=update.effective_chat.id, message_id=active_msg_id, text=text, reply_markup=markup)
+            return
+        except Exception:
+            pass
+    # First search: send new message and remember to enable edit-in-place for subsequent queries
+    msg = await update.message.reply_text(text, reply_markup=markup)
+    context.user_data["search_mode_target"] = target
+    context.user_data["search_message_id"] = msg.message_id
+    context.user_data["search_active"] = True
 
 
 async def toggle_search_scope(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

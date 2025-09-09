@@ -59,8 +59,10 @@ Acceptance criteria:
 - Remember last-used scope across sessions (optional; config-driven).
 - Indicate current scope in the prompt or via a small label near the search input/buttons.
   - Use i18n keys for any labels/emojis.
+- Allow continuing search from results page: user can type a new query while results are shown; the bot must re-run the search with the same `search_scope` and overwrite the current message (edit in place) with new results and the same scope toggle row.
 - Tests:
   - Bot tests for last-scope recall and label rendering.
+  - E2E test: from results page, send a new query; ensure the message is edited, not a new message.
 
 Acceptance criteria:
 - Users see which mode is active and can switch quickly.

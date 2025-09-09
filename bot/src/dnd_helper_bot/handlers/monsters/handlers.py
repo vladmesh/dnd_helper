@@ -122,14 +122,13 @@ async def monster_search_prompt(update: Update, context: ContextTypes.DEFAULT_TY
     ]
     nav_row = await _nav_row(lang, "menu:monsters")
     markup = InlineKeyboardMarkup([scope_row, nav_row])
-    await query.edit_message_text(
-        await t(
-            "monsters.search.prompt",
-            lang,
-            default="Введите подстроку для поиска по названию монстра:",
-        ),
-        reply_markup=markup,
+    scope_name = name_label if current == "name" else nd_label
+    prompt = await t(
+        "monsters.search.prompt",
+        lang,
+        default="Введите подстроку для поиска по названию монстра:",
     )
+    await query.edit_message_text(f"[{scope_name}]\n{prompt}", reply_markup=markup)
 
 
 async def monsters_filter_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
