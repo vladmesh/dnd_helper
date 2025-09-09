@@ -114,7 +114,7 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
 - For dice: implement a small, safe parser rather than `eval`; add input caps to prevent abuse.
 
 
-### 7) Multilingual support (Bot UI)
+### 7) Multilingual support (Bot UI) [DONE]
 - Goal: Provide RU/EN (and potentially more) language support for bot texts and keyboards.
 - Scope: `bot` service (handlers, keyboards, messages). API remains language-agnostic for now.
 - Acceptance:
@@ -148,7 +148,7 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
 - Acceptance:
   - `python manage.py lint` (ruff) passes without violations.
 
-### 12) Remove IDs from UI display
+### 12) Remove IDs from UI display [DONE]
 - Goal: Stop showing internal IDs in list item labels and detail views.
 - Scope: `bot` list buttons and detail messages for monsters and spells.
 - Acceptance:
@@ -211,7 +211,7 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
   - Correlation IDs propagate between `api` and `bot` for a single user action.
   - Behavior gated via env flags; defaults remain backward compatible.
 
-### 18) Fix broken filters (Bot and API integration)
+### 18) Fix broken filters (Bot and API integration) [DONE]
 - Goal: Make existing inline filters reliably affect list/search results for Monsters and Spells.
 - Scope:
   - Bot: inline filter state, Apply/Reset behavior, pagination over filtered sets.
@@ -229,6 +229,7 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
 - Acceptance:
   - A single command populates baseline data; re-running does not duplicate rows.
   - Documented counts (approximate) after seeding; basic sanity queries return data.
+  - Status: Several dozen monsters are still missing; investigate why they are not loaded.
 
 ### 20) Test suite warnings cleanup
 - Goal: Run test suites and eliminate runtime/deprecation warnings to keep signal high.
