@@ -11,6 +11,7 @@ from dnd_helper_bot.handlers.menu import (  # noqa: E402
 from dnd_helper_bot.repositories.api_client import api_get, api_get_one
 from dnd_helper_bot.utils.i18n import t  # noqa: E402
 from dnd_helper_bot.utils.nav import build_nav_row  # noqa: E402
+from dnd_helper_bot.handlers.monsters.lang import _resolve_lang_by_user  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +70,8 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
 
     try:
-        params = {"q": query_text, "lang": lang}
+        scope = str(context.user_data.get("search_scope") or "name")
+        params = {"q": query_text, "lang": lang, "search_scope": scope}
         logger.info(
             "Search request",
             extra={
@@ -105,6 +107,14 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
 
     rows: List[List[InlineKeyboardButton]] = []
+    # Always show current search scope toggle row at the top of results
+    async def _build_scope_row(lang: str) -> List[InlineKeyboardButton]:
+        current = str(context.user_data.get("search_scope") or "name")
+        name_label = await t("search.scope.name", lang)
+        nd_label = await t("search.scope.name_description", lang)
+        left = InlineKeyboardButton(("✅ " if current == "name" else "") + name_label, callback_data="scope:name")
+        right = InlineKeyboardButton(("✅ " if current == "name_description" else "") + nd_label, callback_data="scope:name_description")
+        return [left, right]
     if awaiting_monster:
         for m in items[:10]:
             try:
@@ -136,10 +146,45 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
             except Exception:
                 logger.exception("Failed to render spell search item")
 
+    # Prepend scope row
+    rows.insert(0, await _build_scope_row(lang))
     rows.append([InlineKeyboardButton(await t("nav.main", lang), callback_data="menu:main")])
     logger.info("Search results shown", extra={"correlation_id": update.effective_chat.id if update.effective_chat else None, "count": len(rows) - 1})
 
     markup = InlineKeyboardMarkup(rows)
     await update.message.reply_text(await t("search.results_title", lang), reply_markup=markup)
+
+
+async def toggle_search_scope(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    try:
+        _, value = (query.data or "").split(":", 1)
+    except Exception:
+        value = "name"
+    if value not in {"name", "name_description"}:
+        value = "name"
+    context.user_data["search_scope"] = value
+    lang = await _resolve_lang_by_user(query)
+
+    # Rebuild only the scope row and update current message markup, preserving other rows
+    name_label = await t("search.scope.name", lang)
+    nd_label = await t("search.scope.name_description", lang)
+    left = InlineKeyboardButton(("✅ " if value == "name" else "") + name_label, callback_data="scope:name")
+    right = InlineKeyboardButton(("✅ " if value == "name_description" else "") + nd_label, callback_data="scope:name_description")
+    scope_row = [left, right]
+
+    existing = query.message.reply_markup.inline_keyboard if query.message and query.message.reply_markup else []
+    # Normalize to list[list[InlineKeyboardButton]]
+    existing_rows: List[List[InlineKeyboardButton]] = [list(row) for row in (existing or [])]
+    if existing_rows:
+        new_keyboard: List[List[InlineKeyboardButton]] = [scope_row] + existing_rows[1:]
+    else:
+        new_keyboard = [scope_row]
+    try:
+        await query.edit_message_reply_markup(InlineKeyboardMarkup(new_keyboard))
+    except Exception:
+        # If edit fails (stale), ignore; scope is saved for next interactions
+        pass
 
 

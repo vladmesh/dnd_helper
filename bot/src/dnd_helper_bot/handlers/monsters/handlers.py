@@ -108,7 +108,20 @@ async def monster_search_prompt(update: Update, context: ContextTypes.DEFAULT_TY
         extra={"correlation_id": query.message.chat_id if query and query.message else None},
     )
     lang = await _resolve_lang_by_user(query)
-    markup = InlineKeyboardMarkup([await _nav_row(lang, "menu:monsters")])
+    # Ensure default scope is set
+    if not context.user_data.get("search_scope"):
+        context.user_data["search_scope"] = "name"
+    # Build scope row inline
+    from dnd_helper_bot.utils.i18n import t as _t
+    current = str(context.user_data.get("search_scope") or "name")
+    name_label = await _t("search.scope.name", lang)
+    nd_label = await _t("search.scope.name_description", lang)
+    scope_row = [
+        InlineKeyboardButton(("✅ " if current == "name" else "") + name_label, callback_data="scope:name"),
+        InlineKeyboardButton(("✅ " if current == "name_description" else "") + nd_label, callback_data="scope:name_description"),
+    ]
+    nav_row = await _nav_row(lang, "menu:monsters")
+    markup = InlineKeyboardMarkup([scope_row, nav_row])
     await query.edit_message_text(
         await t(
             "monsters.search.prompt",
