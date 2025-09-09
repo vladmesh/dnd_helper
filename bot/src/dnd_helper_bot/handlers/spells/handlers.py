@@ -1,4 +1,5 @@
 import logging
+import html
 from typing import Any, Dict
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -53,15 +54,21 @@ async def spell_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     classes_str = ", ".join([(c.get("label") or c.get("code")) for c in classes_l]) if classes_l else "-"
     school_l = labels.get("school") or {}
     school_str = school_l.get("label") if isinstance(school_l, dict) else (e.get("school") or "-")
+    name_v = html.escape(str(tdata.get("name", "-")))
+    desc_v = html.escape(str(tdata.get("description", "")))
+    level_v = html.escape(str(e.get("level", "-")))
+    classes_v = html.escape(str(classes_str))
+    school_v = html.escape(str(school_str))
     text = (
-        f"{tdata.get('name','-')}\n"
-        f"{tdata.get('description','')}\n"
-        f"{await t('spells.detail.classes', lang)}: {classes_str}\n"
-        f"{await t('spells.detail.school', lang)}: {school_str}"
+        f"<b>{await t('label.name', lang)}</b>: {name_v}\n"
+        f"<b>{await t('label.description', lang)}</b>: {desc_v}\n"
+        f"<b>{await t('spells.detail.level', lang)}</b>: {level_v}\n"
+        f"<b>{await t('spells.detail.classes', lang)}</b>: {classes_v}\n"
+        f"<b>{await t('spells.detail.school', lang)}</b>: {school_v}"
     )
     page = int(context.user_data.get("spells_current_page", 1))
     markup = InlineKeyboardMarkup([await _nav_row(lang, f"spell:list:page:{page}")])
-    await query.edit_message_text(text, reply_markup=markup)
+    await query.edit_message_text(text, reply_markup=markup, parse_mode="HTML")
 
 
 async def _nav_row(lang: str, back_callback: str) -> list[InlineKeyboardButton]:
@@ -94,15 +101,21 @@ async def spell_random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     classes_str = ", ".join([(c.get("label") or c.get("code")) for c in classes_l]) if classes_l else "-"
     school_l = labels.get("school") or {}
     school_str = school_l.get("label") if isinstance(school_l, dict) else (e.get("school") or "-")
+    name_v = html.escape(str(tdata.get("name", "-")))
+    desc_v = html.escape(str(tdata.get("description", "")))
+    level_v = html.escape(str(e.get("level", "-")))
+    classes_v = html.escape(str(classes_str))
+    school_v = html.escape(str(school_str))
+    random_sfx = await t("label.random_suffix", lang)
     text = (
-        f"{tdata.get('description','')}"
-        + await t("label.random_suffix", lang)
-        + "\n"
-        + f"{await t('spells.detail.classes', lang)}: {classes_str}\n"
-        + f"{await t('spells.detail.school', lang)}: {school_str}"
+        f"<b>{await t('label.name', lang)}</b>: {name_v}{html.escape(random_sfx)}\n"
+        f"<b>{await t('label.description', lang)}</b>: {desc_v}\n"
+        f"<b>{await t('spells.detail.level', lang)}</b>: {level_v}\n"
+        f"<b>{await t('spells.detail.classes', lang)}</b>: {classes_v}\n"
+        f"<b>{await t('spells.detail.school', lang)}</b>: {school_v}"
     )
     markup = InlineKeyboardMarkup([await _nav_row(lang, "menu:spells")])
-    await query.edit_message_text(text, reply_markup=markup)
+    await query.edit_message_text(text, reply_markup=markup, parse_mode="HTML")
 
 
 async def spell_search_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

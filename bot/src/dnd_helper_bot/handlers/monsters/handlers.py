@@ -1,4 +1,5 @@
 import logging
+import html
 from typing import Any, Dict
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -51,15 +52,21 @@ async def monster_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     labels: Dict[str, Any] = (w.get("labels") or {})
     cr_l = labels.get("cr")
     danger_text = (cr_l.get("label") if isinstance(cr_l, dict) else e.get("cr")) or "-"
+    name_v = html.escape(str(tdata.get("name", "-")))
+    desc_v = html.escape(str(tdata.get("description", "")))
+    danger_v = html.escape(str(danger_text))
+    hp_v = html.escape(str(e.get("hp", "-")))
+    ac_v = html.escape(str(e.get("ac", "-")))
     text = (
-        f"{tdata.get('name','-')}\n"
-        f"{tdata.get('description','')}\n"
-        f"{await t('label.cr', lang)}: {danger_text}\n"
-        f"{await t('label.hp', lang)}: {e.get('hp','-')}, {await t('label.ac', lang)}: {e.get('ac','-')}"
+        f"<b>{await t('label.name', lang)}</b>: {name_v}\n"
+        f"<b>{await t('label.description', lang)}</b>: {desc_v}\n"
+        f"<b>{await t('label.cr', lang)}</b>: {danger_v}\n"
+        f"<b>{await t('label.hp', lang)}</b>: {hp_v}\n"
+        f"<b>{await t('label.ac', lang)}</b>: {ac_v}"
     )
     page = int(context.user_data.get("monsters_current_page", 1))
     markup = InlineKeyboardMarkup([await _nav_row(lang, f"monster:list:page:{page}")])
-    await query.edit_message_text(text, reply_markup=markup)
+    await query.edit_message_text(text, reply_markup=markup, parse_mode="HTML")
 
 
 async def _nav_row(lang: str, back_callback: str) -> list[InlineKeyboardButton]:
@@ -90,13 +97,21 @@ async def monster_random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     labels: Dict[str, Any] = (w.get("labels") or {})
     cr_l = labels.get("cr")
     danger_text = (cr_l.get("label") if isinstance(cr_l, dict) else e.get("cr")) or "-"
+    name_v = html.escape(str(tdata.get("name", "-")))
+    desc_v = html.escape(str(tdata.get("description", "")))
+    danger_v = html.escape(str(danger_text))
+    hp_v = html.escape(str(e.get("hp", "-")))
+    ac_v = html.escape(str(e.get("ac", "-")))
+    random_sfx = await t("label.random_suffix", lang)
     text = (
-        f"{tdata.get('description','')}" + await t("label.random_suffix", lang) + "\n"
-        f"{await t('label.cr', lang)}: {danger_text}\n"
-        f"{await t('label.hp', lang)}: {e.get('hp','-')}, {await t('label.ac', lang)}: {e.get('ac','-')}"
+        f"<b>{await t('label.name', lang)}</b>: {name_v}{html.escape(random_sfx)}\n"
+        f"<b>{await t('label.description', lang)}</b>: {desc_v}\n"
+        f"<b>{await t('label.cr', lang)}</b>: {danger_v}\n"
+        f"<b>{await t('label.hp', lang)}</b>: {hp_v}\n"
+        f"<b>{await t('label.ac', lang)}</b>: {ac_v}"
     )
     markup = InlineKeyboardMarkup([await _nav_row(lang, "menu:monsters")])
-    await query.edit_message_text(text, reply_markup=markup)
+    await query.edit_message_text(text, reply_markup=markup, parse_mode="HTML")
 
 
 async def monster_search_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
