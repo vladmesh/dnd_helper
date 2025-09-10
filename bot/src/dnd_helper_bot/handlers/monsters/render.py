@@ -131,7 +131,7 @@ async def _build_filters_keyboard(pending: Dict[str, Any], lang: str, type_optio
     rows.append([InlineKeyboardButton(add_lbl, callback_data="mflt:add"), InlineKeyboardButton(reset_lbl, callback_data="mflt:reset")])
 
     # Add submenu if open: list filters not visible
-    all_fields = ["cr_buckets", "types", "sizes", "flying", "legendary"]
+    all_fields = ["cr_buckets", "types", "sizes", "flying"]
     visible_fields = pending.get("visible_fields") or ["cr_buckets", "types"]
     if add_menu_open:
         available = [f for f in all_fields if f not in visible_fields]
@@ -141,7 +141,6 @@ async def _build_filters_keyboard(pending: Dict[str, Any], lang: str, type_optio
                 "types": "filters.field.type",
                 "sizes": "filters.field.size",
                 "flying": "filters.field.flying",
-                "legendary": "filters.field.legendary",
             }
             btns: List[InlineKeyboardButton] = []
             for f in available:
@@ -154,8 +153,8 @@ async def _build_filters_keyboard(pending: Dict[str, Any], lang: str, type_optio
 
     # Helper labels
     any_lbl = await t("filters.any", lang)
-    yes_lbl = await t("filters.yes", lang)
-    no_lbl = await t("filters.no", lang)
+    yes_lbl = await t("filters.flying.yes", lang)
+    no_lbl = await t("filters.flying.no", lang)
     remove_lbl = await t("filters.remove", lang)
 
     # Render each visible field in order
@@ -236,15 +235,7 @@ async def _build_filters_keyboard(pending: Dict[str, Any], lang: str, type_optio
                 InlineKeyboardButton(remove_lbl, callback_data="mflt:rm:flying"),
             ]
             rows.append(row)
-        elif field == "legendary":
-            sel = pending.get("legendary")
-            row = [
-                InlineKeyboardButton(("✅ " if sel is None else "") + any_lbl, callback_data="mflt:leg:any"),
-                InlineKeyboardButton(("✅ " if sel is True else "") + yes_lbl, callback_data="mflt:leg:yes"),
-                InlineKeyboardButton(("✅ " if sel is False else "") + no_lbl, callback_data="mflt:leg:no"),
-                InlineKeyboardButton(remove_lbl, callback_data="mflt:rm:legendary"),
-            ]
-            rows.append(row)
+        
 
     return rows
 
