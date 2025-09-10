@@ -15,6 +15,8 @@ def normalize_name(name: str) -> str:
     if not name:
         return ""
     normalized = re.sub(r"\s+", " ", name.strip().lower())
+    # Normalize Cyrillic yo to ye for robust matching
+    normalized = normalized.replace("ё", "е")
     normalized = re.sub(r"[^\w\s]", "", normalized)
     return normalized
 

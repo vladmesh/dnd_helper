@@ -16,6 +16,8 @@ def normalize_name(name: str) -> str:
         return ""
     # Убираем лишние пробелы, приводим к нижнему регистру
     normalized = re.sub(r'\s+', ' ', name.strip().lower())
+    # Normalize Cyrillic yo to ye for robust matching (e -> yo variants)
+    normalized = normalized.replace('ё', 'е')
     # Убираем специальные символы и маркеры
     normalized = re.sub(r'[^\w\s]', '', normalized)
     return normalized
