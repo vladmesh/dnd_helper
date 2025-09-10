@@ -160,69 +160,13 @@ async def handle_search_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
         context.user_data["search_active"] = True
         return
 
-    rows: List[List[InlineKeyboardButton]] = []
-    # Always show current search scope toggle row at the top of results
-    async def _build_scope_row(lang: str) -> List[InlineKeyboardButton]:
-        current = str(context.user_data.get("search_scope") or "name")
-        name_label = await t("search.scope.name", lang)
-        nd_label = await t("search.scope.name_description", lang)
-        left = InlineKeyboardButton(("✅ " if current == "name" else "") + name_label, callback_data="scope:name")
-        right = InlineKeyboardButton(("✅ " if current == "name_description" else "") + nd_label, callback_data="scope:name_description")
-        return [left, right]
-    if awaiting_monster:
-        for m in items[:10]:
-            try:
-                e = m.get("entity") or {}
-                tr = m.get("translation") or {}
-                mid = e.get("id")
-                if mid is None:
-                    logger.warning("Search item missing entity.id", extra={"item_keys": list(m.keys())})
-                    continue
-                label = tr.get("name") or tr.get("description") or "<no name>"
-                if not tr.get("name"):
-                    logger.info("Search item label from description", extra={"id": mid})
-                rows.append([InlineKeyboardButton(str(label), callback_data=f"monster:detail:{mid}")])
-            except Exception:
-                logger.exception("Failed to render monster search item")
-    else:
-        for s in items[:10]:
-            try:
-                e = s.get("entity") or {}
-                tr = s.get("translation") or {}
-                sid = e.get("id")
-                if sid is None:
-                    logger.warning("Search item missing entity.id", extra={"item_keys": list(s.keys())})
-                    continue
-                label = tr.get("name") or tr.get("description") or "<no name>"
-                if not tr.get("name"):
-                    logger.info("Search item label from description", extra={"id": sid})
-                rows.append([InlineKeyboardButton(str(label), callback_data=f"spell:detail:{sid}")])
-            except Exception:
-                logger.exception("Failed to render spell search item")
-
-    # Prepend scope row
-    rows.insert(0, await _build_scope_row(lang))
-    rows.append([InlineKeyboardButton(await t("nav.main", lang), callback_data="menu:main")])
-    logger.info("Search results shown", extra={"correlation_id": update.effective_chat.id if update.effective_chat else None, "count": len(rows) - 1})
-
-    # Title with active scope label
-    current = str(context.user_data.get("search_scope") or "name")
-    name_label = await t("search.scope.name", lang)
-    nd_label = await t("search.scope.name_description", lang)
-    scope_name = name_label if current == "name" else nd_label
-    markup = InlineKeyboardMarkup(rows)
-    text = f"[{scope_name}]\n" + await t("search.results_title", lang)
-    if continuing and active_msg_id and update.effective_chat:
-        try:
-            await context.bot.edit_message_text(chat_id=update.effective_chat.id, message_id=active_msg_id, text=text, reply_markup=markup)
-            return
-        except Exception:
-            pass
-    # First search: send new message and remember to enable edit-in-place for subsequent queries
-    msg = await update.message.reply_text(text, reply_markup=markup)
+    # Cache search session data
     context.user_data["search_mode_target"] = target
-    context.user_data["search_message_id"] = msg.message_id
-    context.user_data["search_active"] = True
+    context.user_data["search_items_cache"] = items
+    context.user_data["search_current_page"] = 1
+
+    # Render paginated results (page 1)
+    await _render_search_results(update, context, lang, page=1)
 
 
 async def toggle_search_scope(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -256,5 +200,126 @@ async def toggle_search_scope(update: Update, context: ContextTypes.DEFAULT_TYPE
     except Exception:
         # If edit fails (stale), ignore; scope is saved for next interactions
         pass
+
+
+async def _build_scope_row_for_search(lang: str, context: ContextTypes.DEFAULT_TYPE) -> List[InlineKeyboardButton]:
+    current = str(context.user_data.get("search_scope") or "name")
+    name_label = await t("search.scope.name", lang)
+    nd_label = await t("search.scope.name_description", lang)
+    left = InlineKeyboardButton(("✅ " if current == "name" else "") + name_label, callback_data="scope:name")
+    right = InlineKeyboardButton(("✅ " if current == "name_description" else "") + nd_label, callback_data="scope:name_description")
+    return [left, right]
+
+
+async def _render_search_results(update_or_query, context: ContextTypes.DEFAULT_TYPE, lang: str, page: int) -> None:
+    """Render cached search results with pagination and scope row.
+
+    Uses context.user_data keys:
+      - search_mode_target: "monsters" | "spells"
+      - search_items_cache: List[wrapped items]
+      - search_message_id: for edit-in-place
+    """
+    target = context.user_data.get("search_mode_target") or "spells"
+    items: List[Dict[str, Any]] = context.user_data.get("search_items_cache") or []
+    total = len(items)
+    context.user_data["search_current_page"] = page
+
+    # Build rows
+    rows: List[List[InlineKeyboardButton]] = []
+    rows.append(await _build_scope_row_for_search(lang, context))
+
+    # Items for the page
+    from dnd_helper_bot.utils.pagination import paginate
+
+    page_items = paginate(items, page)
+    if target == "monsters":
+        for m in page_items:
+            try:
+                e = m.get("entity") or {}
+                tr = m.get("translation") or {}
+                mid = e.get("id")
+                if mid is None:
+                    continue
+                label = tr.get("name") or tr.get("description") or "<no name>"
+                rows.append([InlineKeyboardButton(str(label), callback_data=f"monster:detail:{mid}")])
+            except Exception:
+                # Skip faulty item
+                continue
+    else:
+        for s in page_items:
+            try:
+                e = s.get("entity") or {}
+                tr = s.get("translation") or {}
+                sid = e.get("id")
+                if sid is None:
+                    continue
+                label = tr.get("name") or tr.get("description") or "<no name>"
+                rows.append([InlineKeyboardButton(str(label), callback_data=f"spell:detail:{sid}")])
+            except Exception:
+                continue
+
+    # Page navigation
+    nav: List[InlineKeyboardButton] = []
+    if (page - 1) * 5 > 0:
+        nav.append(InlineKeyboardButton("⬅️", callback_data=f"search:{target}:page:{page-1}"))
+    if page * 5 < total:
+        nav.append(InlineKeyboardButton("➡️", callback_data=f"search:{target}:page:{page+1}"))
+    if nav:
+        rows.append(nav)
+
+    # Bottom nav row (Back to section, Main)
+    back_cb = "menu:monsters" if target == "monsters" else "menu:spells"
+    from dnd_helper_bot.utils.nav import build_nav_row
+
+    rows.append(await build_nav_row(lang, back_cb))
+
+    # Title
+    current = str(context.user_data.get("search_scope") or "name")
+    name_label = await t("search.scope.name", lang)
+    nd_label = await t("search.scope.name_description", lang)
+    scope_name = name_label if current == "name" else nd_label
+    title = f"[{scope_name}]\n" + await t("search.results_title", lang)
+    suffix = f" (p. {page})" if lang == "en" else f" (стр. {page})"
+    text = title + suffix
+
+    # Send/edit
+    active_msg_id = context.user_data.get("search_message_id")
+    try:
+        if hasattr(update_or_query, "callback_query") and update_or_query.callback_query:
+            # From callback
+            await update_or_query.callback_query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(rows))
+            await update_or_query.callback_query.answer()
+        else:
+            # From first search via message
+            msg = await update_or_query.message.reply_text(text, reply_markup=InlineKeyboardMarkup(rows))
+            context.user_data["search_message_id"] = msg.message_id
+            context.user_data["search_active"] = True
+    except Exception:
+        # Fallback: try to edit specific message if we have id
+        try:
+            if update_or_query.effective_chat and active_msg_id:
+                await context.bot.edit_message_text(chat_id=update_or_query.effective_chat.id, message_id=active_msg_id, text=text, reply_markup=InlineKeyboardMarkup(rows))
+        except Exception:
+            pass
+
+
+async def search_page_nav(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    try:
+        _, target, _, page_s = (query.data or "").split(":", 3)
+        page = int(page_s)
+    except Exception:
+        target = str(context.user_data.get("search_mode_target") or "spells")
+        page = int(context.user_data.get("search_current_page") or 1)
+    context.user_data["search_mode_target"] = target
+    lang = await _resolve_lang_by_user(query)
+
+    # Ensure items cached; if not, try to recompute from last query context if available
+    items = context.user_data.get("search_items_cache")
+    if not isinstance(items, list):
+        # No cache: degrade gracefully to first page empty
+        context.user_data["search_items_cache"] = []
+    await _render_search_results(update, context, lang, page)
 
 

@@ -102,9 +102,9 @@ async def render_monsters_list(query, context: ContextTypes.DEFAULT_TYPE, page: 
         rows.append([InlineKeyboardButton(label, callback_data=f"monster:detail:{m['id']}")])
     nav: List[InlineKeyboardButton] = []
     if (page - 1) * 5 > 0:
-        nav.append(InlineKeyboardButton((await t("nav.back", lang)), callback_data=f"monster:list:page:{page-1}"))
+        nav.append(InlineKeyboardButton("⬅️", callback_data=f"monster:list:page:{page-1}"))
     if page * 5 < total:
-        nav.append(InlineKeyboardButton((await t("nav.next", lang)), callback_data=f"monster:list:page:{page+1}"))
+        nav.append(InlineKeyboardButton("➡️", callback_data=f"monster:list:page:{page+1}"))
     if nav:
         rows.append(nav)
     rows.append(await _nav_row(lang, "menu:monsters"))

@@ -26,7 +26,7 @@ from dnd_helper_bot.handlers.monsters import (
     monsters_filter_action,
     monsters_list,
 )
-from dnd_helper_bot.handlers.search import handle_search_text, toggle_search_scope
+from dnd_helper_bot.handlers.search import handle_search_text, toggle_search_scope, search_page_nav
 from dnd_helper_bot.handlers.spells import (
     spell_detail,
     spell_random,
@@ -66,6 +66,7 @@ def main() -> None:
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_search_text))
     application.add_handler(CallbackQueryHandler(toggle_search_scope, pattern=r"^scope:(name|name_description)$"))
+    application.add_handler(CallbackQueryHandler(search_page_nav, pattern=r"^search:(monsters|spells):page:\d+$"))
 
     application.add_handler(CallbackQueryHandler(dice_roll, pattern=r"^dice:(d20|d6|2d6|custom)$"))
     application.add_handler(CallbackQueryHandler(show_dice_menu_from_callback, pattern=r"^menu:dice$"))
