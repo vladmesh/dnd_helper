@@ -13,7 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Python deps (minimal for parser scripts)
 RUN pip install --no-cache-dir \
     requests==2.32.3 \
-    beautifulsoup4==4.12.3
+    beautifulsoup4==4.12.3 \
+    pymongo==4.7.2
 
 # Copy only the parser scripts
 COPY scripts/monster_parser /app/scripts/monster_parser
