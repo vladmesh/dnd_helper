@@ -151,6 +151,8 @@ def _default_ui_pairs() -> List[tuple[str, str, str]]:
         ("filters.any.level", "en", "Any level"),
         ("filters.any.school", "ru", "Любая школа"),
         ("filters.any.school", "en", "Any school"),
+        ("filters.any.class", "ru", "Любой класс"),
+        ("filters.any.class", "en", "Any class"),
         ("filters.any.concentration", "ru", "Любая концентрация"),
         ("filters.any.concentration", "en", "Any concentration"),
         ("list.title.monsters", "ru", "Список монстров"),

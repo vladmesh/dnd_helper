@@ -218,18 +218,21 @@ async def _build_filters_keyboard(
             ])
         elif field == "classes":
             classes_selected = set(pending.get("classes") or [])
-            any_cls_btn = InlineKeyboardButton(("✅ " if not classes_selected else "") + any_label, callback_data="sflt:cls:any")
+            any_cls_text = await t("filters.any.class", lang, default=(any_label + " " + (await t("filters.field.class", lang, default="class"))))
+            any_cls_btn = InlineKeyboardButton(("✅ " if not classes_selected else "") + any_cls_text, callback_data="sflt:cls:any")
             per_row = 3
-            current_row: List[InlineKeyboardButton] = [any_cls_btn]
-            for idx, (code, label) in enumerate(classes_items):
+            option_buttons: List[InlineKeyboardButton] = []
+            for code, label in classes_items:
                 text = ("✅ " if code in classes_selected else "") + str(label)
-                current_row.append(InlineKeyboardButton(text, callback_data=f"sflt:cls:{code}"))
-                if (idx + 1) % per_row == 0:
-                    rows.append(current_row)
-                    current_row = [any_cls_btn]
-            if current_row:
-                current_row.append(InlineKeyboardButton(await t("filters.remove", lang), callback_data="sflt:rm:classes"))
-                rows.append(current_row)
+                option_buttons.append(InlineKeyboardButton(text, callback_data=f"sflt:cls:{code}"))
+            # First row: Any only
+            rows.append([any_cls_btn])
+            # Subsequent rows: only options
+            for i in range(0, len(option_buttons), per_row):
+                rows.append(option_buttons[i : i + per_row])
+            # Append Hide to the last classes row
+            if rows:
+                rows[-1].append(InlineKeyboardButton(await t("filters.remove", lang), callback_data="sflt:rm:classes"))
 
     return rows
 
