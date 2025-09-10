@@ -82,6 +82,7 @@ def find_matches(empty_translations, parsed_monsters, en_name_by_slug=None):
         empty_slug = empty_trans['monster_slug']
         seed_en_norm = normalize_name(en_name_by_slug.get(empty_slug, '')) if empty_slug else ''
 
+        candidates = []
         for parsed_monster in parsed_monsters:
             parsed_name_norm = normalize_name(parsed_monster.get('name', ''))
             parsed_english_norm = normalize_name(parsed_monster.get('english_name', ''))
@@ -93,12 +94,16 @@ def find_matches(empty_translations, parsed_monsters, en_name_by_slug=None):
                 (seed_en_norm and parsed_name_norm and seed_en_norm == parsed_name_norm) or
                 (seed_en_norm and parsed_english_norm and seed_en_norm == parsed_english_norm)
             ):
-                matches.append({
-                    'empty_translation': empty_trans,
-                    'parsed_monster': parsed_monster
-                })
-                print(f"🎯 Найдено совпадение: {empty_trans['name']} ({empty_slug}) ← {parsed_monster.get('name', '')}")
-                break
+                candidates.append(parsed_monster)
+
+        if candidates:
+            # Предпочитаем кандидата с непустым description, иначе берём первого
+            preferred = next((pm for pm in candidates if (pm.get('description') or '').strip()), candidates[0])
+            matches.append({
+                'empty_translation': empty_trans,
+                'parsed_monster': preferred,
+            })
+            print(f"🎯 Найдено совпадение: {empty_trans['name']} ({empty_slug}) ← {preferred.get('name', '')}")
 
     return matches
 
