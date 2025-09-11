@@ -16,7 +16,7 @@ services:
       - redis_data:/data
 
   api:
-    image: ${REGISTRY}/dnd-helper/api:${API_TAG:-latest}
+    image: ghcr.io/vladmesh/dnd-helper-api:${API_TAG:-latest}
     restart: unless-stopped
     env_file:
       - .env
@@ -31,7 +31,7 @@ services:
     command: python -m dnd_helper_api.main
 
   bot:
-    image: ${REGISTRY}/dnd-helper/bot:${BOT_TAG:-latest}
+    image: ghcr.io/vladmesh/dnd-helper-bot:${BOT_TAG:-latest}
     restart: unless-stopped
     env_file:
       - .env
