@@ -12,6 +12,7 @@ from .spell import Spell
 from .spell_translation import SpellTranslation
 from .ui_translation import UiTranslation
 from .user import User
+from .admin_audit import AdminAudit
 
 __all__ = [
     "BaseModel",
@@ -25,6 +26,7 @@ __all__ = [
     "SpellTranslation",
     "EnumTranslation",
     "UiTranslation",
+    "AdminAudit",
 ]
 
 
