@@ -14,6 +14,22 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
 
 ## Backlog
 
+### NEW) Replace seeding with admin UI (production content management)
+- Goal: Remove ad-hoc seeding from production and manage content via an authenticated admin interface.
+- Scope: Build an admin UI (separate service or protected API routes) for CRUD on Monsters, Spells, and translations (enum/UI).
+- Acceptance:
+  - Production deploys do not require running seeding scripts.
+  - Admin can create/update/delete content with audit trails.
+  - Permissions and authentication enforced.
+
+### NEW) Mandatory end-to-end tests in CI/CD before deploy
+- Goal: Add e2e tests that run against a freshly started stack and gate production deployments on green results.
+- Scope: Start ephemeral stack via compose, run tests covering critical flows (API health, basic CRUD, bot search flows via API stubs or real API).
+- Acceptance:
+  - CI runs e2e suite on pushes to `main`.
+  - Deployment step executes only if e2e tests pass.
+  - Test reports stored as artifacts; failures block release.
+
 ### NEW) Shared DTO strategy between API and Bot [Needs Decision]
 - Context: We want strict schema validation on both client (bot) and server (API) while avoiding heavy ORM dependencies in the bot. Today `shared_models` contain SQLModel ORM models that are not ideal as transport contracts.
 - Approaches:

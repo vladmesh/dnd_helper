@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - .env
+    # No ports exposed in prod; access only within the Docker network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # No ports exposed in prod; access only within the Docker network
+    volumes:
+      - redis_data:/data
+
+  api:
+    image: ${REGISTRY}/dnd-helper/api:${API_TAG:-latest}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app/src
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_JSON=${LOG_JSON:-true}
+      - LOG_SERVICE_NAME=api
+    depends_on:
+      - postgres
+      - redis
+    command: python -m dnd_helper_api.main
+
+  bot:
+    image: ${REGISTRY}/dnd-helper/bot:${BOT_TAG:-latest}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app/src
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_JSON=${LOG_JSON:-true}
+      - LOG_SERVICE_NAME=bot
+    depends_on:
+      - redis
+      - postgres
+    command: python -m dnd_helper_bot.main
+
+volumes:
+  postgres_data:
+  redis_data:

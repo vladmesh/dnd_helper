@@ -11,10 +11,11 @@ This project is a small microservices-based system consisting of two application
 ### API Service (`api`)
 - Purpose: HTTP API for DnD Helper
 - Tech stack: Python 3.11, FastAPI (>=0.110), Uvicorn (>=0.23, standard extras), psycopg (>=3.1, binary), Redis (>=5)
-- Entrypoint (compose): `uvicorn dnd_helper_api.main:app --host 0.0.0.0 --port 8000`
+- Entrypoint (compose): `python -m dnd_helper_api.main`
 - Port: 8000
 - Depends on: `postgres`, `redis`
 - Environment: `PYTHONPATH=/app/src`, `.env`
+- Compose specifics (this repo): mounts Alembic versions `./api/alembic/versions:/app/alembic/versions`
 - Directory (actual):
 ```
 api/
@@ -60,15 +61,17 @@ bot/
 - Bot framework: python-telegram-bot
 - HTTP client: httpx
 - Testing: pytest
+- ORM: SQLModel
+- Migrations: Alembic
 
 ## Schema and Index Management Policy
 - Application schema (tables/columns) is defined via SQLModel models and evolved using Alembic migrations.
 - Performance indexes that depend on database-specific features (e.g., PostgreSQL GIN/trgm) are managed exclusively in Alembic migrations and are intentionally not declared in ORM metadata.
-- Alembic autogenerate is configured to ignore indexes with names ending in `_gin` to avoid accidental drops during migrations.
+- Alembic autogenerate is configured to ignore indexes entirely (managed manually in migrations) to avoid accidental drops/changes.
 
 ## Domain Conventions (current)
 - Monsters: no `speed` or `speeds` fields; only derived scalar `speed_*` columns (walk/fly/swim/climb/burrow) and `is_flying` flag.
-- Spells: no `distance`; use `range` (string). If numeric filters are needed, introduce derived `range_feet` via migration later.
+- Spells: no `distance`; use `range` (string). If numeric filters are needed, introduce derived `range_feet` via migration later. Derived `is_concentration` is present and indexed.
 
 ## Expected Service Directory Structure (template)
 Use this template for any new service to keep structure uniform.
@@ -137,17 +140,45 @@ services:
 ```
 
 Examples:
-- API service command: `uvicorn dnd_helper_api.main:app --host 0.0.0.0 --port 8000`
+- API service command: `python -m dnd_helper_api.main`
 - Bot service command: `python -m dnd_helper_bot.main`
+- In this repository: API build uses `context: .` and `dockerfile: api/Dockerfile`; Bot build uses `context: ./bot` and `dockerfile: Dockerfile`.
 
 ## i18n Policy (API)
 - Raw endpoints return pristine entities without applied translations.
-  - Examples: `GET /monsters`, `GET /monsters/{id}`, `GET /spells`, `GET /spells/{id}`.
+  - Lists: `GET /monsters/list/raw`, `GET /spells/list/raw`
+  - Details: `GET /monsters/{id}`, `GET /spells/{id}`
   - These endpoints set `Content-Language` based on `?lang=` but do not mutate the entity fields.
 - Wrapped endpoints carry translations and enum labels alongside the entity.
-  - Examples: `GET /monsters/list/wrapped` (alias for legacy `/monsters/wrapped-list`), `GET /monsters/{id}/wrapped`, `GET /spells/list/wrapped` (alias for legacy `/spells/wrapped` and `/spells/wrapped-list`), `GET /spells/{id}/wrapped`.
+  - Lists: `GET /monsters/list/wrapped`, `GET /spells/list/wrapped`
+  - Details: `GET /monsters/{id}/wrapped`, `GET /spells/{id}/wrapped`
   - Response shape: `{ entity, translation, labels }`.
-- Labeled list endpoints (`/spells/labeled`, `/monsters/labeled`) provide enum labels only and do not apply text translations to entities. These are considered legacy for collections; prefer `wrapped` responses.
+- Legacy endpoints for collections (e.g., `/spells/wrapped`, `/spells/wrapped-list`, `/monsters/wrapped-list`, `/spells/labeled`, `/monsters/labeled`) are removed. Use the `list/*` and `/{id}/*` endpoints above.
 - Client guidance:
   - Bots/UI should consume wrapped endpoints when localized text is required.
-  - Admin/testing tools can use raw/labeled endpoints for base data without localization.
+  - Admin/testing tools can use raw endpoints for base data without localization.
+
+## Shared Models
+- Domain schema lives in `shared_models` and is imported by the API and Alembic.
+- Alembic discovers models via imports in `api/alembic/env.py`; migrations are generated from these models and refined manually where needed.
+
+## Logging
+- Structured logging with `LOG_LEVEL`, `LOG_JSON`, `LOG_SERVICE_NAME` environment variables.
+- API includes middleware that logs unhandled exceptions and 5xx responses with request metadata and timing.
+
+## Health
+- API liveness endpoint: `GET /health` → `{ "status": "ok" }`.
+
+## Operations
+- Rebuild and start services: `python3 manage.py restart`
+- Apply DB migrations inside API container: `python3 manage.py upgrade`
+
+## Seeding
+- Seed data via `python3 seed.py --all`.
+- Expected files in project root:
+  - `seed_data_enums.json`
+  - `seed_data_spells.json`
+  - `seed_data_monsters.json`
+- Behavior:
+  - Monsters/Spells are imported via HTTP API (skips if already present).
+  - Enum/UI translations are upserted directly inside the API container (idempotent).
