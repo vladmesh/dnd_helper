@@ -32,6 +32,14 @@ class JsonFormatter(logging.Formatter):
             value = getattr(record, key, None)
             if value is not None:
                 base[key] = value
+        # If an exception is attached, include its traceback as well
+        if record.exc_info and "traceback" not in base:
+            try:
+                import traceback as _tb
+
+                base["traceback"] = "".join(_tb.format_exception(*record.exc_info))
+            except Exception:
+                pass
         return json.dumps(base, ensure_ascii=False)
 
 

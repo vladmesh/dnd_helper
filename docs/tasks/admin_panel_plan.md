@@ -87,6 +87,22 @@ Status:
 - Acceptance:
   - Reliable uploads; job queued in DB; no API worker memory spikes.
 
+### Iteration 4.1 — Admin UI upload form (SQLAdmin)
+- Scope:
+  - Add a simple upload form in SQLAdmin UI to submit large `.json` files.
+  - The form posts to the existing `POST /admin-api/upload` endpoint with fields: `file`, `job_type` (`monsters_import`/`spells_import`), `dry_run` (bool).
+  - After successful upload, show returned job `id` and a link to the jobs list (when available).
+- Changes:
+  - Add a lightweight custom SQLAdmin view/page (no DB model) that renders an HTML form and forwards to `/admin-api/upload`.
+  - Wire the view under `/admin/upload` (protected by existing admin auth middleware and env gating).
+  - Keep server-side validation minimal; rely on backend endpoint for full validation and error reporting.
+- Testing:
+  - Manual: open `/admin/upload`, select a sample JSON, submit; verify file appears under `/data/admin_uploads` and a row is created in `admin_jobs`.
+  - Error path: missing token or invalid file type returns a clear message in UI.
+- Acceptance:
+  - Operators can upload files through the admin web UI without using curl/Postman.
+  - No worker yet; jobs remain in `queued` state until Iteration 5.
+
 ### Iteration 5 — Import worker (DB-backed queue, streaming)
 - Scope:
   - Background worker thread inside API container reads `admin_jobs` with `job_type in (monsters_import, spells_import)`.

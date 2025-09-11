@@ -13,6 +13,7 @@ import shared_models.monster_translation  # noqa: F401
 import shared_models.spell_translation  # noqa: F401
 import shared_models.ui_translation  # noqa: F401
 import shared_models.admin_audit  # noqa: F401
+import shared_models.admin_job  # noqa: F401
 import sqlmodel  # noqa: F401
 from alembic import context
 from sqlalchemy import engine_from_config, pool

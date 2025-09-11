@@ -3,6 +3,7 @@ import types
 
 import pytest
 from factories import make_message_update
+import dnd_helper_bot.utils.nav as nav
 
 
 pytestmark = pytest.mark.asyncio
@@ -41,11 +42,14 @@ async def test_monster_search_uses_scope_param_and_renders_scope_label(monkeypat
             "search.scope.name": "Name",
             "search.scope.name_description": "Name + Description",
             "search.results_title": "Search results:",
+            "nav.back": "Back",
             "nav.main": "Main menu",
         }
         return mapping.get(key, key)
 
     monkeypatch.setattr(search_mod, "t", fake_t)
+    # Also stub t in nav module to avoid network calls for i18n
+    monkeypatch.setattr(nav, "t", fake_t)
 
     update = make_message_update(user_lang="en", text="wolf")
     context = DummyContext(user_data={"awaiting_monster_query": True})
@@ -58,7 +62,7 @@ async def test_monster_search_uses_scope_param_and_renders_scope_label(monkeypat
     assert captured["params"]["q"] == "wolf"
     assert captured["params"]["search_scope"] == "name"
 
-    # And the message shows the scope label in header
-    assert update.message.last_text == "[Name]\nSearch results:"
+    # And the message shows the scope label in header (prefix), suffix may include page
+    assert update.message.last_text.startswith("[Name]\nSearch results:")
 
 

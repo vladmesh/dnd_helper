@@ -32,7 +32,6 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LOG_JSON=${LOG_JSON:-true}
       - LOG_SERVICE_NAME=api
-    user: "${LOCAL_UID}:${LOCAL_GID}"
     depends_on:
       - postgres
       - redis
@@ -41,6 +40,7 @@ services:
     command: python -m dnd_helper_api.main
     volumes:
       - ./api/alembic/versions:/app/alembic/versions
+      - ./data/admin_uploads:/data/admin_uploads
 
 
   bot:
