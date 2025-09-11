@@ -178,6 +178,37 @@ if os.getenv("ADMIN_ENABLED", "false").lower() in {"1", "true", "yes"}:
         column_default_sort = [(UiTranslation.namespace, True), (UiTranslation.key, True), (UiTranslation.lang, True)]
         form_excluded_columns = [UiTranslation.id]
 
+    class AdminAuditAdmin(ReadOnlyModelView, model=AdminAudit):
+        name = "Admin Audit"
+        column_list = [
+            AdminAudit.id,
+            AdminAudit.created_at,
+            AdminAudit.table_name,
+            AdminAudit.row_pk,
+            AdminAudit.operation,
+            AdminAudit.actor,
+            AdminAudit.path,
+            AdminAudit.client_ip,
+        ]
+        column_default_sort = [(AdminAudit.created_at, False)]
+        form_excluded_columns = [AdminAudit.before_data, AdminAudit.after_data, AdminAudit.updated_at]
+        column_searchable_list = [
+            AdminAudit.table_name,
+            AdminAudit.row_pk,
+            AdminAudit.operation,
+            AdminAudit.actor,
+            AdminAudit.path,
+            AdminAudit.client_ip,
+        ]
+        column_sortable_list = [
+            AdminAudit.id,
+            AdminAudit.created_at,
+            AdminAudit.table_name,
+            AdminAudit.row_pk,
+            AdminAudit.operation,
+            AdminAudit.actor,
+        ]
+
     # Protect admin endpoints via dependency on token auth using FastAPI route middleware
     # sqladmin registers under /admin by default. We'll attach a simple dependency via middleware.
     @app.middleware("http")
@@ -204,6 +235,7 @@ if os.getenv("ADMIN_ENABLED", "false").lower() in {"1", "true", "yes"}:
     admin.add_view(SpellAdmin)
     admin.add_view(UserAdmin)
     admin.add_view(UiTranslationAdmin)
+    admin.add_view(AdminAuditAdmin)
 
 if __name__ == "__main__":
     import uvicorn

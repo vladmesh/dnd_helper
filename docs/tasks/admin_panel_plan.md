@@ -16,7 +16,7 @@
 
 ### High-level architecture
 - SQLAdmin embedded into API at `/admin`.
-- Admin authentication: `ADMIN_ENABLED`, `ADMIN_TOKEN`, optional `ADMIN_BASIC_USER/PASS`, optional `ADMIN_IP_ALLOWLIST`.
+- Admin authentication: `ADMIN_ENABLED`, `ADMIN_TOKEN`, optional `ADMIN_BASIC_USER/PASS`. IP allowlist is not planned for now.
 - File uploads: API endpoint saves files to a mounted volume; creates a DB row in `admin_jobs` table with status tracking.
 - Import worker: long-running background thread in API process polls `admin_jobs` with `status in (queued, running)` and processes tasks using streaming parsing (`ijson`) and existing entity APIs.
 - SQLAdmin view for `admin_jobs` to monitor progress and inspect logs/counters.
@@ -26,7 +26,7 @@
 
 ## Iterations (incremental)
 
-### Iteration 1 — Bootstrap SQLAdmin (read-only)
+### Iteration 1 — Bootstrap SQLAdmin (read-only) ✅ Done
 - Scope:
   - Add SQLAdmin dependency to API and mount `/admin`.
   - Register read-only views for core entities (`Monster`, `Spell`, enum/ui translation tables) using existing SQLModel models in `shared_models`.
@@ -41,7 +41,7 @@
 - Acceptance:
   - Admin disabled by default. When enabled, read-only lists work with auth.
 
-### Iteration 2 — Curated CRUD (safe fields only)
+### Iteration 2 — Curated CRUD (safe fields only) ✅ Done
 - Scope:
   - Enable create/update for selected models/fields where safe (e.g., translations, enum labels). Keep destructive ops (delete) disabled initially.
   - Add form validators to prevent breaking domain invariants (e.g., no raw i18n mutation that conflicts with wrapped endpoints policy).
@@ -52,7 +52,7 @@
 - Acceptance:
   - Only curated CRUD is available. Disallowed ops are impossible from UI.
 
-### Iteration 3 — Auth hardening and audit
+### Iteration 3 — Auth hardening and audit (partially done)
 - Scope:
   - Implement token-based auth with optional HTTP Basic; optional IP allowlist from env.
   - Add audit trail: who (subject from header/user), when, what action (entity, id, operation), result.
@@ -64,6 +64,16 @@
   - Auth unit tests; audit writes on admin changes.
 - Acceptance:
   - Access strictly controlled; basic audit available in logs and/or DB.
+
+Status:
+- Done:
+  - Bearer token auth via `ADMIN_TOKEN`.
+  - `AdminAudit` model + Alembic migration; DB persistence.
+  - SQLAlchemy `after_flush` hook gated to `/admin` requests (actor/path/ip).
+- Remaining:
+  - Add read-only `AdminAudit` view to SQLAdmin (browse audit records).
+  - Optional HTTP Basic (deferred; not needed now).
+  - IP allowlist — not planned.
 
 ### Iteration 4 — Admin upload endpoint (store only)
 - Scope:
@@ -139,7 +149,7 @@ Note: place model in `shared_models` to let Alembic autoload schema; or create a
 ## Security model
 - Admin disabled by default.
 - Access: require `ADMIN_TOKEN` (Bearer) or HTTP Basic with `ADMIN_BASIC_USER/PASS`.
-- Optional `ADMIN_IP_ALLOWLIST` (CIDR list) check at middleware.
+- `ADMIN_IP_ALLOWLIST` check — not planned for now.
 - Do not publish `/admin` externally in production; keep behind private network or reverse proxy rules.
 
 ## Ops and rollout
