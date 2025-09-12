@@ -121,16 +121,14 @@ async def update_monster(
         monster.xp = payload.xp
     if payload.proficiency_bonus is not None:
         monster.proficiency_bonus = payload.proficiency_bonus
-    if payload.abilities is not None:
-        monster.abilities = payload.abilities
+    if payload.ability_scores is not None:
+        monster.ability_scores = payload.ability_scores
     if payload.saving_throws is not None:
         monster.saving_throws = payload.saving_throws
     if payload.skills is not None:
         monster.skills = payload.skills
     if payload.senses is not None:
         monster.senses = payload.senses
-    if payload.languages is not None:
-        monster.languages = payload.languages
     if payload.damage_immunities is not None:
         monster.damage_immunities = payload.damage_immunities
     if payload.damage_resistances is not None:

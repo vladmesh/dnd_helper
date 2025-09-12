@@ -8,6 +8,7 @@ from .enums_common import (
     Language,
     MovementMode,
     SpellComponent,
+    Skill,
 )
 from .enums_monsters import (
     DangerLevel,
@@ -39,6 +40,7 @@ __all__ = [
     "DamageType",
     "Condition",
     "Language",
+    "Skill",
     # monsters
     "DangerLevel",
     "MonsterSize",
