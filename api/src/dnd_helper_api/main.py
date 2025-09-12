@@ -447,6 +447,9 @@ def _process_job(session: SASession, job: AdminJob) -> None:
                         counters["skipped"] += 1
                         continue
                     # filter to Monster fields only
+                    # Backward-compat: map legacy 'abilities' -> 'ability_scores'
+                    if "abilities" in data and "ability_scores" not in data:
+                        data["ability_scores"] = data.pop("abilities")
                     allowed = set(Monster.model_fields.keys()) - {"id"}
                     filtered = {k: v for k, v in data.items() if k in allowed}
                     # create or update by slug
@@ -477,6 +480,16 @@ def _process_job(session: SASession, job: AdminJob) -> None:
                             .filter(MonsterTranslation.monster_id == monster.id, MonsterTranslation.lang == l)
                             .first()
                         )
+                        # derive languages_text from raw row if present
+                        languages_text: Optional[str] = None
+                        try:
+                            langs_val = raw.get("languages") if isinstance(raw, dict) else None
+                            if isinstance(langs_val, list):
+                                languages_text = ", ".join([str(x) for x in langs_val if x is not None]) or None
+                            elif isinstance(langs_val, str):
+                                languages_text = langs_val or None
+                        except Exception:
+                            languages_text = None
                         if mt is None:
                             mt = MonsterTranslation(
                                 monster_id=monster.id,
@@ -488,6 +501,7 @@ def _process_job(session: SASession, job: AdminJob) -> None:
                                 reactions=tr.get("reactions"),
                                 legendary_actions=tr.get("legendary_actions"),
                                 spellcasting=tr.get("spellcasting"),
+                                languages_text=languages_text,
                             )
                         else:
                             if tr.get("name"):
@@ -499,6 +513,8 @@ def _process_job(session: SASession, job: AdminJob) -> None:
                             mt.reactions = tr.get("reactions")
                             mt.legendary_actions = tr.get("legendary_actions")
                             mt.spellcasting = tr.get("spellcasting")
+                            if languages_text is not None:
+                                mt.languages_text = languages_text
                         session.add(mt)
                         session.commit()
                 except Exception:

@@ -30,6 +30,9 @@ class MonsterTranslation(BaseModel, table=True):
     legendary_actions: Optional[List[Dict[str, str]]] = Field(default=None, sa_type=JSONB)
     spellcasting: Optional[Dict[str, Any]] = Field(default=None, sa_type=JSONB)
 
+    # Languages as human-readable text (moved from Monster.languages)
+    languages_text: Optional[str] = Field(default=None, sa_type=TEXT)
+
     # Optional relationship backref, defined here to avoid import cycles
     # The Monster model may define `translations` Relationship as well
     # monster: "Monster" = Relationship(back_populates="translations")
