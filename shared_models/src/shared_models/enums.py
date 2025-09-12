@@ -12,7 +12,6 @@ from .enums_common import (
 )
 from .enums_monsters import (
     DangerLevel,
-    MonsterRole,
     MonsterSize,
     MonsterType,
 )
@@ -45,7 +44,6 @@ __all__ = [
     "DangerLevel",
     "MonsterSize",
     "MonsterType",
-    "MonsterRole",
     # spells
     "CasterClass",
     "SpellSchool",
