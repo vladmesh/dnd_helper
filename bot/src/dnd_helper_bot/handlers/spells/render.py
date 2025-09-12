@@ -311,8 +311,11 @@ async def _build_filters_keyboard(
                 lang,
                 default=(any_label + " " + (await t("filters.ritual", lang, default="ritual"))),
             )
+            # Any on its own row (long label), then controls row
             rows.append([
-                InlineKeyboardButton(("✅ " if state is None else "") + any_ritual_text, callback_data="sflt:rit:any"),
+                InlineKeyboardButton(("✅ " if state is None else "") + any_ritual_text, callback_data="sflt:rit:any")
+            ])
+            rows.append([
                 InlineKeyboardButton(("✅ " if state is True else "") + await t("filters.yes", lang), callback_data="sflt:rit:yes"),
                 InlineKeyboardButton(("✅ " if state is False else "") + await t("filters.no", lang), callback_data="sflt:rit:no"),
                 InlineKeyboardButton(await t("filters.remove", lang), callback_data="sflt:rm:ritual"),
@@ -320,8 +323,11 @@ async def _build_filters_keyboard(
         elif field == "is_concentration":
             state = pending.get("is_concentration")
             any_conc_text = await t("filters.any.concentration", lang, default=(any_label + " " + (await t("filters.field.concentration", lang, default="concentration"))))
+            # Any on its own row (long label), then controls row
             rows.append([
-                InlineKeyboardButton(("✅ " if state is None else "") + any_conc_text, callback_data="sflt:conc:any"),
+                InlineKeyboardButton(("✅ " if state is None else "") + any_conc_text, callback_data="sflt:conc:any")
+            ])
+            rows.append([
                 InlineKeyboardButton(("✅ " if state is True else "") + await t("filters.yes", lang), callback_data="sflt:conc:yes"),
                 InlineKeyboardButton(("✅ " if state is False else "") + await t("filters.no", lang), callback_data="sflt:conc:no"),
                 InlineKeyboardButton(await t("filters.remove", lang), callback_data="sflt:rm:is_concentration"),
