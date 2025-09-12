@@ -7,7 +7,7 @@ from telegram.ext import ContextTypes
 from dnd_helper_bot.repositories.api_client import api_get
 from dnd_helper_bot.utils.i18n import t
 from dnd_helper_bot.utils.nav import build_nav_row
-from dnd_helper_bot.utils.pagination import paginate
+from dnd_helper_bot.utils.pagination import paginate, PAGE_SIZE_LIST
 
 from .filters import _filter_monsters, _get_filter_state
 from .lang import _resolve_lang_by_user
@@ -15,6 +15,89 @@ from .lang import _resolve_lang_by_user
 
 async def _nav_row(lang: str, back_callback: str) -> list[InlineKeyboardButton]:
     return await build_nav_row(lang, back_callback)
+
+
+async def _build_filters_header(
+    applied: Dict[str, Any],
+    lang: str,
+    type_options: List[Tuple[str, str]],
+) -> str:
+    # If nothing applied -> "All monsters"
+    has_any = False
+    fields = ("cr_buckets", "cr_range", "types", "sizes", "size", "flying", "legendary")
+    for f in fields:
+        v = applied.get(f)
+        if isinstance(v, set) and v:
+            has_any = True
+            break
+        if v not in (None, False):
+            if v is True or (isinstance(v, str) and v.strip() != ""):
+                has_any = True
+                break
+    if not has_any:
+        default_text = "All monsters" if lang == "en" else "Все монстры"
+        return await t("list.all.monsters", lang, default=default_text)
+
+    parts: List[str] = []
+    # CR buckets
+    cr_labels: List[str] = []
+    cr_buckets = applied.get("cr_buckets")
+    if isinstance(cr_buckets, set) and cr_buckets:
+        code_to_key = {"03": "filters.cr.03", "48": "filters.cr.48", "9p": "filters.cr.9p"}
+        for code in ("03", "48", "9p"):
+            if code in cr_buckets:
+                cr_labels.append(await t(code_to_key[code], lang))
+    else:
+        legacy = applied.get("cr_range")
+        if isinstance(legacy, str) and legacy in {"03", "48", "9p"}:
+            cr_labels.append(await t({"03": "filters.cr.03", "48": "filters.cr.48", "9p": "filters.cr.9p"}[legacy], lang))
+    if cr_labels:
+        field_name = await t("filters.field.cr", lang, default=("CR" if lang == "en" else "Опасность"))
+        parts.append(f"{field_name}: {', '.join(cr_labels)}")
+
+    # Types
+    type_labels: List[str] = []
+    selected_types = applied.get("types")
+    if isinstance(selected_types, set) and selected_types:
+        code_to_label = {code: label for code, label in type_options}
+        for code in sorted(selected_types):
+            lbl = code_to_label.get(code)
+            if lbl:
+                type_labels.append(str(lbl))
+    if type_labels:
+        field_name = await t("filters.field.type", lang, default=("Type" if lang == "en" else "Тип"))
+        parts.append(f"{field_name}: {', '.join(type_labels)}")
+
+    # Sizes
+    size_labels: List[str] = []
+    sizes = applied.get("sizes")
+    if isinstance(sizes, set) and sizes:
+        for code in ["S", "M", "L"]:
+            if code in sizes:
+                size_labels.append(await t(f"filters.size.{code}", lang, default=code))
+    else:
+        legacy_size = applied.get("size")
+        if isinstance(legacy_size, str) and legacy_size in {"S", "M", "L"}:
+            size_labels.append(await t(f"filters.size.{legacy_size}", lang, default=legacy_size))
+    if size_labels:
+        field_name = await t("filters.field.size", lang, default=("Size" if lang == "en" else "Размер"))
+        parts.append(f"{field_name}: {', '.join(size_labels)}")
+
+    # Flying
+    flying = applied.get("flying")
+    if flying is True or flying is False:
+        field_name = await t("filters.field.flying", lang, default=("Flying" if lang == "en" else "Летающий"))
+        yn = await t("filters.flying.yes", lang) if flying else await t("filters.flying.no", lang)
+        parts.append(f"{field_name}: {yn}")
+
+    # Legendary
+    legendary = applied.get("legendary")
+    if legendary is True or legendary is False:
+        field_name = await t("filters.field.legendary", lang, default=("Legendary" if lang == "en" else "Легендарный"))
+        yn = ("Yes" if lang == "en" else "Да") if legendary else ("No" if lang == "en" else "Нет")
+        parts.append(f"{field_name}: {yn}")
+
+    return "; ".join(parts) if parts else (await t("list.all.monsters", lang, default=("All monsters" if lang == "en" else "Все монстры")))
 
 
 def _cr_to_float(value: Any) -> Optional[float]:
@@ -79,14 +162,19 @@ async def render_monsters_list(query, context: ContextTypes.DEFAULT_TYPE, page: 
     # Prepare type options for keyboard (sorted by label)
     type_options: List[Tuple[str, str]] = sorted(type_map.items(), key=lambda x: (x[1] or ""))
     add_menu_open = bool(context.user_data.get("monsters_add_menu_open"))
-    if total == 0:
-        rows: List[List[InlineKeyboardButton]] = await _build_filters_keyboard(pending, lang, type_options, add_menu_open)
+    rows: List[List[InlineKeyboardButton]] = []
+    # Manage view: show only filters UI, no entities
+    if add_menu_open:
+        # Force all fields visible in manage view
+        pending_for_render = {**pending, "visible_fields": ["cr_buckets", "types", "sizes", "flying"]}
+        rows = await _build_filters_keyboard(pending_for_render, lang, type_options, True)
+        # Add Apply button at the bottom
+        rows.append([InlineKeyboardButton(await t("filters.apply", lang), callback_data="mflt:apply")])
         markup = InlineKeyboardMarkup(rows)
+        # Header can still show current applied summary (doesn't list entities)
+        header = await _build_filters_header(applied, lang, type_options)
         try:
-            await query.edit_message_text(
-                await t("list.empty.monsters", lang, default=("No monsters." if lang == "en" else "Монстров нет.")),
-                reply_markup=markup,
-            )
+            await query.edit_message_text(header, reply_markup=markup)
         except BadRequest as e:
             if "Message is not modified" in str(e):
                 await query.answer()
@@ -95,24 +183,38 @@ async def render_monsters_list(query, context: ContextTypes.DEFAULT_TYPE, page: 
         else:
             await query.answer()
         return
-    page_items = paginate(filtered, page)
-    rows: List[List[InlineKeyboardButton]] = await _build_filters_keyboard(pending, lang, type_options, add_menu_open)
+
+    # List view: top button Add/Change filters, then entities
+    def _has_any_filters(d: Dict[str, Any]) -> bool:
+        for f in ("cr_buckets", "cr_range", "types", "sizes", "size", "flying", "legendary"):
+            v = d.get(f)
+            if isinstance(v, set) and v:
+                return True
+            if v not in (None, False):
+                if v is True or (isinstance(v, str) and v.strip() != ""):
+                    return True
+        return False
+
+    top_label = await t("filters.change", lang) if _has_any_filters(applied) else await t("filters.add", lang)
+    rows.append([InlineKeyboardButton(top_label, callback_data="mflt:add")])
+
+    page_items = paginate(filtered, page, PAGE_SIZE_LIST)
     for m in page_items:
         label = f"{m.get('name','')}"
         rows.append([InlineKeyboardButton(label, callback_data=f"monster:detail:{m['id']}")])
     nav: List[InlineKeyboardButton] = []
-    if (page - 1) * 5 > 0:
+    if (page - 1) * PAGE_SIZE_LIST > 0:
         nav.append(InlineKeyboardButton("⬅️", callback_data=f"monster:list:page:{page-1}"))
-    if page * 5 < total:
+    if page * PAGE_SIZE_LIST < total:
         nav.append(InlineKeyboardButton("➡️", callback_data=f"monster:list:page:{page+1}"))
     if nav:
         rows.append(nav)
     rows.append(await _nav_row(lang, "menu:monsters"))
     markup = InlineKeyboardMarkup(rows)
-    title = await t("list.title.monsters", lang)
+    header = await _build_filters_header(applied, lang, type_options)
     suffix = f" (p. {page})" if lang == "en" else f" (стр. {page})"
     try:
-        await query.edit_message_text(title + suffix, reply_markup=markup)
+        await query.edit_message_text(header + suffix, reply_markup=markup)
     except BadRequest as e:
         if "Message is not modified" in str(e):
             await query.answer()
@@ -125,10 +227,15 @@ async def render_monsters_list(query, context: ContextTypes.DEFAULT_TYPE, page: 
 async def _build_filters_keyboard(pending: Dict[str, Any], lang: str, type_options: List[Tuple[str, str]], add_menu_open: bool) -> List[List[InlineKeyboardButton]]:
     rows: List[List[InlineKeyboardButton]] = []
 
-    # Manage row: Add | Reset
+    # Collapsed state: only one button "Add filters"
     add_lbl = await t("filters.add", lang)
+    if not add_menu_open:
+        rows.append([InlineKeyboardButton(add_lbl, callback_data="mflt:add")])
+        return rows
+
+    # Manage row (expanded): only Reset (no Add here)
     reset_lbl = await t("filters.reset", lang)
-    rows.append([InlineKeyboardButton(add_lbl, callback_data="mflt:add"), InlineKeyboardButton(reset_lbl, callback_data="mflt:reset")])
+    rows.append([InlineKeyboardButton(reset_lbl, callback_data="mflt:reset")])
 
     # Add submenu if open: list filters not visible
     all_fields = ["cr_buckets", "types", "sizes", "flying"]

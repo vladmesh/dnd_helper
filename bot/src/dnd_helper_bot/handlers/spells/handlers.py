@@ -171,11 +171,20 @@ async def spells_filter_action(update: Update, context: ContextTypes.DEFAULT_TYP
             applied=_default_spells_filters(),
         )
         page = 1
+        context.user_data["spells_add_menu_open"] = False
+    elif token == "add":
+        context.user_data["spells_add_menu_open"] = not bool(context.user_data.get("spells_add_menu_open"))
+        page = int(context.user_data.get("spells_current_page", 1))
+    elif token == "apply":
+        _set_filter_state(context, applied=pending)
+        context.user_data["spells_add_menu_open"] = False
+        page = 1
     else:
         new_pending = _toggle_or_set_filters(pending, token)
-        # Immediate apply
-        _set_filter_state(context, pending=new_pending, applied={**new_pending, "cast": {**new_pending.get("cast", {})}})
-        # Reset to first page on structural changes (Any <-> some, add/remove field, add menu open/close)
+        # stay in manage view during selection
+        if token.startswith("add:"):
+            context.user_data["spells_add_menu_open"] = True
+        _set_filter_state(context, pending=new_pending, applied={**applied})
         if token.startswith(("lv:", "sc:", "ct:", "cls:", "rit:", "conc:")) or token.startswith(("add", "rm:")):
             page = 1
         else:

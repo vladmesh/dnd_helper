@@ -5,7 +5,7 @@ from telegram.ext import ContextTypes
 
 from dnd_helper_bot.repositories.api_client import api_get
 from dnd_helper_bot.utils.i18n import t
-from dnd_helper_bot.utils.pagination import paginate
+from dnd_helper_bot.utils.pagination import paginate, PAGE_SIZE_LIST
 
 from .filters import _filter_spells, _get_filter_state
 from .lang import _resolve_lang_by_user
@@ -17,6 +17,83 @@ async def _nav_row(lang: str, back_callback: str) -> list[InlineKeyboardButton]:
     return await build_nav_row(lang, back_callback)
 
 
+async def _build_filters_header(applied: Dict[str, Any], lang: str, school_items: List[Tuple[str, str]]) -> str:
+    # Nothing applied → "All spells"
+    has_any = False
+    for f in ("level_buckets", "level_range", "school", "casting_time", "classes", "ritual", "is_concentration"):
+        v = applied.get(f)
+        if isinstance(v, set) and v:
+            has_any = True
+            break
+        if v not in (None, False):
+            if v is True or (isinstance(v, str) and v.strip() != ""):
+                has_any = True
+                break
+    if not has_any:
+        default_text = "All spells" if lang == "en" else "Все заклинания"
+        return await t("list.all.spells", lang, default=default_text)
+
+    parts: List[str] = []
+    # Level buckets
+    level_labels: List[str] = []
+    lb = applied.get("level_buckets")
+    if isinstance(lb, set) and lb:
+        code_to_key = {"13": "filters.level.13", "45": "filters.level.45", "69": "filters.level.69"}
+        for code in ("13", "45", "69"):
+            if code in lb:
+                level_labels.append(await t(code_to_key[code], lang))
+    else:
+        legacy = applied.get("level_range")
+        if isinstance(legacy, str) and legacy in {"13", "45", "69"}:
+            level_labels.append(await t({"13": "filters.level.13", "45": "filters.level.45", "69": "filters.level.69"}[legacy], lang))
+    if level_labels:
+        field_name = await t("filters.field.level", lang, default=("Level" if lang == "en" else "Уровень"))
+        parts.append(f"{field_name}: {', '.join(level_labels)}")
+
+    # School
+    school_labels: List[str] = []
+    selected_school = applied.get("school")
+    if isinstance(selected_school, set) and selected_school:
+        code_to_label = {code: label for code, label in school_items}
+        for code in sorted(selected_school):
+            lbl = code_to_label.get(code)
+            if lbl:
+                school_labels.append(str(lbl))
+    if school_labels:
+        field_name = await t("filters.field.school", lang, default=("School" if lang == "en" else "Школа"))
+        parts.append(f"{field_name}: {', '.join(school_labels)}")
+
+    # Casting time
+    ct = applied.get("casting_time")
+    if isinstance(ct, set) and ct:
+        items: List[str] = []
+        if "ba" in ct:
+            items.append(await t("filters.cast.bonus", lang))
+        if "re" in ct:
+            items.append(await t("filters.cast.reaction", lang))
+        if items:
+            field_name = await t("filters.field.casting_time", lang, default=("Casting" if lang == "en" else "Время"))
+            parts.append(f"{field_name}: {', '.join(items)}")
+
+    # Ritual
+    if applied.get("ritual") is True or applied.get("ritual") is False:
+        yn = await t("filters.yes", lang) if applied.get("ritual") else await t("filters.no", lang)
+        field_name = await t("filters.ritual", lang, default=("Ritual" if lang == "en" else "Ритуал"))
+        parts.append(f"{field_name}: {yn}")
+
+    # Concentration
+    if applied.get("is_concentration") is True or applied.get("is_concentration") is False:
+        yn = await t("filters.yes", lang) if applied.get("is_concentration") else await t("filters.no", lang)
+        field_name = await t("filters.field.concentration", lang, default=("Concentration" if lang == "en" else "Концентрация"))
+        parts.append(f"{field_name}: {yn}")
+
+    # Classes
+    classes = applied.get("classes")
+    if isinstance(classes, set) and classes:
+        field_name = await t("filters.field.class", lang, default=("Class" if lang == "en" else "Класс"))
+        parts.append(f"{field_name}: {', '.join(sorted(classes))}")
+
+    return "; ".join(parts) if parts else (await t("list.all.spells", lang, default=("All spells" if lang == "en" else "Все заклинания")))
 async def render_spells_list(query, context: ContextTypes.DEFAULT_TYPE, page: int) -> None:
     context.user_data["spells_current_page"] = page
     pending, applied = _get_filter_state(context)
@@ -78,12 +155,46 @@ async def render_spells_list(query, context: ContextTypes.DEFAULT_TYPE, page: in
         )
     except Exception:
         pass
-    rows: List[List[InlineKeyboardButton]] = await _build_filters_keyboard(
-        pending,
-        lang,
-        sorted(school_options.items(), key=lambda x: x[1].lower()),
-        sorted(classes_options.items(), key=lambda x: x[1].lower()),
-    )
+    rows: List[List[InlineKeyboardButton]] = []
+    school_items_sorted = sorted(school_options.items(), key=lambda x: x[1].lower())
+    classes_items_sorted = sorted(classes_options.items(), key=lambda x: x[1].lower())
+    # Manage view: only filters UI, no entities
+    add_menu_open = bool(context.user_data.get("spells_add_menu_open"))
+    if add_menu_open:
+        # Show all available filter rows in manage view
+        pending_for_render = {
+            **pending,
+            "visible_fields": [
+                "level_buckets",
+                "school",
+                "casting_time",
+                "ritual",
+                "is_concentration",
+                "classes",
+            ],
+            "add_menu_open": True,
+        }
+        rows = await _build_filters_keyboard(pending_for_render, lang, school_items_sorted, classes_items_sorted)
+        rows.append([InlineKeyboardButton(await t("filters.apply", lang), callback_data="sflt:apply")])
+        markup = InlineKeyboardMarkup(rows)
+        header = await _build_filters_header(applied, lang, school_items_sorted)
+        await query.edit_message_text(header, reply_markup=markup)
+        return
+
+    # List view: top button Add/Change filters, then entities
+    def _has_any_filters(d: Dict[str, Any]) -> bool:
+        for f in ("level_buckets", "level_range", "school", "casting_time", "classes", "ritual", "is_concentration"):
+            v = d.get(f)
+            if isinstance(v, set) and v:
+                return True
+            if v not in (None, False):
+                if v is True or (isinstance(v, str) and v.strip() != ""):
+                    return True
+        return False
+
+    top_label = await t("filters.change", lang) if _has_any_filters(applied) else await t("filters.add", lang)
+    rows.append([InlineKeyboardButton(top_label, callback_data="sflt:add")])
+
     if total == 0:
         markup = InlineKeyboardMarkup(rows)
         await query.edit_message_text(
@@ -91,23 +202,23 @@ async def render_spells_list(query, context: ContextTypes.DEFAULT_TYPE, page: in
             reply_markup=markup,
         )
         return
-    page_items = paginate(filtered, page)
+    page_items = paginate(filtered, page, PAGE_SIZE_LIST)
     for s in page_items:
         label = s.get("name", "")
         rows.append([InlineKeyboardButton(label, callback_data=f"spell:detail:{s['id']}")])
     nav: List[InlineKeyboardButton] = []
-    if (page - 1) * 5 > 0:
+    if (page - 1) * PAGE_SIZE_LIST > 0:
         nav.append(InlineKeyboardButton("⬅️", callback_data=f"spell:list:page:{page-1}"))
-    if page * 5 < total:
+    if page * PAGE_SIZE_LIST < total:
         nav.append(InlineKeyboardButton("➡️", callback_data=f"spell:list:page:{page+1}"))
     if nav:
         rows.append(nav)
     rows.append(await _nav_row(lang, "menu:spells"))
-    title = await t("list.title.spells", lang)
     # Keep suffix localized without i18n key, since it's numeric formatting
     suffix = f" (p. {page})" if lang == "en" else f" (стр. {page})"
     markup = InlineKeyboardMarkup(rows)
-    await query.edit_message_text(title + suffix, reply_markup=markup)
+    header = await _build_filters_header(applied, lang, school_items_sorted)
+    await query.edit_message_text(header + suffix, reply_markup=markup)
 
 
 async def _build_filters_keyboard(
@@ -118,12 +229,16 @@ async def _build_filters_keyboard(
 ) -> List[List[InlineKeyboardButton]]:
     rows: List[List[InlineKeyboardButton]] = []
     any_label = await t("filters.any", lang)
-    reset_label = await t("filters.reset", lang)
     add_label = await t("filters.add", lang)
 
-    # Manage row
+    # Collapsed state: only one button "Add filters"
+    if not bool(pending.get("add_menu_open")):
+        rows.append([InlineKeyboardButton(add_label, callback_data="sflt:add")])
+        return rows
+
+    reset_label = await t("filters.reset", lang)
+    # Manage row (expanded): only Reset (no Add here)
     rows.append([
-        InlineKeyboardButton(add_label, callback_data="sflt:add"),
         InlineKeyboardButton(reset_label, callback_data="sflt:reset"),
     ])
 

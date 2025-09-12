@@ -94,13 +94,7 @@ To use the deployment script with prebuilt images from GitHub Container Registry
   - Public packages: nothing to configure on the server (anonymous pull ok).
   - Private packages: on the server run `docker login ghcr.io` with a Personal Access Token (PAT) that has `read:packages` before running the deployment script.
 
-### Seeding
-Seeding expects the following JSON files in the project root:
-- `seed_data_enums.json`
-- `seed_data_spells.json`
-- `seed_data_monsters.json`
 
-Run `python3 seed.py --all` to import monsters and spells via the API and upsert enum and UI translations directly in the database (idempotent).
 
 ### Tests
 Run all service tests in containers:

@@ -169,7 +169,17 @@
     {"namespace": "bot", "key": "spells.menu.random", "lang": "ru", "text": "Случайное заклинание"},
     {"namespace": "bot", "key": "spells.menu.random", "lang": "en", "text": "Random spell"},
     {"namespace": "bot", "key": "spells.menu.search", "lang": "ru", "text": "Поиск заклинания"},
-    {"namespace": "bot", "key": "spells.menu.search", "lang": "en", "text": "Search spell"}
+    {"namespace": "bot", "key": "spells.menu.search", "lang": "en", "text": "Search spell"},
+    {"namespace": "bot", "key": "list.all.monsters", "lang": "ru", "text": "Все монстры"},
+    {"namespace": "bot", "key": "list.all.monsters", "lang": "en", "text": "All monsters"},
+    {"namespace": "bot", "key": "list.all.spells", "lang": "ru", "text": "Все заклинания"},
+    {"namespace": "bot", "key": "list.all.spells", "lang": "en", "text": "All spells"},
+    {"namespace": "bot", "key": "filters.field.casting_time", "lang": "ru", "text": "время накладывания"},
+    {"namespace": "bot", "key": "filters.field.casting_time", "lang": "en", "text": "casting time"},
+    {"namespace": "bot", "key": "filters.field.concentration", "lang": "ru", "text": "концентрация"},
+    {"namespace": "bot", "key": "filters.field.concentration", "lang": "en", "text": "concentration"},
+    {"namespace": "bot", "key": "filters.field.class", "lang": "ru", "text": "класс"},
+    {"namespace": "bot", "key": "filters.field.class", "lang": "en", "text": "class"}
   ]
 }
 

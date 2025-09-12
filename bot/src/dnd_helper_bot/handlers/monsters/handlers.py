@@ -168,17 +168,22 @@ async def monsters_filter_action(update: Update, context: ContextTypes.DEFAULT_T
         context.user_data["monsters_add_menu_open"] = False
         page = 1
     elif token == "add":
-        # toggle add submenu
+        # toggle add submenu (enter/exit manage view)
         context.user_data["monsters_add_menu_open"] = not bool(context.user_data.get("monsters_add_menu_open"))
         page = int(context.user_data.get("monsters_current_page", 1))
+    elif token == "apply":
+        # apply pending to applied and exit manage view
+        _set_filter_state(context, applied=pending)
+        context.user_data["monsters_add_menu_open"] = False
+        page = 1
     else:
         new_pending = _toggle_or_set_filters(pending, token)
-        # manage menu visibility: close after concrete add:field action
+        # keep manage view open while selecting; do not auto-apply
         if token.startswith("add:"):
-            context.user_data["monsters_add_menu_open"] = False
-        # immediate apply
-        _set_filter_state(context, pending=new_pending, applied=new_pending)
-        # if structure changed significantly (e.g., Any from empty set), reset to page 1
+            # still in manage view, ensure open
+            context.user_data["monsters_add_menu_open"] = True
+        _set_filter_state(context, pending=new_pending)
+        # reset page on structure change, but stay on current page otherwise
         page = 1 if token.endswith(":any") or token.startswith("add:") or token.startswith("rm:") else int(context.user_data.get("monsters_current_page", 1))
 
     await render_monsters_list(query, context, page)
