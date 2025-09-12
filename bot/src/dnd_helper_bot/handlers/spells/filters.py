@@ -157,12 +157,13 @@ def _filter_spells(items: List[Dict[str, Any]], filters: Dict[str, Any]) -> List
         v = str(value).lower()
         bonus_ok = ("bonus_action" in v) or ("bonus action" in v)
         react_ok = "reaction" in v
+        # OR semantics: if both selected, accept spells with either Bonus OR Reaction
         conds: List[bool] = []
         if want_bonus:
             conds.append(bonus_ok)
         if want_reaction:
             conds.append(react_ok)
-        return all(conds)
+        return any(conds)
 
     def level_in_bucket(level: Optional[int], bucket: str) -> bool:
         if level is None:
