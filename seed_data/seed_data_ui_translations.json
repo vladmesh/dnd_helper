@@ -134,6 +134,8 @@
     {"namespace": "bot", "key": "filters.any.class", "lang": "en", "text": "Any class"},
     {"namespace": "bot", "key": "filters.any.concentration", "lang": "ru", "text": "Любая концентрация"},
     {"namespace": "bot", "key": "filters.any.concentration", "lang": "en", "text": "Any concentration"},
+    {"namespace": "bot", "key": "filters.any.ritual", "lang": "ru", "text": "Любой ритуал"},
+    {"namespace": "bot", "key": "filters.any.ritual", "lang": "en", "text": "Any ritual"},
     {"namespace": "bot", "key": "list.title.monsters", "lang": "ru", "text": "Список монстров"},
     {"namespace": "bot", "key": "list.title.monsters", "lang": "en", "text": "Monsters list"},
     {"namespace": "bot", "key": "list.title.spells", "lang": "ru", "text": "Список заклинаний"},

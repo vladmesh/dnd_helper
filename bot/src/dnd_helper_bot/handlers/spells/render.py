@@ -306,8 +306,13 @@ async def _build_filters_keyboard(
             rows.append([any_ct, InlineKeyboardButton(bonus, callback_data="sflt:ct:ba"), InlineKeyboardButton(react, callback_data="sflt:ct:re"), InlineKeyboardButton(await t("filters.remove", lang), callback_data="sflt:rm:casting_time")])
         elif field == "ritual":
             state = pending.get("ritual")
+            any_ritual_text = await t(
+                "filters.any.ritual",
+                lang,
+                default=(any_label + " " + (await t("filters.ritual", lang, default="ritual"))),
+            )
             rows.append([
-                InlineKeyboardButton(("✅ " if state is None else "") + any_label, callback_data="sflt:rit:any"),
+                InlineKeyboardButton(("✅ " if state is None else "") + any_ritual_text, callback_data="sflt:rit:any"),
                 InlineKeyboardButton(("✅ " if state is True else "") + await t("filters.yes", lang), callback_data="sflt:rit:yes"),
                 InlineKeyboardButton(("✅ " if state is False else "") + await t("filters.no", lang), callback_data="sflt:rit:no"),
                 InlineKeyboardButton(await t("filters.remove", lang), callback_data="sflt:rm:ritual"),
