@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlmodel import Field
 
 from .base import BaseModel
-from .enums import CasterClass, SpellSchool
+from .enums import CasterClass, SpellSchool, DamageType, Ability, Targeting
 
 
 class SpellCreate(PydanticBaseModel):
@@ -61,7 +61,6 @@ class Spell(BaseModel, table=True):
 
     # Iteration 1: additive fields to align with docs/fields.md (all optional)
     level: Optional[int] = Field(default=None, index=True)
-    ritual: Optional[bool] = Field(default=None)
     casting_time: Optional[str] = Field(default=None)
     range: Optional[str] = Field(default=None)
     duration: Optional[str] = Field(default=None)
@@ -123,4 +122,47 @@ class Spell(BaseModel, table=True):
                 except Exception as exc:
                     raise ValueError(f"Invalid CasterClass: {item}") from exc
         return result
+
+    # Validators for fast-filter enum-like fields stored as text codes
+    @field_validator("damage_type", mode="before")
+    @classmethod
+    def _validate_damage_type(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        if isinstance(value, DamageType):
+            return value.value
+        if isinstance(value, str):
+            v = value.strip().lower()
+            if v not in {d.value for d in DamageType}:
+                raise ValueError(f"Invalid damage_type: {value}")
+            return v
+        raise ValueError("damage_type must be a DamageType or string code")
+
+    @field_validator("save_ability", mode="before")
+    @classmethod
+    def _validate_save_ability(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        if isinstance(value, Ability):
+            return value.value
+        if isinstance(value, str):
+            v = value.strip().lower()
+            if v not in {a.value for a in Ability}:
+                raise ValueError(f"Invalid save_ability: {value}")
+            return v
+        raise ValueError("save_ability must be an Ability or string code")
+
+    @field_validator("targeting", mode="before")
+    @classmethod
+    def _validate_targeting(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        if isinstance(value, Targeting):
+            return value.value
+        if isinstance(value, str):
+            v = value.strip().lower()
+            if v not in {t.value for t in Targeting}:
+                raise ValueError(f"Invalid targeting: {value}")
+            return v
+        raise ValueError("targeting must be a Targeting or string code")
 

@@ -65,13 +65,4 @@ class MonsterType(str, Enum):
     UNDEAD = "undead"
 
 
-class MonsterRole(str, Enum):
-    BRUTE = "brute"
-    SKIRMISHER = "skirmisher"
-    ARTILLERY = "artillery"
-    CONTROLLER = "controller"
-    LURKER = "lurker"
-    SUPPORT = "support"
-    SOLO = "solo"
-
 
