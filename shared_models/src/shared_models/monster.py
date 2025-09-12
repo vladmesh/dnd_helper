@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlmodel import Field
 
 from .base import BaseModel
-from .enums import DangerLevel, Ability, Skill
+from .enums import DangerLevel, Ability, Skill, MonsterType, MonsterSize, DamageType, Condition
 
 
 class Monster(BaseModel, table=True):
@@ -107,6 +107,75 @@ class Monster(BaseModel, table=True):
             if not isinstance(v, int):
                 raise ValueError(f"Invalid skill value for {k}: must be int")
         return value
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def _validate_type(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        # Accept enum instance or string; normalize to lowercase code string
+        if isinstance(value, MonsterType):
+            return value.value
+        if isinstance(value, str):
+            v = value.strip().lower()
+            if v not in {t.value for t in MonsterType}:
+                raise ValueError(f"Invalid monster type: {value}")
+            return v
+        raise ValueError("type must be a MonsterType or string code")
+
+    @field_validator("size", mode="before")
+    @classmethod
+    def _validate_size(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        if isinstance(value, MonsterSize):
+            return value.value
+        if isinstance(value, str):
+            v = value.strip().lower()
+            if v not in {s.value for s in MonsterSize}:
+                raise ValueError(f"Invalid monster size: {value}")
+            return v
+        raise ValueError("size must be a MonsterSize or string code")
+
+    @staticmethod
+    def _validate_enum_string_array(value: Any, allowed_values: set[str], field_name: str) -> Any:
+        if value is None:
+            return value
+        if not isinstance(value, list):
+            raise ValueError(f"{field_name} must be a list of strings")
+        normalized: List[str] = []
+        for item in value:
+            if isinstance(item, str):
+                v = item.strip().lower()
+            else:
+                # allow enum instances too
+                v = getattr(item, "value", None)
+                if isinstance(v, str):
+                    v = v.strip().lower()
+            if not isinstance(v, str) or v not in allowed_values:
+                raise ValueError(f"Invalid value for {field_name}: {item}")
+            normalized.append(v)
+        return normalized
+
+    @field_validator("damage_immunities", mode="before")
+    @classmethod
+    def _validate_damage_immunities(cls, value: Any) -> Any:
+        return cls._validate_enum_string_array(value, {d.value for d in DamageType}, "damage_immunities")
+
+    @field_validator("damage_resistances", mode="before")
+    @classmethod
+    def _validate_damage_resistances(cls, value: Any) -> Any:
+        return cls._validate_enum_string_array(value, {d.value for d in DamageType}, "damage_resistances")
+
+    @field_validator("damage_vulnerabilities", mode="before")
+    @classmethod
+    def _validate_damage_vulnerabilities(cls, value: Any) -> Any:
+        return cls._validate_enum_string_array(value, {d.value for d in DamageType}, "damage_vulnerabilities")
+
+    @field_validator("condition_immunities", mode="before")
+    @classmethod
+    def _validate_condition_immunities(cls, value: Any) -> Any:
+        return cls._validate_enum_string_array(value, {c.value for c in Condition}, "condition_immunities")
 
 
 
