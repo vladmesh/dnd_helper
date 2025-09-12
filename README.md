@@ -54,6 +54,11 @@ REDIS_URL=redis://redis:6379/0
    - `python3 manage.py upgrade`
 3. Seed data (monsters, spells, enums, UI):
    - `python3 seed.py --all`
+
+Notes on enums and i18n labels:
+- Base entities store enum codes (lowercase text). Human-readable labels are provided by wrapped endpoints in `labels`.
+- Enum translations seeded in `seed_data_enums.json` include: `danger_level`, `monster_type`, `monster_size`, `caster_class`, `spell_school`, `ability`, `damage_type`, `condition`, `movement_mode`, `spell_component`, `environment`, `language`.
+
 4. Health check: open `http://localhost:8000/health` in a browser.
 
 ### Production Deployment (one-file interactive script)

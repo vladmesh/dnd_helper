@@ -70,8 +70,22 @@ bot/
 - Alembic autogenerate is configured to ignore indexes entirely (managed manually in migrations) to avoid accidental drops/changes.
 
 ## Domain Conventions (current)
-- Monsters: no `speed` or `speeds` fields; only derived scalar `speed_*` columns (walk/fly/swim/climb/burrow) and `is_flying` flag.
-- Spells: no `distance`; use `range` (string). If numeric filters are needed, introduce derived `range_feet` via migration later. Derived `is_concentration` is present and indexed.
+- Monsters:
+  - No `speed` or `speeds` fields; only derived scalar `speed_*` columns (walk/fly/swim/climb/burrow) and `is_flying` flag.
+  - `languages` removed from base; textual languages live in `MonsterTranslation.languages_text`.
+  - `abilities` renamed to `ability_scores` (numeric values, keys validated against `Ability`).
+  - `type` and `size` are enum codes (`MonsterType`, `MonsterSize`).
+  - `damage_immunities`, `damage_resistances`, `damage_vulnerabilities` store `DamageType` codes; `condition_immunities` stores `Condition` codes.
+- Spells:
+  - No `distance`; use `range` (string). If numeric filters are needed, introduce derived `range_feet` later.
+  - Derived `is_concentration` is present and indexed.
+  - Single `ritual` boolean (indexed).
+  - Fast-filter helpers validated: `damage_type: DamageType`, `save_ability: Ability`, `targeting: Targeting`.
+
+### Enum storage and labels
+- Enums are stored as lowercase text codes in the database.
+- Localized labels come from `enum_translations` via API `labels` blocks on wrapped endpoints.
+- Models include validators to coerce/validate codes against enums; invalid values fail fast.
 
 ## Expected Service Directory Structure (template)
 Use this template for any new service to keep structure uniform.
@@ -181,4 +195,4 @@ Examples:
   - `seed_data_monsters.json`
 - Behavior:
   - Monsters/Spells are imported via HTTP API (skips if already present).
-  - Enum/UI translations are upserted directly inside the API container (idempotent).
+  - Enum/UI translations are upserted directly inside the API container (idempotent). The following enum types are covered: `danger_level`, `monster_type`, `monster_size`, `caster_class`, `spell_school`, `ability`, `damage_type`, `condition`, `movement_mode`, `spell_component`, `environment`, `language` (and optionally others used by API filters).
