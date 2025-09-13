@@ -486,12 +486,11 @@ def _process_job(session: SASession, job: AdminJob) -> None:
         job.status = "running"
         session.commit()
         counters: dict[str, int] = {"processed": 0, "created": 0, "updated": 0, "skipped": 0}
-        payload: dict | None = None
-        # Validate JSON structure and perform minimal import (legacy JSON uploads)
-        if job.job_type in {"monsters_import", "spells_import", "enums_import", "ui_translations_import"}:
+        counters_result: dict | None = None
+        # Legacy JSON uploads are loaded strictly inside their respective branches below
+        if job.job_type == "monsters_import":
             with open(job.file_path or "", "rb") as f:  # type: ignore[arg-type]
                 payload = _json.load(f)
-        if job.job_type == "monsters_import":
             rows = (payload or {}).get("monsters") or []
             tr_rows = (payload or {}).get("monster_translations") or []
             # index translations by (slug, lang)
@@ -589,7 +588,10 @@ def _process_job(session: SASession, job: AdminJob) -> None:
                 except Exception:
                     counters["skipped"] += 1
                     logging.getLogger(__name__).exception("Failed to import a monster row")
+            counters_result = counters
         elif job.job_type == "spells_import":
+            with open(job.file_path or "", "rb") as f:  # type: ignore[arg-type]
+                payload = _json.load(f)
             rows = (payload or {}).get("spells") or []
             tr_rows = (payload or {}).get("spell_translations") or []
             tr_index: dict[tuple[str, str], dict] = {}
@@ -667,7 +669,10 @@ def _process_job(session: SASession, job: AdminJob) -> None:
                 except Exception:
                     counters["skipped"] += 1
                     logging.getLogger(__name__).exception("Failed to import a spell row")
+            counters_result = counters
         elif job.job_type == "enums_import":
+            with open(job.file_path or "", "rb") as f:  # type: ignore[arg-type]
+                payload = _json.load(f)
             rows = (payload or {}).get("enum_translations") or []
             for r in rows if isinstance(rows, list) else []:
                 counters["processed"] += 1
@@ -711,7 +716,10 @@ def _process_job(session: SASession, job: AdminJob) -> None:
                 except Exception:
                     counters["skipped"] += 1
                     logging.getLogger(__name__).exception("Failed to upsert enum translation")
+            counters_result = counters
         elif job.job_type == "ui_translations_import":
+            with open(job.file_path or "", "rb") as f:  # type: ignore[arg-type]
+                payload = _json.load(f)
             rows = (payload or {}).get("ui_translations") or []
             for r in rows if isinstance(rows, list) else []:
                 counters["processed"] += 1
@@ -746,6 +754,7 @@ def _process_job(session: SASession, job: AdminJob) -> None:
                 except Exception:
                     counters["skipped"] += 1
                     logging.getLogger(__name__).exception("Failed to upsert UI translation")
+            counters_result = counters
         elif job.job_type == "bundle_ingest":
             # Process a universal bundle archive according to manifest.json
             # Supported archives: .zip, .tar.gz, .tgz. Files inside may be plain .jsonl or .jsonl.gz per manifest.
@@ -1003,6 +1012,35 @@ def _process_job(session: SASession, job: AdminJob) -> None:
                                     session.add(ex)
                                     session.commit()
                                     updated += 1
+                            elif ftype == "ui_translations":
+                                raw = dict(rec)
+                                ns = str(raw.get("namespace") or "bot").strip() or "bot"
+                                key = str(raw.get("key") or "").strip()
+                                lang_raw = str(raw.get("lang") or "").strip().lower()
+                                text = raw.get("text")
+                                if not (key and lang_raw in {"ru", "en"} and isinstance(text, str)):
+                                    failed += 1
+                                    continue
+                                lang = Language(lang_raw)
+                                ex = (
+                                    session.query(UiTranslation)
+                                    .filter(
+                                        UiTranslation.namespace == ns,
+                                        UiTranslation.key == key,
+                                        UiTranslation.lang == lang,
+                                    )
+                                    .first()
+                                )
+                                if ex is None:
+                                    ex = UiTranslation(namespace=ns, key=key, lang=lang, text=text)
+                                    session.add(ex)
+                                    session.commit()
+                                    created += 1
+                                else:
+                                    ex.text = text
+                                    session.add(ex)
+                                    session.commit()
+                                    updated += 1
                             else:
                                 raise ValueError(f"Unsupported file type: {ftype}")
                         except Exception:
@@ -1022,7 +1060,7 @@ def _process_job(session: SASession, job: AdminJob) -> None:
                 for s in per_file_stats:
                     for k in total:
                         total[k] += int(s.get(k, 0))
-                job.counters = {"files": per_file_stats, "summary": total}
+                counters_result = {"files": per_file_stats, "summary": total}
             finally:
                 try:
                     arc.close()
@@ -1031,7 +1069,7 @@ def _process_job(session: SASession, job: AdminJob) -> None:
         else:
             raise ValueError(f"Unsupported job_type: {job.job_type}")
 
-        job.counters = counters
+        job.counters = counters_result or counters
         job.status = "succeeded"
         session.commit()
         logging.getLogger(__name__).info("Admin worker: job succeeded", extra={"job_id": str(job.id), "counters": counters})

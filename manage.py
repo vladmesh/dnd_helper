@@ -20,6 +20,12 @@ def run_command(command: list[str]) -> None:
         raise SystemExit(result.returncode)
 
 
+def run_capture(command: list[str]) -> tuple[int, str, str]:
+    """Run a command and capture (rc, stdout, stderr)."""
+    p = subprocess.run(command, check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    return p.returncode, p.stdout, p.stderr
+
+
 def cmd_restart(_: argparse.Namespace) -> None:
     """Restart docker compose services: down -> build -> up -d."""
     run_command(["docker", "compose", "down"]) 
@@ -42,11 +48,89 @@ def cmd_ultimate_restart(_: argparse.Namespace) -> None:
         "alembic", "upgrade", "head",
     ])
     # Wait a bit for API to be fully ready before seeding via REST
-    time.sleep(5)
-    # Seed data via unified root script (monsters, spells, enums, ui)
+    time.sleep(7)
+    # --- Seed enums and UI translations via universal bundle ingest ---
     project_root = os.path.dirname(os.path.abspath(__file__))
-    seed_path = os.path.join(project_root, "seed.py")
-    run_command(["python3", seed_path, "--all"])  # includes enums & ui upserts
+    bundle_dir = os.path.join(project_root, "data", "seed_bundle")
+    manifest_path = os.path.join(bundle_dir, "manifest.json")
+    bundle_zip = os.path.join(bundle_dir, "bundle.zip")
+    if not os.path.exists(manifest_path):
+        raise SystemExit("seed bundle manifest.json not found: " + manifest_path)
+    # Create/refresh zip archive deterministically
+    import zipfile
+    with zipfile.ZipFile(bundle_zip, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for name in ("manifest.json", "enum_translations.en.jsonl", "enum_translations.ru.jsonl", "ui_translations.jsonl"):
+            path = os.path.join(bundle_dir, name)
+            if os.path.exists(path):
+                zf.write(path, arcname=name)
+    # Load ADMIN_TOKEN from .env
+    env_path = os.path.join(project_root, ".env")
+    admin_token = os.environ.get("ADMIN_TOKEN", "")
+    if os.path.exists(env_path):
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    if line.startswith("ADMIN_TOKEN=") and not admin_token:
+                        admin_token = line.split("=", 1)[1]
+                        break
+        except Exception:
+            pass
+    if not admin_token:
+        raise SystemExit("ADMIN_TOKEN is required in environment or .env for admin ingest")
+    # Use curl in a container to POST bundle and poll job status; parse JSON in Python
+    rc, out, err = run_capture([
+        "docker", "run", "--rm",
+        "--network", "dnd_helper_default",
+        "-v", f"{bundle_dir}:/bundle:ro",
+        "curlimages/curl:8.10.1",
+        "-sS",
+        "-H", f"Authorization: Bearer {admin_token}",
+        "-F", "file=@/bundle/bundle.zip",
+        "http://api:8000/admin-api/ingest/bundle",
+    ])
+    if rc != 0:
+        sys.stderr.write(err)
+        raise SystemExit(rc)
+    try:
+        import json as _json
+        job_id = _json.loads(out).get("id")
+    except Exception:
+        sys.stderr.write("Failed to parse ingest response: " + out + "\n")
+        raise SystemExit(1)
+    if not job_id:
+        sys.stderr.write("Ingest response missing id: " + out + "\n")
+        raise SystemExit(1)
+    # Poll job status up to 60s
+    for _ in range(60):
+        rc, out, err = run_capture([
+            "docker", "run", "--rm",
+            "--network", "dnd_helper_default",
+            "curlimages/curl:8.10.1",
+            "-sS",
+            "-H", f"Authorization: Bearer {admin_token}",
+            f"http://api:8000/admin-api/ingest/jobs/{job_id}",
+        ])
+        if rc != 0:
+            sys.stderr.write(err)
+            raise SystemExit(rc)
+        try:
+            data = _json.loads(out)
+            status = str(data.get("status") or "")
+        except Exception:
+            sys.stderr.write("Failed to parse job status: " + out + "\n")
+            raise SystemExit(1)
+        if status == "succeeded":
+            break
+        if status == "failed":
+            sys.stderr.write("Ingest job failed: " + out + "\n")
+            raise SystemExit(2)
+        time.sleep(1)
+    else:
+        sys.stderr.write("Ingest job did not complete within timeout\n")
+        raise SystemExit(3)
 
 
 def cmd_parce_core(args: argparse.Namespace) -> None:
