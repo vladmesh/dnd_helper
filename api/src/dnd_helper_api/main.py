@@ -33,6 +33,12 @@ from contextvars import ContextVar
 from typing import Any
 from datetime import datetime, date, time as dt_time
 from uuid import UUID
+import zipfile
+import tarfile
+import io
+import json as _json
+import gzip as _gzip
+import base64
 from sqlalchemy import event
 from sqlalchemy.orm import Session as SASession
 from sqlmodel import SQLModel
@@ -407,6 +413,69 @@ if os.getenv("ADMIN_ENABLED", "false").lower() in {"1", "true", "yes"}:
 
     app.include_router(upload_router)
 
+    # --- Universal bundle ingest endpoints ---
+    ingest_router = APIRouter()
+
+    @ingest_router.post("/admin-api/ingest/bundle")
+    async def admin_ingest_bundle(
+        request: Request,
+        file: UploadFile = File(...),
+        dry_run: bool = Form(False),
+        session: Session = Depends(get_session),
+    ) -> dict:
+        try:
+            _admin_token_auth(request.headers.get("Authorization"))
+            if not file or not (getattr(file, "filename", None) or "").strip():
+                raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="File is required")
+            upload_dir = os.getenv("ADMIN_UPLOAD_DIR", "/data/admin_uploads")
+            Path(upload_dir).mkdir(parents=True, exist_ok=True)
+            filename = f"{uuid.uuid4()}_{file.filename}"
+            dest_path = os.path.join(upload_dir, filename)
+            with open(dest_path, "wb") as out:
+                while True:
+                    chunk = await file.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    out.write(chunk)
+            job = AdminJob(
+                job_type="bundle_ingest",
+                args={"dry_run": dry_run},
+                file_path=dest_path,
+                status="queued",
+                counters={},
+                launched_by=request.headers.get("Authorization"),
+            )
+            session.add(job)
+            session.commit()
+            return {"id": str(job.id), "status": job.status}
+        except HTTPException as exc:
+            raise exc
+        except Exception as exc:
+            logging.getLogger(__name__).exception("Admin bundle ingest enqueue failed")
+            raise HTTPException(status_code=500, detail=str(exc))
+
+    @ingest_router.get("/admin-api/ingest/jobs/{job_id}")
+    async def admin_ingest_job_status(job_id: UUID, session: Session = Depends(get_session)) -> dict:
+        job = session.get(AdminJob, job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="Job not found")
+        return {
+            "id": str(job.id),
+            "job_type": job.job_type,
+            "status": job.status,
+            "created_at": job.created_at.isoformat() if job.created_at else None,
+            "started_at": job.started_at.isoformat() if job.started_at else None,
+            "finished_at": job.finished_at.isoformat() if job.finished_at else None,
+            "file_path": job.file_path,
+            "counters": job.counters or {},
+            "error": job.error,
+            "args": job.args or {},
+        }
+
+    # Sync run endpoint was removed (temporary testing aid)
+
+    app.include_router(ingest_router)
+
 # --- Iteration 5: Minimal background worker (validate-only) ---
 _worker_thread: Optional[threading.Thread] = None
 _worker_stop = threading.Event()
@@ -417,11 +486,11 @@ def _process_job(session: SASession, job: AdminJob) -> None:
         job.status = "running"
         session.commit()
         counters: dict[str, int] = {"processed": 0, "created": 0, "updated": 0, "skipped": 0}
-        # Validate JSON structure and perform minimal import
-        with open(job.file_path or "", "rb") as f:  # type: ignore[arg-type]
-            import json as _json
-
-            payload = _json.load(f)
+        payload: dict | None = None
+        # Validate JSON structure and perform minimal import (legacy JSON uploads)
+        if job.job_type in {"monsters_import", "spells_import", "enums_import", "ui_translations_import"}:
+            with open(job.file_path or "", "rb") as f:  # type: ignore[arg-type]
+                payload = _json.load(f)
         if job.job_type == "monsters_import":
             rows = (payload or {}).get("monsters") or []
             tr_rows = (payload or {}).get("monster_translations") or []
@@ -677,6 +746,288 @@ def _process_job(session: SASession, job: AdminJob) -> None:
                 except Exception:
                     counters["skipped"] += 1
                     logging.getLogger(__name__).exception("Failed to upsert UI translation")
+        elif job.job_type == "bundle_ingest":
+            # Process a universal bundle archive according to manifest.json
+            # Supported archives: .zip, .tar.gz, .tgz. Files inside may be plain .jsonl or .jsonl.gz per manifest.
+            def _open_bundle(path: str) -> tuple[str, Any, str]:
+                p = path.lower()
+                if p.endswith(".zip"):
+                    return ("zip", zipfile.ZipFile(path, "r"), path)
+                if p.endswith(".tar.gz") or p.endswith(".tgz"):
+                    return ("tar", tarfile.open(path, mode="r:gz"), path)
+                raise ValueError("Unsupported bundle format. Use .zip or .tar.gz")
+
+            def _read_file_bytes(kind: str, arc: Any, member_path: str) -> bytes:
+                if kind == "zip":
+                    with arc.open(member_path) as f:  # type: ignore[attr-defined]
+                        return f.read()
+                else:
+                    member = arc.getmember(member_path)  # type: ignore[attr-defined]
+                    f = arc.extractfile(member)  # type: ignore[attr-defined]
+                    if f is None:
+                        raise FileNotFoundError(member_path)
+                    try:
+                        return f.read()
+                    finally:
+                        f.close()
+
+            def _iter_ndjson(data: bytes, compression: str) -> Any:
+                if compression == "gzip":
+                    with _gzip.GzipFile(fileobj=io.BytesIO(data), mode="rb") as gf:
+                        for line in gf:
+                            s = line.decode("utf-8").strip()
+                            if not s:
+                                continue
+                            yield _json.loads(s)
+                else:
+                    for line in io.BytesIO(data).read().splitlines():
+                        s = line.decode("utf-8").strip()
+                        if not s:
+                            continue
+                        yield _json.loads(s)
+
+            kind, arc, _arc_path = _open_bundle(job.file_path or "")
+            try:
+                # Read and validate manifest.json
+                manifest_bytes = _read_file_bytes(kind, arc, "manifest.json")
+                manifest = _json.loads(manifest_bytes.decode("utf-8"))
+                files = manifest.get("files") or []
+                if not isinstance(files, list) or not files:
+                    raise ValueError("manifest.files must be a non-empty array")
+                # Simple topological-ish ordering: process in given order
+                # Runtime state to map UIDs to created DB ids for this run
+                uid_to_monster_id: dict[str, int] = {}
+                uid_to_spell_id: dict[str, int] = {}
+                per_file_stats: list[dict[str, Any]] = []
+                for fdesc in files:
+                    fpath = str((fdesc.get("path") or "")).strip()
+                    ftype = str((fdesc.get("type") or "")).strip()
+                    flang = str((fdesc.get("lang") or "")).strip().lower() or None
+                    compression = str((fdesc.get("compression") or "none")).strip().lower()
+                    if not fpath or not ftype:
+                        raise ValueError("Each file entry must include path and type")
+                    data = _read_file_bytes(kind, arc, fpath)
+                    processed = created = updated = unchanged = failed = 0
+                    # Iterate NDJSON records
+                    for rec in _iter_ndjson(data, compression):
+                        processed += 1
+                        try:
+                            if ftype == "monsters":
+                                # Upsert by slug; derive from provided slug/name; track uid mapping
+                                raw = dict(rec)
+                                uid = str(raw.get("uid") or "").strip()
+                                slug = str(raw.get("slug") or "").strip()
+                                if not slug:
+                                    base_name = str(raw.get("name") or raw.get("name_en") or "").strip()
+                                    slug = _monster_slugify(base_name) if base_name else ""
+                                    if slug:
+                                        raw["slug"] = slug
+                                if not slug:
+                                    failed += 1
+                                    continue
+                                # Backward-compat mapping
+                                if "abilities" in raw and "ability_scores" not in raw:
+                                    raw["ability_scores"] = raw.pop("abilities")
+                                allowed = set(Monster.model_fields.keys()) - {"id"}
+                                filtered = {k: v for k, v in raw.items() if k in allowed}
+                                existing = session.query(Monster).filter(Monster.slug == slug).first()
+                                if existing is None:
+                                    monster = Monster(**filtered)  # type: ignore[arg-type]
+                                    _compute_monster_derived_fields(monster)
+                                    session.add(monster)
+                                    session.commit()
+                                    session.refresh(monster)
+                                    created += 1
+                                else:
+                                    before = _serialize_instance(existing)
+                                    for k, v in filtered.items():
+                                        setattr(existing, k, v)
+                                    _compute_monster_derived_fields(existing)
+                                    session.add(existing)
+                                    session.commit()
+                                    monster = existing
+                                    updated += 1 if _serialize_instance(existing) != before else 0
+                                    unchanged += 1 if _serialize_instance(existing) == before else 0
+                                if uid:
+                                    uid_to_monster_id[uid] = monster.id  # type: ignore[assignment]
+                            elif ftype == "monster_translations":
+                                if not flang:
+                                    raise ValueError("monster_translations requires lang in manifest entry")
+                                raw = dict(rec)
+                                uid = str(raw.get("uid") or "").strip()
+                                if not uid or uid not in uid_to_monster_id:
+                                    failed += 1
+                                    continue
+                                l = Language(flang)
+                                mt = (
+                                    session.query(MonsterTranslation)
+                                    .filter(MonsterTranslation.monster_id == uid_to_monster_id[uid], MonsterTranslation.lang == l)
+                                    .first()
+                                )
+                                if mt is None:
+                                    mt = MonsterTranslation(
+                                        monster_id=uid_to_monster_id[uid],
+                                        lang=l,
+                                        name=(raw.get("name") or ""),
+                                        description=(raw.get("description") or ""),
+                                        traits=raw.get("traits"),
+                                        actions=raw.get("actions"),
+                                        reactions=raw.get("reactions"),
+                                        legendary_actions=raw.get("legendary_actions"),
+                                        spellcasting=raw.get("spellcasting"),
+                                        languages_text=raw.get("languages_text"),
+                                    )
+                                else:
+                                    if raw.get("name"):
+                                        mt.name = raw.get("name")
+                                    if raw.get("description"):
+                                        mt.description = raw.get("description")
+                                    mt.traits = raw.get("traits")
+                                    mt.actions = raw.get("actions")
+                                    mt.reactions = raw.get("reactions")
+                                    mt.legendary_actions = raw.get("legendary_actions")
+                                    mt.spellcasting = raw.get("spellcasting")
+                                    if raw.get("languages_text") is not None:
+                                        mt.languages_text = raw.get("languages_text")
+                                session.add(mt)
+                                session.commit()
+                                created += 1  # treat as created/updated uniformly for now
+                            elif ftype == "spells":
+                                raw = dict(rec)
+                                uid = str(raw.get("uid") or "").strip()
+                                slug = str(raw.get("slug") or "").strip()
+                                if not slug:
+                                    base_name = str(raw.get("name") or raw.get("name_en") or "").strip()
+                                    slug = base_name.lower().replace(" ", "-") if base_name else ""
+                                    if slug:
+                                        raw["slug"] = slug
+                                if not slug:
+                                    failed += 1
+                                    continue
+                                school = raw.get("school")
+                                if school is not None:
+                                    SpellSchool(str(school))
+                                classes_val = raw.get("classes")
+                                if classes_val is not None:
+                                    if not isinstance(classes_val, list):
+                                        classes_val = [classes_val]
+                                    for cls in classes_val:
+                                        CasterClass(str(cls))
+                                    raw["classes"] = classes_val
+                                allowed = set(Spell.model_fields.keys()) - {"id"}
+                                filtered = {k: v for k, v in raw.items() if k in allowed}
+                                existing = session.query(Spell).filter(Spell.slug == slug).first()
+                                if existing is None:
+                                    spell = Spell(**filtered)  # type: ignore[arg-type]
+                                    _compute_spell_derived_fields(spell)
+                                    session.add(spell)
+                                    session.commit()
+                                    session.refresh(spell)
+                                    created += 1
+                                else:
+                                    before = _serialize_instance(existing)
+                                    for k, v in filtered.items():
+                                        setattr(existing, k, v)
+                                    _compute_spell_derived_fields(existing)
+                                    session.add(existing)
+                                    session.commit()
+                                    spell = existing
+                                    updated += 1 if _serialize_instance(existing) != before else 0
+                                    unchanged += 1 if _serialize_instance(existing) == before else 0
+                                if uid:
+                                    uid_to_spell_id[uid] = spell.id  # type: ignore[assignment]
+                            elif ftype == "spell_translations":
+                                if not flang:
+                                    raise ValueError("spell_translations requires lang in manifest entry")
+                                raw = dict(rec)
+                                uid = str(raw.get("uid") or "").strip()
+                                if not uid or uid not in uid_to_spell_id:
+                                    failed += 1
+                                    continue
+                                l = Language(flang)
+                                st = (
+                                    session.query(SpellTranslation)
+                                    .filter(SpellTranslation.spell_id == uid_to_spell_id[uid], SpellTranslation.lang == l)
+                                    .first()
+                                )
+                                if st is None:
+                                    st = SpellTranslation(
+                                        spell_id=uid_to_spell_id[uid],
+                                        lang=l,
+                                        name=(raw.get("name") or ""),
+                                        description=(raw.get("description") or ""),
+                                    )
+                                else:
+                                    if raw.get("name"):
+                                        st.name = raw.get("name")
+                                    if raw.get("description"):
+                                        st.description = raw.get("description")
+                                session.add(st)
+                                session.commit()
+                                created += 1
+                            elif ftype == "enum_translations":
+                                raw = dict(rec)
+                                enum_type = str(raw.get("entity") or raw.get("enum_type") or "").strip()
+                                enum_value = str(raw.get("code") or raw.get("enum_value") or "").strip()
+                                lang_raw = str(raw.get("lang") or "").strip().lower()
+                                label = raw.get("label") if raw.get("label") is not None else raw.get("text")
+                                if not (enum_type and enum_value and lang_raw in {"ru", "en"} and isinstance(label, str)):
+                                    failed += 1
+                                    continue
+                                lang = Language(lang_raw)
+                                ex = (
+                                    session.query(EnumTranslation)
+                                    .filter(
+                                        EnumTranslation.enum_type == enum_type,
+                                        EnumTranslation.enum_value == enum_value,
+                                        EnumTranslation.lang == lang,
+                                    )
+                                    .first()
+                                )
+                                if ex is None:
+                                    ex = EnumTranslation(
+                                        enum_type=enum_type,
+                                        enum_value=enum_value,
+                                        lang=lang,
+                                        label=label,
+                                        description=raw.get("description"),
+                                        synonyms=raw.get("synonyms"),
+                                    )
+                                    session.add(ex)
+                                    session.commit()
+                                    created += 1
+                                else:
+                                    ex.label = label
+                                    ex.description = raw.get("description")
+                                    ex.synonyms = raw.get("synonyms")
+                                    session.add(ex)
+                                    session.commit()
+                                    updated += 1
+                            else:
+                                raise ValueError(f"Unsupported file type: {ftype}")
+                        except Exception:
+                            failed += 1
+                            logging.getLogger(__name__).exception("Failed to process record in %s", fpath)
+                    per_file_stats.append({
+                        "path": fpath,
+                        "type": ftype,
+                        "processed": processed,
+                        "created": created,
+                        "updated": updated,
+                        "unchanged": unchanged,
+                        "failed": failed,
+                    })
+                # Aggregate counters
+                total = {"processed": 0, "created": 0, "updated": 0, "unchanged": 0, "failed": 0}
+                for s in per_file_stats:
+                    for k in total:
+                        total[k] += int(s.get(k, 0))
+                job.counters = {"files": per_file_stats, "summary": total}
+            finally:
+                try:
+                    arc.close()
+                except Exception:
+                    pass
         else:
             raise ValueError(f"Unsupported job_type: {job.job_type}")
 
@@ -716,6 +1067,9 @@ def _worker_loop() -> None:
 @app.on_event("startup")
 def _start_worker() -> None:
     if os.getenv("ADMIN_ENABLED", "false").lower() not in {"1", "true", "yes"}:
+        return
+    # Allow disabling background worker (useful in tests)
+    if os.getenv("ADMIN_WORKER_DISABLE", "false").lower() in {"1", "true", "yes"}:
         return
     global _worker_thread
     if _worker_thread and _worker_thread.is_alive():

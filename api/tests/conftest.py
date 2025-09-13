@@ -6,6 +6,11 @@ Alembic migrations are applied in the test container entrypoint before tests run
 
 from collections.abc import Iterator
 
+import os
+# Enable admin endpoints for tests BEFORE importing app
+os.environ.setdefault("ADMIN_ENABLED", "true")
+os.environ.setdefault("ADMIN_TOKEN", "dev")
+
 import pytest
 from dnd_helper_api.db import engine
 from dnd_helper_api.main import app
