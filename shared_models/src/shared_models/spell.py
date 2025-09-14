@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlmodel import Field
 
 from .base import BaseModel
-from .enums import CasterClass, SpellSchool, DamageType, Ability, Targeting
+from .enums import Ability, CasterClass, DamageType, SpellSchool, Targeting
 
 
 class SpellCreate(PydanticBaseModel):

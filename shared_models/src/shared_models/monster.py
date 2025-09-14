@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 from pydantic import ConfigDict, field_validator
 from sqlalchemy import String
@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlmodel import Field
 
 from .base import BaseModel
-from .enums import DangerLevel, Ability, Skill, MonsterType, MonsterSize, DamageType, Condition
+from .enums import Ability, Condition, DamageType, DangerLevel, MonsterSize, MonsterType, Skill
 
 
 class Monster(BaseModel, table=True):

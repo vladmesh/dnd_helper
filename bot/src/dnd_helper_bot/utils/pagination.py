@@ -1,6 +1,5 @@
 from typing import Any, Dict, List
 
-
 # Default page size is intentionally kept at 5 for legacy callers (e.g., search flow).
 # Lists (monsters/spells) should explicitly pass PAGE_SIZE_LIST.
 PAGE_SIZE_LIST: int = 8

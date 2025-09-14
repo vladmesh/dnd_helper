@@ -26,7 +26,7 @@ from dnd_helper_bot.handlers.monsters import (
     monsters_filter_action,
     monsters_list,
 )
-from dnd_helper_bot.handlers.search import handle_search_text, toggle_search_scope, search_page_nav
+from dnd_helper_bot.handlers.search import handle_search_text, search_page_nav, toggle_search_scope
 from dnd_helper_bot.handlers.spells import (
     spell_detail,
     spell_random,

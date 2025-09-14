@@ -7,8 +7,8 @@ from .enums_common import (
     Environment,
     Language,
     MovementMode,
-    SpellComponent,
     Skill,
+    SpellComponent,
 )
 from .enums_monsters import (
     DangerLevel,

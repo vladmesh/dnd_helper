@@ -7,7 +7,7 @@ from telegram.ext import ContextTypes
 from dnd_helper_bot.repositories.api_client import api_get
 from dnd_helper_bot.utils.i18n import t
 from dnd_helper_bot.utils.nav import build_nav_row
-from dnd_helper_bot.utils.pagination import paginate, PAGE_SIZE_LIST
+from dnd_helper_bot.utils.pagination import PAGE_SIZE_LIST, paginate
 
 from .filters import _filter_monsters, _get_filter_state
 from .lang import _resolve_lang_by_user

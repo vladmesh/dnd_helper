@@ -23,7 +23,24 @@ async def api_get(path: str, params: Optional[Dict[str, Any]] = None) -> List[Di
     async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.get(url, params=params or {}, headers=_build_headers(params))
         logger.info("API GET response", extra={"url": url, "status_code": resp.status_code})
-        resp.raise_for_status()
+        try:
+            resp.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            # Log response body to aid debugging (422 details, etc.)
+            body_text = None
+            try:
+                body_text = resp.text
+            except Exception:
+                body_text = None
+            logger.error(
+                "API GET error",
+                extra={
+                    "url": url,
+                    "status_code": resp.status_code,
+                    "response_body": (body_text if body_text is not None else "<unavailable>"),
+                },
+            )
+            raise exc
         return resp.json()
 
 
@@ -33,7 +50,23 @@ async def api_get_one(path: str, params: Optional[Dict[str, Any]] = None) -> Dic
     async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.get(url, params=params or {}, headers=_build_headers(params))
         logger.info("API GET ONE response", extra={"url": url, "status_code": resp.status_code})
-        resp.raise_for_status()
+        try:
+            resp.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            body_text = None
+            try:
+                body_text = resp.text
+            except Exception:
+                body_text = None
+            logger.error(
+                "API GET ONE error",
+                extra={
+                    "url": url,
+                    "status_code": resp.status_code,
+                    "response_body": (body_text if body_text is not None else "<unavailable>"),
+                },
+            )
+            raise exc
         return resp.json()
 
 

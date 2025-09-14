@@ -11,10 +11,10 @@ from . import derived as _derived  # noqa: F401
 
 # Register static GET routes before dynamic /{monster_id} routes to avoid 422 on '/monsters/search-wrapped'
 from . import (
-    endpoints_list,  # noqa: F401  # static paths like '/list/*'
-    endpoints_search,  # noqa: F401  # static paths like '/search/*'
     endpoints_detail,  # noqa: F401  # dynamic '/{monster_id}', '/{monster_id}/wrapped'
+    endpoints_list,  # noqa: F401  # static paths like '/list/*'
     endpoints_mutations,  # noqa: F401
+    endpoints_search,  # noqa: F401  # static paths like '/search/*'
 )
 from . import translations as _translations  # noqa: F401
 

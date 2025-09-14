@@ -3,6 +3,8 @@
 Place SQLModel ORM and validation models here to be reused across services.
 """
 
+from .admin_audit import AdminAudit
+from .admin_job import AdminJob
 from .base import BaseModel
 from .enum_translation import EnumTranslation
 from .enums import CasterClass, DangerLevel, SpellSchool
@@ -12,8 +14,6 @@ from .spell import Spell
 from .spell_translation import SpellTranslation
 from .ui_translation import UiTranslation
 from .user import User
-from .admin_audit import AdminAudit
-from .admin_job import AdminJob
 
 __all__ = [
     "BaseModel",

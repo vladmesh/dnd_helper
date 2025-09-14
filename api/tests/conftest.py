@@ -4,9 +4,9 @@ All tests run against a real Postgres started by the test docker compose.
 Alembic migrations are applied in the test container entrypoint before tests run.
 """
 
+import os
 from collections.abc import Iterator
 
-import os
 # Enable admin endpoints for tests BEFORE importing app
 os.environ.setdefault("ADMIN_ENABLED", "true")
 os.environ.setdefault("ADMIN_TOKEN", "dev")

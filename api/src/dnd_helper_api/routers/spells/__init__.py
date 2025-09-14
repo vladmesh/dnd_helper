@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 from . import derived as _derived  # noqa: F401
 
-# Register static GET routes before dynamic /{spell_id} routes to avoid 422 on '/spells/search-wrapped'
+# Register static GET routes before dynamic /{spell_id} routes to avoid 422 on '/spells/list/wrapped'
 from . import (
     endpoints_list,  # noqa: F401  # static paths like '/list/*'
     endpoints_search,  # noqa: F401  # static paths like '/search/*'

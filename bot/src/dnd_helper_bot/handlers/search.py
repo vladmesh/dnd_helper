@@ -8,10 +8,10 @@ from dnd_helper_bot.handlers.menu import (  # noqa: E402
     _build_language_keyboard,
     _build_main_menu_inline_i18n,
 )
+from dnd_helper_bot.handlers.monsters.lang import _resolve_lang_by_user  # type: ignore
 from dnd_helper_bot.repositories.api_client import api_get, api_get_one
 from dnd_helper_bot.utils.i18n import t  # noqa: E402
 from dnd_helper_bot.utils.nav import build_nav_row  # noqa: E402
-from dnd_helper_bot.handlers.monsters.lang import _resolve_lang_by_user  # type: ignore
 
 logger = logging.getLogger(__name__)
 

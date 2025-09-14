@@ -1,12 +1,12 @@
-from typing import Any, Dict, List, Optional
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 from dnd_helper_api.db import get_session
 from dnd_helper_api.routers.spells import logger, router
 from dnd_helper_api.utils.enum_labels import resolve_enum_labels
 from fastapi import Depends, Query, Response
-from sqlmodel import Session, select
 from sqlalchemy import or_
+from sqlmodel import Session, select
 
 from shared_models import Spell
 from shared_models.spell_translation import SpellTranslation

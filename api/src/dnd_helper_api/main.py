@@ -38,7 +38,6 @@ import tarfile
 import io
 import json as _json
 import gzip as _gzip
-import base64
 from sqlalchemy import event
 from sqlalchemy.orm import Session as SASession
 from sqlmodel import SQLModel

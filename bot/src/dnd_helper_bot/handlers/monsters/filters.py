@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from telegram.ext import ContextTypes
 

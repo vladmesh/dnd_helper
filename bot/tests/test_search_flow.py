@@ -1,10 +1,9 @@
 import importlib
 import types
 
+import dnd_helper_bot.utils.nav as nav
 import pytest
 from factories import make_message_update
-import dnd_helper_bot.utils.nav as nav
-
 
 pytestmark = pytest.mark.asyncio
 

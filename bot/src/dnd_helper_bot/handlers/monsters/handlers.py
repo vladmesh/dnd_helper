@@ -1,5 +1,5 @@
-import logging
 import html
+import logging
 from typing import Any, Dict
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
