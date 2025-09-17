@@ -1,20 +1,13 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail
 
 REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
-"$REPO_ROOT/scripts/selective_tests.sh"
+SELECTIVE_TESTS_SCRIPT="$REPO_ROOT/scripts/selective_tests.sh"
 
-#!/usr/bin/env bash
-set -euo pipefail
-
-ROOT_DIR=$(git rev-parse --show-toplevel)
-
-echo "Running smoke tests before commit..."
-
-pushd "$ROOT_DIR" >/dev/null
-./run_test.sh
-popd >/dev/null
-
-echo "Tests passed. Proceeding with commit."
-
-
+if "$SELECTIVE_TESTS_SCRIPT"; then
+  exit 0
+else
+  status=$?
+  echo "[pre-commit] Selective tests failed (exit code $status)" >&2
+  exit $status
+fi
