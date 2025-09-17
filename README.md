@@ -36,6 +36,10 @@ Create a `.env` file in the project root with at least:
 # Telegram
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 
+# Admin (optional, required for SQLAdmin/ingest)
+ADMIN_ENABLED=true
+ADMIN_TOKEN=change_me_admin_bearer
+
 # Postgres
 POSTGRES_DB=dnd_helper
 POSTGRES_USER=dnd_helper
@@ -48,18 +52,18 @@ REDIS_URL=redis://redis:6379/0
 ```
 
 ### Quick Start (local/dev)
-1. Start/rebuild containers:
+1. For a clean environment with seed data and translations:
+   - Prepare a bundle under `data/seed_bundle/` (see `docs/architecture.md` for required files).
+   - `python3 manage.py ultimate_restart`
+2. For iterative development without wiping volumes:
    - `python3 manage.py restart`
-2. Apply database migrations (inside the API container):
    - `python3 manage.py upgrade`
-3. Seed data (monsters, spells, enums, UI):
-   - `python3 seed.py --all`
 
 Notes on enums and i18n labels:
 - Base entities store enum codes (lowercase text). Human-readable labels are provided by wrapped endpoints in `labels`.
-- Enum translations seeded in `seed_data_enums.json` include: `danger_level`, `monster_type`, `monster_size`, `caster_class`, `spell_school`, `ability`, `damage_type`, `condition`, `movement_mode`, `spell_component`, `environment`, `language`.
+- Seed bundles should include enum/UI translations so wrapped endpoints can surface localized labels. The legacy JSON files under `seed_data/` are reference material that can be converted into bundles.
 
-4. Health check: open `http://localhost:8000/health` in a browser.
+3. Health check: open `http://localhost:8000/health` in a browser.
 
 ### Production Deployment (one-file interactive script)
 Use the interactive script to prepare volumes, install Docker/Compose if missing, set up user permissions, generate `.env` and `docker-compose.yml`, run migrations, and start the stack.
