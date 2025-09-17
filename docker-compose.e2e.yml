@@ -1,0 +1,72 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: "${COMPOSE_PROJECT_NAME:-dnd-e2e}_postgres"
+    restart: unless-stopped
+    env_file:
+      - .env.e2e
+    ports:
+      - "${POSTGRES_E2E_PORT:-55432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: "${COMPOSE_PROJECT_NAME:-dnd-e2e}_redis"
+    restart: unless-stopped
+    ports:
+      - "${REDIS_E2E_PORT:-16379}:6379"
+    volumes:
+      - redis_data:/data
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: "${COMPOSE_PROJECT_NAME:-dnd-e2e}_api"
+    restart: unless-stopped
+    env_file:
+      - .env.e2e
+    environment:
+      - PYTHONPATH=/app/src
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_JSON=${LOG_JSON:-true}
+      - LOG_SERVICE_NAME=api
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "${API_E2E_PORT:-18000}:8000"
+    command: python -m dnd_helper_api.main
+    volumes:
+      - ./api/alembic/versions:/app/alembic/versions
+      - ./data/admin_uploads:/data/admin_uploads
+
+  bot:
+    build:
+      context: ./bot
+      dockerfile: Dockerfile
+    container_name: "${COMPOSE_PROJECT_NAME:-dnd-e2e}_bot"
+    restart: unless-stopped
+    env_file:
+      - .env.e2e
+    environment:
+      - PYTHONPATH=/app/src
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_JSON=${LOG_JSON:-true}
+      - LOG_SERVICE_NAME=bot
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    depends_on:
+      - redis
+      - postgres
+    command: python -m dnd_helper_bot.main
+
+volumes:
+  postgres_data:
+    name: "${COMPOSE_PROJECT_NAME:-dnd-e2e}_postgres_data"
+  redis_data:
+    name: "${COMPOSE_PROJECT_NAME:-dnd-e2e}_redis_data"
+
+networks:
+  default:
+    name: "${COMPOSE_PROJECT_NAME:-dnd-e2e}_network"

@@ -51,6 +51,35 @@ POSTGRES_PORT=5432
 REDIS_URL=redis://redis:6379/0
 ```
 
+### End-to-end (E2E) stack
+
+The repository ships a dedicated compose stack for end-to-end runs so that it can run
+next to the default development stack without clashing on container names, volumes, or
+exposed ports.
+
+1. Generate the E2E environment file from the example template:
+
+   ```bash
+   # pass the token explicitly or via the E2E_TELEGRAM_BOT_TOKEN env variable
+   python scripts/generate_e2e_env.py --token <telegram-bot-token>
+   ```
+
+   The helper copies `.env.e2e.example` to `.env.e2e` and injects the Telegram token.
+   Re-run with `--force` to overwrite an existing file.
+
+2. Start the stack with the E2E compose file:
+
+   ```bash
+   docker compose -f docker-compose.e2e.yml up -d
+   ```
+
+   Services reuse the same Dockerfiles but are scoped under
+   `${COMPOSE_PROJECT_NAME:-dnd-e2e}`. By default the stack exposes API on `18000`,
+   Postgres on `55432`, and Redis on `16379` (override via `API_E2E_PORT`,
+   `POSTGRES_E2E_PORT`, `REDIS_E2E_PORT`). Internal connection variables stay the same
+   (`POSTGRES_HOST=postgres`, `POSTGRES_PORT=5432`, etc.), so application code does not
+   need additional conditionals.
+
 ### Quick Start (local/dev)
 1. For a clean environment with seed data and translations:
    - Prepare a bundle under `data/seed_bundle/` (see `docs/architecture.md` for required files).

@@ -67,7 +67,9 @@ logs/
 # Environment variables
 .env
 .env.*
+.env.e2e
 !.env.example
+!.env.e2e.example
 
 # Local data / temp
 tmp/
