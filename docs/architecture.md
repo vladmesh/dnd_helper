@@ -186,13 +186,21 @@ Examples:
 ## Operations
 - Rebuild and start services: `python3 manage.py restart`
 - Apply DB migrations inside API container: `python3 manage.py upgrade`
+- Full reset + reseed via admin ingest: `python3 manage.py ultimate_restart` (drops volumes, rebuilds images, runs migrations, uploads seed bundle, polls job completion)
 
-## Seeding
-- Seed data via `python3 seed.py --all`.
-- Expected files in project root:
-  - `seed_data_enums.json`
-  - `seed_data_spells.json`
-  - `seed_data_monsters.json`
-- Behavior:
-  - Monsters/Spells are imported via HTTP API (skips if already present).
-  - Enum/UI translations are upserted directly inside the API container (idempotent). The following enum types are covered: `danger_level`, `monster_type`, `monster_size`, `caster_class`, `spell_school`, `ability`, `damage_type`, `condition`, `movement_mode`, `spell_component`, `environment`, `language` (and optionally others used by API filters).
+## Admin Interface and Ingest
+- Admin UI (`sqladmin`) is mounted at `/admin` when `ADMIN_ENABLED=true`.
+  - Authentication uses a bearer token defined via `ADMIN_TOKEN` (password login is not implemented yet).
+  - Views: Monsters, Spells, Users (read-only); UI Translations (editable); Admin Audit and Admin Jobs (read-only log views).
+- Custom upload page (`/admin/upload`) allows JSON uploads for monsters, spells, enum translations, and UI translations. Files are stored under `ADMIN_UPLOAD_DIR` (default `/data/admin_uploads`).
+- Admin API endpoints:
+  - `POST /admin-api/upload` enqueues legacy JSON imports (`job_type` values: `monsters_import`, `spells_import`, `enums_import`, `ui_translations_import`).
+  - `POST /admin-api/ingest/bundle` accepts a manifest-driven bundle (zip/tar.gz) for universal ingest.
+  - `GET /admin-api/ingest/jobs/{job_id}` returns job status and counters.
+- A background worker thread polls queued `AdminJob` records and processes uploads. Each run records audit rows (`AdminAudit`) and per-job counters.
+
+## Seeding and Bundles
+- Legacy `seed.py` entrypoint has been removed; content is managed through the admin ingest pipeline.
+- Seed bundles live under `data/seed_bundle/` and should at minimum contain `manifest.json`, `enum_translations.*.jsonl`, and `ui_translations.jsonl` (gzip variants supported).
+- `python3 manage.py ultimate_restart` zips the bundle, calls `POST /admin-api/ingest/bundle`, and waits for the background worker to finish.
+- Additional static JSON sources (`seed_data/*.json`) remain as reference data that can be converted into bundles when needed.

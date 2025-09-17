@@ -14,13 +14,6 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
 
 ## Backlog
 
-### NEW) Bot filters: split Bonus Action and Reaction
-- Goal: Fix incorrect behavior of the combined "Bonus/Reaction" filter by separating it into two independent filters.
-- Scope: Update bot filter definitions, handlers, and UI to expose two toggles: "Bonus action" and "Reaction". Align API query mapping if applicable.
-- Acceptance:
-  - Two distinct filters are available and work independently.
-  - Filtered results reflect each toggle correctly; combined behavior (both on) is logical AND.
-
 ### NEW) Bot filters UX: dedicated "Configure filters" screen
 - Goal: Improve UX by moving filter selection to a dedicated screen listing all available filters, with selected filters marked.
 - Scope: Change "Add filter" action to navigate to a new "Configure filters" screen; show all filters with checkmarks; allow Save/Back; rename trigger to "Configure filters".
@@ -65,14 +58,6 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
   - No `Connection refused` noise appears during first boot.
   - Behavior is confined to production compose generation; dev flows unaffected.
 
-### NEW) Replace seeding with admin UI (production content management)
-- Goal: Remove ad-hoc seeding from production and manage content via an authenticated admin interface.
-- Scope: Build an admin UI (separate service or protected API routes) for CRUD on Monsters, Spells, and translations (enum/UI).
-- Acceptance:
-  - Production deploys do not require running seeding scripts.
-  - Admin can create/update/delete content with audit trails.
-  - Permissions and authentication enforced.
-
 ### NEW) Mandatory end-to-end tests in CI/CD before deploy
 - Goal: Add e2e tests that run against a freshly started stack and gate production deployments on green results.
 - Scope: Start ephemeral stack via compose, run tests covering critical flows (API health, basic CRUD, bot search flows via API stubs or real API).
@@ -112,47 +97,6 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
   - HTTP and DB libraries used in async-compatible modes where applicable.
   - Identified action items documented if issues found.
 
-### 1) Search flow should return to main menu (not Bestiary/Spells) [DONE]
-- Scope: Bot UX primarily. Backend is already returning search results.
-- Goal: After showing search results for monsters/spells, the navigation button should bring user back to Main Menu instead of feature roots.
-- Acceptance:
-  - Search results keyboard contains a "To main menu" button; pressing it shows the main reply keyboard
-  - No backend changes required unless additional metadata is needed (N/A for now)
-
-### 2) Unified logging configuration [DONE]
-- Goal: Consistent, structured logs across all services.
-- Scope: `api`, `bot`.
-- Proposal:
-  - Define a shared logging format and fields (service, level, timestamp, message, request_id/correlation_id).
-  - Choose output: JSON lines by default; human-readable format for local dev optional.
-  - Store a reusable template (e.g., `logging_config.py` or `logging.yaml`) in a shared location and import/use it in each service.
-  - Ensure configuration via env vars (level, JSON toggle).
-- Acceptance:
-  - Both services emit logs with identical structure and fields.
-  - Service name is present; timestamps are ISO-8601 UTC.
-  - Log level and JSON toggle controllable via environment variables.
-
-### 3) Arbitrary dice roll generation [DONE]
-- Goal: Allow generating arbitrary dice expressions (e.g. `2d6+1`, `d20-2`, `3d8+2d4+5`).
-- Proposal (backend): Add endpoint `GET /dice?expr=<expression>` that
-  - validates safe expressions in a limited grammar: `(<term> ("+"|"-") <term>)*`, where `<term>` is either `NdM` or integer constant
-  - supports `N >= 1`, `M in {2,3,4,6,8,10,12,20,100}`; caps `N` and total terms for safety
-  - response payload includes: parsed terms, individual rolls per `NdM`, total, normalized expression
-- Acceptance:
-  - Given `expr=2d6+1` → returns two d6 rolls, modifier 1, correct total
-  - Invalid expr returns `422` with error details
-  - Implemented as a simple bot-only flow (no API endpoint)
-
-### 4) Test coverage (endpoints at minimum) [DONE]
-- Goal: Solid tests for API routers (smoke + behavior).
-- Scope: `api` service.
-- Minimum test matrix:
-  - Monsters: list, detail (valid/404), search (hit/miss)
-  - Spells: list, detail (valid/404), search (hit/miss)
-  - If dice endpoint is added: valid expressions, validation errors, caps
-- Tooling: `pytest`, `httpx.AsyncClient`, seed fixtures as needed
-- Acceptance: CI runs tests green; meaningful assertions beyond 200 OK
-
 ### 5) Linters/formatters
 - Goal: Consistent style and static checks across services.
 - Proposal:
@@ -181,13 +125,6 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
 - For dice: implement a small, safe parser rather than `eval`; add input caps to prevent abuse.
 
 
-### 7) Multilingual support (Bot UI) [DONE]
-- Goal: Provide RU/EN (and potentially more) language support for bot texts and keyboards.
-- Scope: `bot` service (handlers, keyboards, messages). API remains language-agnostic for now.
-- Acceptance:
-  - Language can be switched (command or settings submenu), and persists per user.
-  - All current bot flows render localized texts consistently (menus, lists, details, errors).
-
 ### 8) Filter/search fields refinement
 - Goal: Align and finalize filterable/searchable fields for Spells and Monsters across API and Bot.
 - Scope: `api` review of `/spells` and `/monsters` models and derived fields; `bot` quick filters mapping.
@@ -214,13 +151,6 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
 - Scope: `api`, `bot` as needed after feature changes.
 - Acceptance:
   - `python manage.py lint` (ruff) passes without violations.
-
-### 12) Remove IDs from UI display [DONE]
-- Goal: Stop showing internal IDs in list item labels and detail views.
-- Scope: `bot` list buttons and detail messages for monsters and spells.
-- Acceptance:
-  - List buttons display names without `(#id)` suffix.
-  - Detail views show names and content only; no internal IDs exposed.
 
 ### 13) Full-text search for localized content (RU/EN)
 - Goal: Add FTS for `monster_translations` and `spell_translations` with per-language indexes.
@@ -278,20 +208,10 @@ This document tracks backend-related notes and the immediate backlog. Keep docum
   - Correlation IDs propagate between `api` and `bot` for a single user action.
   - Behavior gated via env flags; defaults remain backward compatible.
 
-### 18) Fix broken filters (Bot and API integration) [DONE]
-- Goal: Make existing inline filters reliably affect list/search results for Monsters and Spells.
-- Scope:
-  - Bot: inline filter state, Apply/Reset behavior, pagination over filtered sets.
-  - API: ensure query parameters used by the bot are honored and validated.
-- Acceptance:
-  - Toggling filters updates results deterministically; Reset restores defaults.
-  - Pagination remains consistent when filters are applied.
-  - Manual tests green; automated tests added/updated where feasible.
-
 ### 19) Seed database with canonical content
 - Goal: Provide reproducible seed data for Monsters and Spells for local/dev and tests.
 - Scope:
-  - Define/curate seed dataset; use `seed.py` or fixtures; run inside containers via `manage.py`.
+  - Define/curate seed dataset; ship as admin ingest bundles or dedicated fixtures; run inside containers via `manage.py`.
   - Idempotent execution and clear re-run semantics.
 - Acceptance:
   - A single command populates baseline data; re-running does not duplicate rows.
