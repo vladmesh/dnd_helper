@@ -1,5 +1,7 @@
 # ruff: noqa: I001
 import os
+import hashlib
+import secrets
 
 from dnd_helper_api.logging_config import configure_logging
 from dnd_helper_api.routers.monsters import router as monsters_router
@@ -109,8 +111,17 @@ def _admin_token_auth(authorization: Optional[str] = None) -> None:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing Bearer token")
     token = authorization.split(" ", 1)[1]
-    if token != required:
+    if not secrets.compare_digest(token, required):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+
+def _admin_principal(authorization: Optional[str]) -> str:
+    """Non-secret actor id for the audit log: a short fingerprint of the bearer
+    token, never the raw token itself."""
+    if not authorization or not authorization.startswith("Bearer "):
+        return "anonymous"
+    token = authorization.split(" ", 1)[1]
+    return "admin:" + hashlib.sha256(token.encode()).hexdigest()[:12]
 
 
 class ReadOnlyModelView(ModelView):
@@ -339,7 +350,7 @@ if os.getenv("ADMIN_ENABLED", "false").lower() in {"1", "true", "yes"}:
             _admin_token_auth(request.headers.get("Authorization"))
             # Stash context for audit hooks
             _admin_active.set(True)
-            _admin_actor.set(request.headers.get("Authorization"))
+            _admin_actor.set(_admin_principal(request.headers.get("Authorization")))
             _admin_path.set(request.url.path)
             _admin_client_ip.set(request.client.host if request.client else None)
             try:
@@ -395,7 +406,7 @@ if os.getenv("ADMIN_ENABLED", "false").lower() in {"1", "true", "yes"}:
                 file_path=dest_path,
                 status="queued",
                 counters={},
-                launched_by=request.headers.get("Authorization"),
+                launched_by=_admin_principal(request.headers.get("Authorization")),
             )
             session.add(job)
             try:
@@ -442,7 +453,7 @@ if os.getenv("ADMIN_ENABLED", "false").lower() in {"1", "true", "yes"}:
                 file_path=dest_path,
                 status="queued",
                 counters={},
-                launched_by=request.headers.get("Authorization"),
+                launched_by=_admin_principal(request.headers.get("Authorization")),
             )
             session.add(job)
             session.commit()
